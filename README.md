@@ -1,6 +1,8 @@
-# Harvest Strategy Development
+# Harvest & Dolomite Strategy Development
 
 This [Hardhat](https://hardhat.org/) environment is configured to use Mainnet fork by default and provides templates and utilities for strategy development and testing.
+
+Aside from forking Harvest Finance core contracts on <INSERT_L2_HERE>, this repository integrates the Dolomite Margin Protocol to enable leveraged yield farming.
 
 ## Installation
 

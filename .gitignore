@@ -9,3 +9,5 @@ dev-keys.json
 package-lock.json
 
 .DS_Store
+
+.idea
