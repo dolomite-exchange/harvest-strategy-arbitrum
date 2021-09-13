@@ -22,14 +22,16 @@ module.exports = {
   },
   solidity: {
     compilers: [
-      {version: "0.5.16"},
+      {
+        version: "0.5.16"
+      },
     ]
   },
   mocha: {
     timeout: 2000000
   },
   gasReporter: {
-    enabled: (process.env.REPORT_GAS) ? true : false,
+    enabled: !!(process.env.REPORT_GAS),
     currency: 'USD'
   }
 };
