@@ -1,3 +1,21 @@
+/*
+
+    Copyright 2021 Dolomite.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+*/
+
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
@@ -193,13 +211,13 @@ library DolomiteMarginActions {
     returns (MarketLayout)
     {
         if (
-            actionType == Actions.ActionType.Deposit
-            || actionType == Actions.ActionType.Withdraw
-            || actionType == Actions.ActionType.Transfer
+            actionType == ActionType.Deposit
+            || actionType == ActionType.Withdraw
+            || actionType == ActionType.Transfer
         ) {
             return MarketLayout.OneMarket;
         }
-        else if (actionType == Actions.ActionType.Call) {
+        else if (actionType == ActionType.Call) {
             return MarketLayout.ZeroMarkets;
         }
         return MarketLayout.TwoMarkets;
@@ -213,13 +231,13 @@ library DolomiteMarginActions {
     returns (AccountLayout)
     {
         if (
-            actionType == Actions.ActionType.Transfer
-            || actionType == Actions.ActionType.Trade
+            actionType == ActionType.Transfer
+            || actionType == ActionType.Trade
         ) {
             return AccountLayout.TwoPrimary;
         } else if (
-            actionType == Actions.ActionType.Liquidate
-            || actionType == Actions.ActionType.Vaporize
+            actionType == ActionType.Liquidate
+            || actionType == ActionType.Vaporize
         ) {
             return AccountLayout.PrimaryAndSecondary;
         }

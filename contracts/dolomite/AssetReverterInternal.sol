@@ -12,11 +12,11 @@ import "./interfaces/IDolomiteExchangeWrapper.sol";
 import "./lib/OnlyDolomiteMargin.sol";
 import "./lib/Require.sol";
 
-contract AssetTransformerInternal is IDolomiteExchangeWrapper, OnlyDolomiteMargin {
+contract AssetReverterInternal is IDolomiteExchangeWrapper, OnlyDolomiteMargin {
     using Require for *;
     using SafeERC20 for IERC20;
 
-    bytes32 public constant FILE = "AssetTransformerInternal";
+    bytes32 public constant FILE = "AssetReverterInternal";
 
     constructor(
         address _dolomiteMargin
@@ -33,7 +33,7 @@ contract AssetTransformerInternal is IDolomiteExchangeWrapper, OnlyDolomiteMargi
     )
     external
     onlyDolomiteMargin
-    returns (uint256 fAmount) {
+    returns (uint256) {
         Require.that(
             msg.sender == receiver,
             FILE,
@@ -41,20 +41,25 @@ contract AssetTransformerInternal is IDolomiteExchangeWrapper, OnlyDolomiteMargi
             receiver
         );
 
-        (address transformer, address[] memory tokens, uint[] memory amounts, address dustRecipient) =
-        abi.decode(orderData, (address, address[], uint[], address));
+        (address transformer, uint fAmount, address[] memory outputTokens) =
+        abi.decode(orderData, (address, uint, address[]));
 
         Require.that(
-            IDolomiteAssetTransformer(transformer).fToken() == makerToken,
+            fAmount == requestedFillAmount,
             FILE,
-            "invalid makerToken",
-            makerToken
+            "invalid requestedFillAmount",
+            requestedFillAmount
         );
 
-        fAmount = IDolomiteAssetTransformer(transformer).transform(tokens, amounts, dustRecipient);
-        IERC20(makerToken).safeTransferFrom(transformer, address(this), fAmount);
+        (address[] memory tokens, uint[] memory amounts) = IDolomiteAssetTransformer(transformer).transformBack(fAmount, outputTokens);
+        for (uint i = 0; i < tokens.length; i++) {
+            if (amounts[i] > 0) {
+                IERC20(tokens[i]).safeTransferFrom(transformer, address(this), amounts[i]);
+                IERC20(tokens[i]).safeApprove(msg.sender, amounts[i]);
+            }
+        }
 
-        IERC20(makerToken).safeApprove(receiver, fAmount);
+        return 0;
     }
 
     function getExchangeCost(

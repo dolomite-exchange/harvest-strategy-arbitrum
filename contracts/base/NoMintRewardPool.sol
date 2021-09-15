@@ -38,107 +38,26 @@ pragma solidity 0.5.16;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-// File: @openzeppelin/contracts/math/Math.sol
-
 pragma solidity ^0.5.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./inheritance/Controllable.sol";
 import "./interface/IController.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/GSN/Context.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
 
-// File: contracts/IRewardDistributionRecipient.sol
+import "./LPTokenWrapper.sol";
+import "./SingleRewardDistributionRecipient.sol";
 
-pragma solidity ^0.5.0;
-
-
-
-contract IRewardDistributionRecipient is Ownable {
-    address public rewardDistribution;
-
-    constructor(address _rewardDistribution) public {
-        rewardDistribution = _rewardDistribution;
-    }
-
-    function notifyRewardAmount(uint256 reward) external;
-
-    modifier onlyRewardDistribution() {
-        require(_msgSender() == rewardDistribution, "Caller is not reward distribution");
-        _;
-    }
-
-    function setRewardDistribution(address _rewardDistribution)
-        external
-        onlyOwner
-    {
-        rewardDistribution = _rewardDistribution;
-    }
-}
-
-// File: contracts/CurveRewards.sol
-
-pragma solidity ^0.5.0;
-
-
-/*
-*   Changes made to the SynthetixReward contract
-*
-*   uni to lpToken, and make it as a parameter of the constructor instead of hardcoded.
-*
-*
-*/
-
-contract LPTokenWrapper {
-    using SafeMath for uint256;
-    using SafeERC20 for IERC20;
-
-    IERC20 public lpToken;
-
-    uint256 private _totalSupply;
-    mapping(address => uint256) private _balances;
-
-    function totalSupply() public view returns (uint256) {
-        return _totalSupply;
-    }
-
-    function balanceOf(address account) public view returns (uint256) {
-        return _balances[account];
-    }
-
-    function stake(uint256 amount) public {
-        _totalSupply = _totalSupply.add(amount);
-        _balances[msg.sender] = _balances[msg.sender].add(amount);
-        lpToken.safeTransferFrom(msg.sender, address(this), amount);
-    }
-
-    function withdraw(uint256 amount) public {
-        _totalSupply = _totalSupply.sub(amount);
-        _balances[msg.sender] = _balances[msg.sender].sub(amount);
-        lpToken.safeTransfer(msg.sender, amount);
-    }
-
-    // Harvest migrate
-    // only called by the migrateStakeFor in the MigrationHelperRewardPool
-    function migrateStakeFor(address target, uint256 amountNewShare) internal  {
-      _totalSupply = _totalSupply.add(amountNewShare);
-      _balances[target] = _balances[target].add(amountNewShare);
-    }
-}
-
-/*
-*   [Harvest]
-*   This pool doesn't mint.
-*   the rewards should be first transferred to this pool, then get "notified"
-*   by calling `notifyRewardAmount`
-*/
-
-contract NoMintRewardPool is LPTokenWrapper, IRewardDistributionRecipient, Controllable {
-
+/**
+ *   [Harvest]
+ *   This pool doesn't mint.
+ *   the rewards should be first transferred to this pool, then get "notified"
+ *   by calling `notifyRewardAmount`
+ */
+contract NoMintRewardPool is LPTokenWrapper, SingleRewardDistributionRecipient, Controllable {
     using Address for address;
 
     IERC20 public rewardToken;
@@ -151,7 +70,7 @@ contract NoMintRewardPool is LPTokenWrapper, IRewardDistributionRecipient, Contr
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
 
-    mapping (address => bool) smartContractStakers;
+    mapping(address => bool) smartContractStakers;
 
     // Harvest Migration
     // lpToken is the target vault
@@ -180,19 +99,29 @@ contract NoMintRewardPool is LPTokenWrapper, IRewardDistributionRecipient, Contr
     }
 
     modifier onlyMigrationStrategy() {
-      require(msg.sender == migrationStrategy, "sender needs to be migration strategy");
-      _;
+        require(msg.sender == migrationStrategy, "sender needs to be migration strategy");
+        _;
+    }
+
+    modifier onlyWhitelist {
+        require(
+            IController(controller()).stakingWhiteList(msg.sender),
+            "unauthorized for proxy staking"
+        );
+        _;
     }
 
     // [Hardwork] setting the reward, lpToken, duration, and rewardDistribution for each pool
-    constructor(address _rewardToken,
+    constructor(
+        address _rewardToken,
         address _lpToken,
         uint256 _duration,
         address _rewardDistribution,
         address _storage,
         address _sourceVault,
-        address _migrationStrategy) public
-    IRewardDistributionRecipient(_rewardDistribution)
+        address _migrationStrategy
+    ) public
+    SingleRewardDistributionRecipient(_rewardDistribution)
     Controllable(_storage) // only used for referencing the grey list
     {
         rewardToken = IERC20(_rewardToken);
@@ -210,36 +139,45 @@ contract NoMintRewardPool is LPTokenWrapper, IRewardDistributionRecipient, Contr
         if (totalSupply() == 0) {
             return rewardPerTokenStored;
         }
-        return
-            rewardPerTokenStored.add(
-                lastTimeRewardApplicable()
-                    .sub(lastUpdateTime)
-                    .mul(rewardRate)
-                    .mul(1e18)
-                    .div(totalSupply())
-            );
+
+        return rewardPerTokenStored.add(
+            lastTimeRewardApplicable()
+            .sub(lastUpdateTime)
+            .mul(rewardRate)
+            .mul(1e18)
+            .div(totalSupply())
+        );
     }
 
-    function earned(address account) public view returns (uint256) {
+    function earned(
+        address account
+    ) public view returns (uint256) {
         return
-            balanceOf(account)
-                .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
-                .div(1e18)
-                .add(rewards[account]);
+        balanceOf(account)
+        .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
+        .div(1e18)
+        .add(rewards[account]);
     }
 
-    // stake visibility is public as overriding LPTokenWrapper's stake() function
-    function stake(uint256 amount) public updateReward(msg.sender) {
+    function stake(
+        uint256 amount
+    )
+    public
+    updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
         recordSmartContract();
 
-        super.stake(amount);
+        _stake(msg.sender, amount);
         emit Staked(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount) public updateReward(msg.sender) {
+    function withdraw(
+        uint256 amount
+    )
+    public
+    updateReward(msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
-        super.withdraw(amount);
+        _withdraw(msg.sender, amount);
         emit Withdrawn(msg.sender, amount);
     }
 
@@ -248,10 +186,16 @@ contract NoMintRewardPool is LPTokenWrapper, IRewardDistributionRecipient, Contr
         getReward();
     }
 
-    /// A push mechanism for accounts that have not claimed their rewards for a long time.
-    /// The implementation is semantically analogous to getReward(), but uses a push pattern
-    /// instead of pull pattern.
-    function pushReward(address recipient) public updateReward(recipient) onlyGovernance {
+    /**
+     * @notice  A push mechanism for accounts that have not claimed their rewards for a long time. The implementation
+     *          is semantically analogous to getReward(), but uses a push pattern instead of pull pattern.
+     */
+    function pushReward(
+        address recipient
+    )
+    public
+    updateReward(recipient)
+    onlyGovernance {
         uint256 reward = earned(recipient);
         if (reward > 0) {
             rewards[recipient] = 0;
@@ -285,13 +229,29 @@ contract NoMintRewardPool is LPTokenWrapper, IRewardDistributionRecipient, Contr
         }
     }
 
-    function notifyRewardAmount(uint256 reward)
-        external
-        onlyRewardDistribution
-        updateReward(address(0))
+    function getRewardFor(
+        address user
+    )
+    public
+    onlyWhitelist
+    updateReward(user) {
+        uint256 reward = earned(user);
+        if (reward > 0) {
+            rewards[user] = 0;
+            rewardToken.safeTransfer(user, reward);
+            emit RewardPaid(user, reward);
+        }
+    }
+
+    function notifyRewardAmount(
+        uint256 reward
+    )
+    external
+    onlyRewardDistribution
+    updateReward(address(0))
     {
         // overflow fix according to https://sips.synthetix.io/sips/sip-77
-        require(reward < uint(-1) / 1e18, "the notified reward cannot invoke multiplication overflow");
+        require(reward < uint(- 1) / 1e18, "the notified reward cannot invoke multiplication overflow");
 
         if (block.timestamp >= periodFinish) {
             rewardRate = reward.div(duration);
@@ -307,29 +267,32 @@ contract NoMintRewardPool is LPTokenWrapper, IRewardDistributionRecipient, Contr
 
     // Harvest Smart Contract recording
     function recordSmartContract() internal {
-      if( tx.origin != msg.sender ) {
-        smartContractStakers[msg.sender] = true;
-        emit SmartContractRecorded(msg.sender, tx.origin);
-      }
+        if (tx.origin != msg.sender && !smartContractStakers[msg.sender]) {
+            smartContractStakers[msg.sender] = true;
+            emit SmartContractRecorded(msg.sender, tx.origin);
+        }
     }
 
-
-    // Harvest Migrate
+    // ============ Harvest Migrate ============
 
     function setCanMigrate(bool _canMigrate) public onlyGovernance {
-      canMigrate = _canMigrate;
+        canMigrate = _canMigrate;
     }
 
-    // obtain the legacy vault sahres from the migration strategy
+    /**
+     * @notice Obtains the legacy vault shares from the migration strategy
+     */
     function pullFromStrategy() public onlyMigrationStrategy {
-      canMigrate = true;
-      lpToken.safeTransferFrom(msg.sender, address(this),lpToken.balanceOf(msg.sender));
+        canMigrate = true;
+        lpToken.safeTransferFrom(msg.sender, address(this), lpToken.balanceOf(msg.sender));
     }
 
-    // called only by migrate()
+    /**
+     * @notice Can only be called by migrate()
+     */
     function migrateStakeFor(address target, uint256 amountNewShare) internal updateReward(target) {
-      super.migrateStakeFor(target, amountNewShare);
-      emit Staked(target, amountNewShare);
+        super.migrateStakeFor(target, amountNewShare);
+        emit Staked(target, amountNewShare);
     }
 
     // The MigrationHelperReward Pool already holds the shares of the targetVault
@@ -338,36 +301,36 @@ contract NoMintRewardPool is LPTokenWrapper, IRewardDistributionRecipient, Contr
     // We also want to save user some hassle, thus when user migrate, we will automatically stake for them
 
     function migrate() external {
-      require(canMigrate, "Funds not yet migrated");
-      recordSmartContract();
+        require(canMigrate, "Funds not yet migrated");
+        recordSmartContract();
 
-      // casting here for readability
-      address targetVault = address(lpToken);
+        // casting here for readability
+        address targetVault = address(lpToken);
 
-      // total legacy share - migrated legacy shares
-      // What happens when people wrongfully send their shares directly to this pool
-      // without using the migrate() function? The people that are properly migrating would benefit from this.
-      uint256 remainingLegacyShares = (IERC20(sourceVault).totalSupply()).sub(IERC20(sourceVault).balanceOf(address(this)));
+        // total legacy share - migrated legacy shares
+        // What happens when people wrongfully send their shares directly to this pool
+        // without using the migrate() function? The people that are properly migrating would benefit from this.
+        uint256 remainingLegacyShares = (IERC20(sourceVault).totalSupply()).sub(IERC20(sourceVault).balanceOf(address(this)));
 
-      // How many new shares does this contract hold?
-      // We cannot get this just by IERC20(targetVault).balanceOf(address(this))
-      // because this contract itself is a reward pool where they stake those vault shares
-      // luckily, reward pool share and the underlying lp token works in 1:1
-      // _totalSupply is the amount that is staked
-      uint256 unmigratedNewShares = IERC20(targetVault).balanceOf(address(this)).sub(totalSupply());
-      uint256 userLegacyShares = IERC20(sourceVault).balanceOf(msg.sender);
-      require(userLegacyShares <= remainingLegacyShares, "impossible for user legacy share to have more than the remaining legacy share");
+        // How many new shares does this contract hold?
+        // We cannot get this just by IERC20(targetVault).balanceOf(address(this))
+        // because this contract itself is a reward pool where they stake those vault shares
+        // luckily, reward pool share and the underlying lp token works in 1:1
+        // _totalSupply is the amount that is staked
+        uint256 unmigratedNewShares = IERC20(targetVault).balanceOf(address(this)).sub(totalSupply());
+        uint256 userLegacyShares = IERC20(sourceVault).balanceOf(msg.sender);
+        require(userLegacyShares <= remainingLegacyShares, "impossible for user legacy share to have more than the remaining legacy share");
 
-      // Because of the assertion above,
-      // we know for sure that userEquivalentNewShares must be less than unmigratedNewShares (the idle tokens sitting in this contract)
-      uint256 userEquivalentNewShares = userLegacyShares.mul(unmigratedNewShares).div(remainingLegacyShares);
+        // Because of the assertion above,
+        // we know for sure that userEquivalentNewShares must be less than unmigratedNewShares (the idle tokens sitting in this contract)
+        uint256 userEquivalentNewShares = userLegacyShares.mul(unmigratedNewShares).div(remainingLegacyShares);
 
-      // Take the old shares from user
-      IERC20(sourceVault).safeTransferFrom(msg.sender, address(this), userLegacyShares);
+        // Take the old shares from user
+        IERC20(sourceVault).safeTransferFrom(msg.sender, address(this), userLegacyShares);
 
-      // User has now migrated, let's stake the idle tokens into the pool for the user
-      migrateStakeFor(msg.sender, userEquivalentNewShares);
+        // User has now migrated, let's stake the idle tokens into the pool for the user
+        migrateStakeFor(msg.sender, userEquivalentNewShares);
 
-      emit Migrated(msg.sender, userLegacyShares, userEquivalentNewShares);
+        emit Migrated(msg.sender, userLegacyShares, userEquivalentNewShares);
     }
 }

@@ -7,18 +7,19 @@
     "test": "test"
   },
   "scripts": {
+    "build": "hardhat compile",
     "test": "echo \"Error: please run tests individually\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/harvest-finance/harvest-strategy.git"
+    "url": "git+https://github.com/dolomite-exchange/dolomite-v2-farming-protocol.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/harvest-finance/harvest-strategy/issues"
+    "url": "https://github.com/dolomite-exchange/dolomite-v2-farming-protocol/issues"
   },
-  "homepage": "https://github.com/harvest-finance/harvest-strategy#readme",
+  "homepage": "https://github.com/dolomite-exchange/dolomite-v2-farming-protocol#readme",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "2.0.1",
     "@nomiclabs/hardhat-etherscan": "2.1.0",

@@ -66,6 +66,6 @@ contract StrategyBaseClaimable is IStrategy, RewardTokenProfitNotifier  {
   }
 
   function _getReward() internal {
-    revert("Should be implemented in the derived contract");
+    revert("_getReward: NOT_IMPLEMENTED");
   }
 }

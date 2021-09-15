@@ -118,15 +118,15 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
   }
 
   /*
-  * Returns the cash balance across all users in this contract.
-  */
+   * Returns the cash balance across all users in this contract.
+   */
   function underlyingBalanceInVault() view public returns (uint256) {
     return IERC20(underlying()).balanceOf(address(this));
   }
 
   /* Returns the current underlying (e.g., DAI's) balance together with
    * the invested amount (if DAI is invested elsewhere by the strategy).
-  */
+   */
   function underlyingBalanceWithInvestment() view public returns (uint256) {
     if (address(strategy()) == address(0)) {
       // initial state, when not set
@@ -141,8 +141,9 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
         : underlyingUnit().mul(underlyingBalanceWithInvestment()).div(totalSupply());
   }
 
-  /* get the user's share (in underlying)
-  */
+  /**
+   * @notice Gets the user's share (in underlying)
+   */
   function underlyingBalanceWithInvestmentForHolder(address holder) view external returns (uint256) {
     if (totalSupply() == 0) {
       return 0;
@@ -172,8 +173,8 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
   }
 
   /**
-  * Indicates that the strategy update will happen in the future
-  */
+   * @notice Indicates that the strategy update will happen in the future
+   */
   function announceStrategyUpdate(address _strategy) public onlyControllerOrGovernance {
     // records a new timestamp
     uint256 when = block.timestamp.add(strategyTimeLock());
@@ -183,8 +184,8 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
   }
 
   /**
-  * Finalizes (or cancels) the strategy update by resetting the data
-  */
+   * @notice Finalizes (or cancels) the strategy update by resetting the data
+   */
   function finalizeStrategyUpdate() public onlyControllerOrGovernance {
     _setStrategyUpdateTime(0);
     _setFutureStrategy(address(0));
@@ -254,11 +255,11 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
     _deposit(amount, msg.sender, msg.sender);
   }
 
-  /*
-  * Allows for depositing the underlying asset in exchange for shares
-  * assigned to the holder.
-  * This facilitates depositing for someone else (using DepositHelper)
-  */
+  /**
+   * Allows for depositing the underlying asset in exchange for shares
+   * assigned to the holder.
+   * This facilitates depositing for someone else (using DepositHelper)
+   */
   function depositFor(uint256 amount, address holder) public defense {
     _deposit(amount, msg.sender, holder);
   }
