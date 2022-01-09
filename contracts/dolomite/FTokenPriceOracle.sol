@@ -22,15 +22,23 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/IDolomiteMargin.sol";
 import "./interfaces/IPriceOracle.sol";
 
+import "./lib/DolomiteMarginMonetary.sol";
 import "./lib/DolomiteMarginTypes.sol";
 import "./lib/Require.sol";
 
 /**
- * @notice  Used as a proxy for controlling/holding fTokens and debt for user accounts and doing accounting on
- *          distribution of iiFARM tokens to users.
+ * @notice  Calculates the USD value of a given fToken by breaking it down into it's underlying tokens.
  */
 contract FTokenPriceOracle is IPriceOracle {
 
-    // TODO
+    function getPrice(
+        address token
+    )
+    public
+    view
+    returns (DolomiteMarginMonetary.Price memory) {
+        // TODO
+        return DolomiteMarginMonetary.Price(0);
+    }
 
 }

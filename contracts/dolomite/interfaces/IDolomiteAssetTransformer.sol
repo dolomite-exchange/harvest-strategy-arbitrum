@@ -48,6 +48,19 @@ interface IDolomiteAssetTransformer {
     ) external returns (uint fAmount);
 
     /**
+     * @notice              Calculates the `amounts` of `tokens` that will be returned, upon converting `tokens` to
+     *                      `fToken`.
+     * @param tokens        The deposit and borrowed tokens that will be transformed into this transformer's `fToken`.
+     * @param amounts       The amount of `tokens` that will be pulled into this contract for transformation. Each
+     *                      index of `tokens` corresponds with an index of `amounts`.
+     * @return              The amount of `fToken` that was transformed via `tokens` and `amounts`.
+     */
+    function getTransformResult(
+        address[] calldata tokens,
+        uint[] calldata amounts
+    ) external returns (uint fAmount);
+
+    /**
      * @notice              The calling contract must have an allowance set so this contract can pull `fAmount` tokens
      *                      from `msg.sender` into this contract.
      * @param fAmount       The amount of fTokens to convert back to their original format
@@ -67,7 +80,7 @@ interface IDolomiteAssetTransformer {
      * @param outputTokens  The tokens that should be outputted, by converting the fToken back to its origin format.
      * @return              The tokens that were outputted, same as `outputTokens` and `amounts`
      */
-    function getTransformBackParams(
+    function getTransformBackResult(
         uint fAmount,
         address[] calldata outputTokens
     ) external view returns (address[] memory tokens, uint[] memory amounts);

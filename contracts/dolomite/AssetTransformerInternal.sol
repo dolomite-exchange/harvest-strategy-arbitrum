@@ -34,6 +34,7 @@ contract AssetTransformerInternal is IDolomiteExchangeWrapper, OnlyDolomiteMargi
     external
     onlyDolomiteMargin
     returns (uint256 fAmount) {
+        // already checked that msg.sender is DolomiteMargin; now check msg.sender equals receiver
         Require.that(
             msg.sender == receiver,
             FILE,

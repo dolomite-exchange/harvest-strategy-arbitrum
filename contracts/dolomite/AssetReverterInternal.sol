@@ -34,6 +34,7 @@ contract AssetReverterInternal is IDolomiteExchangeWrapper, OnlyDolomiteMargin {
     external
     onlyDolomiteMargin
     returns (uint256) {
+        // already checked that msg.sender is DolomiteMargin; now check msg.sender equals receiver
         Require.that(
             msg.sender == receiver,
             FILE,
@@ -42,7 +43,7 @@ contract AssetReverterInternal is IDolomiteExchangeWrapper, OnlyDolomiteMargin {
         );
 
         (address transformer, uint fAmount, address[] memory outputTokens) =
-        abi.decode(orderData, (address, uint, address[]));
+            abi.decode(orderData, (address, uint, address[]));
 
         Require.that(
             fAmount == requestedFillAmount,

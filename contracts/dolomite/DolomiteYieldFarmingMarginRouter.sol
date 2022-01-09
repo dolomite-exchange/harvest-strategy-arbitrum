@@ -47,7 +47,7 @@ contract DolomiteYieldFarmingMarginRouter {
         uint[] calldata depositAmounts,
         uint[] calldata borrowAmounts,
         address transformer,
-        bool shouldStakeFToken
+        bool shouldStakeAfterTransformation
     ) external {
         Require.that(
             tokens.length == depositAmounts.length,
@@ -59,9 +59,10 @@ contract DolomiteYieldFarmingMarginRouter {
             FILE,
             "invalid deposit amounts length"
         );
-        // TODO deposit all depositAmounts into the protocol
-        // TODO withdraw all depositAmounts + borrowAmounts to `transformerInternal`
-        // TODO SELL 0 wei of marketId0 for `transformer` fToken, encode bytes as data
+        // TODO ERC20::transfer all depositAmounts to transformerInternal
+        // TODO withdraw (borrow) all borrowAmounts to `transformerInternal`
+        // TODO DolomiteMargin::CALL, encoding data
+        // TODO deposit all created fTokens into Solo, using `getTransformResult`
         // TODO stake upon completion if needed
     }
 
@@ -69,12 +70,14 @@ contract DolomiteYieldFarmingMarginRouter {
         uint fAmountWei,
         address[] calldata outputTokens,
         address transformer,
-        bool shouldRemoveFTokenStake
+        bool shouldWithdrawIfStillHasBorrowAmount,
+        bool shouldRemoveBeforeTransformation
     ) external {
         // TODO remove stake if needed
-        // TODO SELL `fToken` `fAmountWei` for `marketId` 0, encode bytes as data
-        // TODO deposit all outputTokens into the protocol from `transformerInternal` address
-        // TODO withdraw all `outputTokens` back to msg.sender
+        // TODO withdraw `fAmount` `fToken`, checking for `fAmountWei`
+        // TODO DolomiteMargin::CALL, encode bytes as data using `getTransformBackResult`
+        // TODO deposit all `outputTokens` into the protocol from `transformerInternal` address
+        // TODO withdraw all `outputTokens` back to `msg.sender` if borrowAmounts are >= 0 (we don't want to leave an account potentially under-collateralized); check shouldWithdrawIfStillHasBorrowAmount
     }
 
     /**

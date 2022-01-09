@@ -19,7 +19,7 @@
 pragma solidity ^0.5.7;
 pragma experimental ABIEncoderV2;
 
-import "../lib/Monetary.sol";
+import "../lib/DolomiteMarginMonetary.sol";
 
 
 /**
@@ -50,5 +50,5 @@ contract IPriceOracle {
     )
     public
     view
-    returns (Monetary.Price memory);
+    returns (DolomiteMarginMonetary.Price memory);
 }

@@ -33,6 +33,13 @@ import "./DolomiteMarginMath.sol";
 library DolomiteMarginTypes {
     using DolomiteMarginMath for uint256;
 
+    // ============ Permission ============
+
+    struct OperatorArg {
+        address operator;
+        bool trusted;
+    }
+
     // ============ AssetAmount ============
 
     enum AssetDenomination {

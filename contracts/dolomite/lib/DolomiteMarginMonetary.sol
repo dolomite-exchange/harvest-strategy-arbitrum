@@ -21,12 +21,12 @@ pragma experimental ABIEncoderV2;
 
 
 /**
- * @title Monetary
+ * @title DolomiteMarginMonetary
  * @author dYdX
  *
  * Library for types involving money
  */
-library Monetary {
+library DolomiteMarginMonetary {
 
     /*
      * The price of a base-unit of an asset. Has `36 - token.decimals` decimals

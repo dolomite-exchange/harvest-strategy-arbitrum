@@ -20,14 +20,16 @@ contract MultipleRewardDistributionRecipient is Ownable {
     }
 
     function notifyTargetRewardAmount(address rewardToken, uint256 reward) external;
-    function notifyRewardAmount(uint256 reward) external;
 
     modifier onlyRewardDistribution() {
-        require(rewardDistribution[_msgSender()], "Caller is not reward distribution");
+        require(rewardDistribution[msg.sender], "Caller is not reward distribution");
         _;
     }
 
-    function setRewardDistribution(address[] calldata _newRewardDistribution, bool _flag)
+    function setRewardDistribution(
+        address[] calldata _newRewardDistribution,
+        bool _flag
+    )
     external
     onlyOwner
     {
