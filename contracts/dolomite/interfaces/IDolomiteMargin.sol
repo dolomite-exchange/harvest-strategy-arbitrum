@@ -25,6 +25,7 @@ import "../lib/DolomiteMarginInterest.sol";
 import "../lib/DolomiteMarginMonetary.sol";
 import "../lib/DolomiteMarginTypes.sol";
 
+
 interface IDolomiteMargin {
 
     // ============ Getters for Markets ============
@@ -229,5 +230,4 @@ interface IDolomiteMargin {
     function setOperators(
         DolomiteMarginTypes.OperatorArg[] calldata args
     ) external;
-
 }

@@ -296,7 +296,7 @@ contract Basis2FarmStrategyV3 is StrategyBaseUL {
 
     poolId = _pid;
     rewardPool = IBASPool(_rewardPool);
-    
+
     investAllUnderlying();
   }
 }

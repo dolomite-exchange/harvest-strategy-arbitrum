@@ -67,7 +67,7 @@ contract SNXReward2FarmStrategyV2 is StrategyBase {
 
   // if set to true, it liquidates the reward token to weth in sushi.
   // afterwards, it liquidates from weth to farm in uniswap.
-  bool public liquidateRewardToWethInSushi;  
+  bool public liquidateRewardToWethInSushi;
   mapping (address => address[]) public liquidationRoutes;
 
   // if the flag is set, then it would read the previous reward distribution from the pool
@@ -100,7 +100,7 @@ contract SNXReward2FarmStrategyV2 is StrategyBase {
   StrategyBase(_storage, _underlying, _vault, _farm, _uniswapRouterV2)
   public {
     require(_vault == INoMintRewardPool(_distributionPool).lpToken(), "distribution pool's lp must be the vault");
-    
+
     farm = _farm;
     weth = _weth;
     distributionPool = _distributionPool;
@@ -181,7 +181,7 @@ contract SNXReward2FarmStrategyV2 is StrategyBase {
 
     uint256 farmAmount;
     if (liquidationRoutes[tokenToLiquidate].length > 1) {
-      
+
       IUniswapV2Router02(uniswapRouterV2).swapExactTokensForTokens(
         rewardBalance,
         amountOutMin,
@@ -195,7 +195,7 @@ contract SNXReward2FarmStrategyV2 is StrategyBase {
       revert("The liquidation path to FARM must be set.");
     }
 
-    // Use farm as protif sharing base, sending it 
+    // Use farm as protif sharing base, sending it
     notifyProfitInRewardToken(farmAmount);
 
     // The remaining farms should be distributed to the distribution pool
@@ -203,7 +203,7 @@ contract SNXReward2FarmStrategyV2 is StrategyBase {
 
     // Switch reward distribution temporarily, notify reward, switch it back
     address prevRewardDistribution;
-    if(autoRevertRewardDistribution) {      
+    if(autoRevertRewardDistribution) {
       prevRewardDistribution = INoMintRewardPool(distributionPool).rewardDistribution();
     } else {
       prevRewardDistribution = defaultRewardDistribution;
@@ -321,5 +321,5 @@ contract SNXReward2FarmStrategyV2 is StrategyBase {
 
   function setLiquidateRewardToWethInSushi(bool _flag) public onlyGovernance {
     liquidateRewardToWethInSushi = _flag;
-  }  
+  }
 }

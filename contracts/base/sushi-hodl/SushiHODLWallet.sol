@@ -134,8 +134,8 @@ contract SushiHODLWallet is Ownable, AaveInteractor {
   }
 
   /**
-  * Salvages tokens other than atokens, sushi and xsushi. 
-  */
+   * Salvages tokens other than aTokens, SUSHI and xSUSHI.
+   */
   function salvage(address _recipient, address _token, uint256 _amount) public onlyOwner {
     require(!unsalvageable[_token], "the token cannot be salvaged");
     IERC20(_token).safeTransfer(_recipient, _amount);
