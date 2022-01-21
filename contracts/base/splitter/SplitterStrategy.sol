@@ -51,7 +51,7 @@ contract SplitterStrategy is IStrategyV3, Initializable, ControllableInit, Split
 
   constructor() public { }
 
-  function unsalvagableTokens(address token) public view returns (bool) {
+  function unsalvageableTokens(address token) public view returns (bool) {
     return token == underlying();
   }
 
@@ -395,7 +395,7 @@ contract SplitterStrategy is IStrategyV3, Initializable, ControllableInit, Split
 
   // should only be called by controller
   function salvage(address destination, address token, uint256 amount) external restricted {
-    require(!unsalvagableTokens(token), "token is defined as not salvageable");
+    require(!unsalvageableTokens(token), "token is defined as not salvageable");
     IERC20(token).safeTransfer(destination, amount);
   }
 }

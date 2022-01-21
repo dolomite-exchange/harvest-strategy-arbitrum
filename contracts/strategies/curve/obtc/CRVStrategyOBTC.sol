@@ -42,7 +42,7 @@ contract CRVStrategyOBTC is StrategyBase {
   address public sushi;
 
   // these tokens cannot be claimed by the governance
-  mapping(address => bool) public unsalvagableTokens;
+  mapping(address => bool) public unsalvageableTokens;
 
   uint256 maxUint = uint256(~0);
   address[] public uniswap_CRV2WETH;
@@ -86,9 +86,9 @@ contract CRVStrategyOBTC is StrategyBase {
     sushiswap_BOR2WETH = [bor, weth];
     uniswap_WETH2WBTC = [weth, wbtc];
     // set these tokens to be not salvageable
-    unsalvagableTokens[underlying] = true;
-    unsalvagableTokens[crv] = true;
-    unsalvagableTokens[bor] = true;
+    unsalvageableTokens[underlying] = true;
+    unsalvageableTokens[crv] = true;
+    unsalvageableTokens[bor] = true;
   }
 
   function depositArbCheck() public view returns(bool) {
@@ -100,7 +100,7 @@ contract CRVStrategyOBTC is StrategyBase {
   */
   function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens[token], "token is defined as not salvageable");
+    require(!unsalvageableTokens[token], "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

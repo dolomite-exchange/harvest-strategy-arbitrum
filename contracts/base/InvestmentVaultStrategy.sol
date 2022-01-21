@@ -24,7 +24,7 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
   address public vault;
   address public investmentVault;
   address public potPool;
-  mapping(address => bool) public unsalvagableTokens;
+  mapping(address => bool) public unsalvageableTokens;
 
   bool public hodlApproved = true;
 
@@ -44,9 +44,9 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
     potPool = _potPool;
     investmentVault = PotPool(potPool).lpToken();
     underlying = IVault(investmentVault).underlying();
-    unsalvagableTokens[underlying] = true;
-    unsalvagableTokens[investmentVault] = true;
-    unsalvagableTokens[potPool] = true;
+    unsalvageableTokens[underlying] = true;
+    unsalvageableTokens[investmentVault] = true;
+    unsalvageableTokens[potPool] = true;
   }
 
   function withdrawAllToVault() public restricted {
@@ -75,7 +75,7 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
 
   function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens[token], "token is defined as not salvageable");
+    require(!unsalvageableTokens[token], "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

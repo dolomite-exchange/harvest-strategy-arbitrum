@@ -46,7 +46,7 @@ contract LiquidityRecipient is Controllable {
   address public uniLp;
 
   // These tokens cannot be claimed by the controller
-  mapping(address => bool) public unsalvagableTokens;
+  mapping(address => bool) public unsalvageableTokens;
 
   constructor(
     address _storage,
@@ -66,8 +66,8 @@ contract LiquidityRecipient is Controllable {
     uniswap = _uniswap;
     require(_uniLp != address(0), "uniLp cannot be address(0)");
     uniLp = _uniLp;
-    unsalvagableTokens[_weth] = true;
-    unsalvagableTokens[_uniLp] = true;
+    unsalvageableTokens[_weth] = true;
+    unsalvageableTokens[_uniLp] = true;
     wethStrategy = _wethStrategy;
   }
 
@@ -83,16 +83,20 @@ contract LiquidityRecipient is Controllable {
     IERC20(weth).safeApprove(uniswap, 0);
     IERC20(weth).safeApprove(uniswap, wethBalance);
 
-    (uint256 amountFarm,
-    uint256 amountWeth,
-    uint256 liquidity) = IUniswapV2Router02(uniswap).addLiquidity(farm,
+    (
+      uint256 amountFarm,
+      uint256 amountWeth,
+      uint256 liquidity
+    ) = IUniswapV2Router02(uniswap).addLiquidity(
+        farm,
         weth,
         farmBalance,
         wethBalance,
         0,
         0,
         address(this),
-        block.timestamp);
+        block.timestamp
+    );
 
     emit LiquidityProvided(amountFarm, amountWeth, liquidity);
   }
@@ -120,9 +124,9 @@ contract LiquidityRecipient is Controllable {
   }
 
   /**
-  * Adds liquidity to Uniswap. There is no vault for this cannot be invoked via controller. It has
-  * to be restricted for market manipulation reasons, so only governance can call this method.
-  */
+   * Adds liquidity to Uniswap. There is no vault for this cannot be invoked via controller. It has
+   * to be restricted for market manipulation reasons, so only governance can call this method.
+   */
   function doHardWork() public onlyGovernance {
     addLiquidity();
   }
@@ -166,7 +170,7 @@ contract LiquidityRecipient is Controllable {
   */
   function salvage(address recipient, address token, uint256 amount) external onlyGovernance {
     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens[token], "token is defined as not salvagable");
+    require(!unsalvageableTokens[token], "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

@@ -64,7 +64,7 @@ contract XSushiStrategyUpgradeable is IStrategy, Initializable, BaseUpgradeableS
     return true;
   }
 
-  function unsalvagableTokens(address _token) public view returns(bool) {
+  function unsalvageableTokens(address _token) public view returns(bool) {
     return _token == underlying() || _token == xsushi() || _token == aTokenAddress();
   }
 
@@ -124,7 +124,7 @@ contract XSushiStrategyUpgradeable is IStrategy, Initializable, BaseUpgradeableS
 
   function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens(token), "token is defined as not salvageable");
+    require(!unsalvageableTokens(token), "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

@@ -22,15 +22,19 @@ contract HardRewards is Controllable {
     // vault to the last rewarded block
     mapping(address => uint256) public lastReward;
 
-    constructor(address _storage, address _token)
-    Controllable(_storage) public {
+    constructor(
+        address _storage,
+        address _token
+    )
+    Controllable(_storage)
+    public {
         token = IERC20(_token);
     }
 
     /**
-    * Called from the controller after hard work has been done. Defensively avoid
-    * reverting the transaction in this function.
-    */
+     * Called from the controller after hard work has been done. Defensively avoid
+     * reverting the transaction in this function.
+     */
     function rewardMe(address recipient, address vault) external onlyController {
         if (address(token) == address(0) || blockReward == 0) {
             // no rewards now
@@ -69,9 +73,9 @@ contract HardRewards is Controllable {
     }
 
     /**
-    * Transfers tokens for the new rewards cycle. Allows for changing the rewards setting
-    * at the same time.
-    */
+     * Transfers tokens for the new rewards cycle. Allows for changing the rewards setting
+     * at the same time.
+     */
     function load(address _token, uint256 _rate, uint256 _amount) external onlyGovernance {
         token = IERC20(_token);
         blockReward = _rate;

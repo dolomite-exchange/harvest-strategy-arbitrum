@@ -18,8 +18,7 @@ contract BaseUpgradeableStrategy is Initializable, ControllableInit, BaseUpgrade
   event ProfitAndBuybackLog(uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
 
   modifier restricted() {
-    require(msg.sender == vault() || msg.sender == controller()
-      || msg.sender == governance(),
+    require(msg.sender == vault() || msg.sender == controller() || msg.sender == governance(),
       "The sender has to be the controller, governance, or vault");
     _;
   }

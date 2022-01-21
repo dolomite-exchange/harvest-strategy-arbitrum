@@ -12,6 +12,7 @@ import "../../base/interface/IStrategy.sol";
 import "../../base/interface/IVault.sol";
 import "../../base/interface/uniswap/IUniswapV2Router02.sol";
 
+w
 contract CompoundWETHFoldStrategy is IStrategy, RewardTokenProfitNotifier, CompoundInteractor {
 
   using SafeMath for uint256;
@@ -49,7 +50,7 @@ contract CompoundWETHFoldStrategy is IStrategy, RewardTokenProfitNotifier, Compo
   uint256 public borrowMinThreshold = 0;
 
   // These tokens cannot be claimed by the controller
-  mapping(address => bool) public unsalvagableTokens;
+  mapping(address => bool) public unsalvageableTokens;
 
   modifier restricted() {
     require(msg.sender == vault || msg.sender == address(controller()) || msg.sender == address(governance()),
@@ -80,10 +81,10 @@ contract CompoundWETHFoldStrategy is IStrategy, RewardTokenProfitNotifier, Compo
     vault = _vault;
     uniswapRouterV2 = _uniswap;
 
-    // set these tokens to be not salvagable
-    unsalvagableTokens[_underlying] = true;
-    unsalvagableTokens[_ctoken] = true;
-    unsalvagableTokens[_comp] = true;
+    // set these tokens to be not salvageable
+    unsalvageableTokens[_underlying] = true;
+    unsalvageableTokens[_ctoken] = true;
+    unsalvageableTokens[_comp] = true;
   }
 
   modifier updateSupplyInTheEnd() {
@@ -214,7 +215,7 @@ contract CompoundWETHFoldStrategy is IStrategy, RewardTokenProfitNotifier, Compo
   */
   function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens[token], "token is defined as not salvagable");
+    require(!unsalvageableTokens[token], "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

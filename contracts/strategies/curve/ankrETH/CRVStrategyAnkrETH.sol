@@ -80,19 +80,19 @@ contract CRVStrategyAnkrETH is StrategyBaseUL {
 
     globalSell = true;
 
-    unsalvagableTokens[crv] = true;
+    unsalvageableTokens[crv] = true;
     sell[crv] = true;
     sellFloor[crv] = 1e16;
     dex[crv] = bytes32(uint256(keccak256("uni")));
     liquidationPath[crv] = ILiquidatorRegistry(liquidatorRegistry).getPath(dex[crv], crv, weth);
 
-    unsalvagableTokens[onx] = true;
+    unsalvageableTokens[onx] = true;
     sell[onx] = true;
     sellFloor[onx] = 1e16;
     dex[onx] = bytes32(uint256(keccak256("sushi")));
     liquidationPath[onx] = ILiquidatorRegistry(liquidatorRegistry).getPath(dex[onx], onx, weth);
 
-    unsalvagableTokens[ankr] = true;
+    unsalvageableTokens[ankr] = true;
     sell[ankr] = true;
     sellFloor[ankr] = 1e16;
     dex[ankr] = bytes32(uint256(keccak256("uni")));
@@ -109,7 +109,7 @@ contract CRVStrategyAnkrETH is StrategyBaseUL {
 
   function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens[token], "token is defined as not salvageable");
+    require(!unsalvageableTokens[token], "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

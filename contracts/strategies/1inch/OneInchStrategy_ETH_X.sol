@@ -69,10 +69,10 @@ contract OneInchStrategy_ETH_X is StrategyBase {
     oneInchEthLP = _oneInchEthLP;
     uniswap_WETH2Token1 = [weth, token1];
 
-    // making 1inch reward token salvagable to be able to
+    // making 1inch reward token salvageable to be able to
     // liquidate externally
-    unsalvagableTokens[oneInch] = false;
-    unsalvagableTokens[token1] = true;
+    unsalvageableTokens[oneInch] = false;
+    unsalvageableTokens[token1] = true;
   }
 
   function depositArbCheck() public view returns(bool) {
@@ -84,7 +84,7 @@ contract OneInchStrategy_ETH_X is StrategyBase {
   */
   function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens[token], "token is defined as not salvageable");
+    require(!unsalvageableTokens[token], "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

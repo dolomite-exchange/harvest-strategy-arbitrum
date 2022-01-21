@@ -77,7 +77,7 @@ contract LQTYStakingStrategy is IStrategy, BaseUpgradeableStrategyUL {
 
     // ---------------- IStrategy methods ----------------
 
-    function unsalvagableTokens(address token) public view returns (bool) {
+    function unsalvageableTokens(address token) public view returns (bool) {
         return (token == lqty);
     }
 
@@ -132,7 +132,7 @@ contract LQTYStakingStrategy is IStrategy, BaseUpgradeableStrategyUL {
     /**
      * @dev Governance or controller can claim coins that are somehow transferred
      *      into the contract (eg. by mistake). Note that the underlying LP token
-     *      is not salvagable.
+     *      is not salvageable.
      */
     function salvage(
         address recipient,
@@ -141,8 +141,8 @@ contract LQTYStakingStrategy is IStrategy, BaseUpgradeableStrategyUL {
     ) external onlyControllerOrGovernance {
         // Make sure governance or controller cannot come in and take away the invested tokens
         require(
-            !unsalvagableTokens(token),
-            "Token is defined as non-salvagable"
+            !unsalvageableTokens(token),
+            "Token is defined as non-salvageable"
         );
         IERC20(token).safeTransfer(recipient, amount);
     }

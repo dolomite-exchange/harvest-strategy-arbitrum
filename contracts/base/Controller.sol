@@ -40,6 +40,8 @@ contract Controller is IController, Governable {
     // All vaults that we have
     mapping (address => bool) public vaults;
 
+    mapping (address => bool) public hardWorkers;
+
     // Rewards for hard work. Nullable.
     HardRewards public hardRewards;
 
@@ -83,8 +85,6 @@ contract Controller is IController, Governable {
         }
         _;
     }
-
-    mapping (address => bool) public hardWorkers;
 
     modifier onlyHardWorkerOrGovernance() {
         require(hardWorkers[msg.sender] || (msg.sender == governance()),
@@ -161,7 +161,7 @@ contract Controller is IController, Governable {
         IVault(_vault).setStrategy(_strategy);
     }
 
-    function getPricePerFullShare(address _vault) public view returns(uint256) {
+    function getPricePerFullShare(address _vault) public view returns (uint256) {
         return IVault(_vault).getPricePerFullShare();
     }
 
@@ -170,10 +170,11 @@ contract Controller is IController, Governable {
         uint256 hint,
         uint256 deviationNumerator,
         uint256 deviationDenominator
-    ) external
-    confirmSharePrice(_vault, hint, deviationNumerator, deviationDenominator)
+    )
+    external
+    validVault(_vault)
     onlyHardWorkerOrGovernance
-    validVault(_vault) {
+    confirmSharePrice(_vault, hint, deviationNumerator, deviationDenominator) {
         uint256 oldSharePrice = IVault(_vault).getPricePerFullShare();
         IVault(_vault).doHardWork();
         if (address(hardRewards) != address(0)) {
@@ -189,23 +190,27 @@ contract Controller is IController, Governable {
         );
     }
 
-    function withdrawAll(address _vault,
+    function withdrawAll(
+        address _vault,
         uint256 hint,
         uint256 deviationNumerator,
         uint256 deviationDenominator
-    ) external
+    )
+    external
     confirmSharePrice(_vault, hint, deviationNumerator, deviationDenominator)
     onlyGovernance
     validVault(_vault) {
         IVault(_vault).withdrawAll();
     }
 
-    function setStrategy(address _vault,
+    function setStrategy(
+        address _vault,
         address strategy,
         uint256 hint,
         uint256 deviationNumerator,
         uint256 deviationDenominator
-    ) external
+    )
+    external
     confirmSharePrice(_vault, hint, deviationNumerator, deviationDenominator)
     onlyGovernance
     validVault(_vault) {
@@ -223,7 +228,7 @@ contract Controller is IController, Governable {
 
     function salvageStrategy(address _strategy, address _token, uint256 _amount) external onlyGovernance {
         // the strategy is responsible for maintaining the list of
-        // salvagable tokens, to make sure that governance cannot come
+        // salvageable tokens, to make sure that governance cannot come
         // in and take away the coins
         IStrategy(_strategy).salvage(governance(), _token, _amount);
     }

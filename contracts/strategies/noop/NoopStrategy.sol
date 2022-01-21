@@ -18,7 +18,7 @@ contract NoopStrategy is IStrategy, Controllable {
   IVault public vault;
 
   // These tokens cannot be claimed by the controller
-  mapping(address => bool) public unsalvagableTokens;
+  mapping(address => bool) public unsalvageableTokens;
 
   modifier restricted() {
     require(msg.sender == address(vault) || msg.sender == address(controller()) || msg.sender == address(governance()),
@@ -33,7 +33,7 @@ contract NoopStrategy is IStrategy, Controllable {
     require(_vault != address(0), "_vault cannot be empty");
     underlying = IERC20(_underlying);
     vault = IVault(_vault);
-    unsalvagableTokens[_underlying] = true;
+    unsalvageableTokens[_underlying] = true;
   }
 
   function depositArbCheck() public view returns(bool) {

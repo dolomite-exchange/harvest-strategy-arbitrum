@@ -283,11 +283,11 @@ contract SNXRewardUniLPStrategyWithBuyback is StrategyBase {
   /*
   *   Governance or Controller can claim coins that are somehow transferred into the contract
   *   Note that they cannot come in take away coins that are used and defined in the strategy itself
-  *   Those are protected by the "unsalvagableTokens". To check, see where those are being flagged.
+  *   Those are protected by the "unsalvageableTokens". To check, see where those are being flagged.
   */
   function salvage(address recipient, address token, uint256 amount) external onlyControllerOrGovernance {
      // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens[token], "token is defined as not salvagable");
+    require(!unsalvageableTokens[token], "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

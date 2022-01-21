@@ -20,7 +20,7 @@ contract XSushiStrategy is IStrategy, Controllable, AaveInteractor {
   address public xsushi;
   address public underlying; // sushi
   address public vault;
-  mapping(address => bool) public unsalvagableTokens;
+  mapping(address => bool) public unsalvageableTokens;
   uint256 public aaveWrapCap;
 
   modifier restricted() {
@@ -42,9 +42,9 @@ contract XSushiStrategy is IStrategy, Controllable, AaveInteractor {
     xsushi = _xsushi;
     underlying = _underlying;
     vault = _vault;
-    unsalvagableTokens[_underlying] = true;
-    unsalvagableTokens[_xsushi] = true;
-    unsalvagableTokens[aTokenAddress] = true;
+    unsalvageableTokens[_underlying] = true;
+    unsalvageableTokens[_xsushi] = true;
+    unsalvageableTokens[aTokenAddress] = true;
     aaveWrapCap = _aaveWrapCap;
   }
 
@@ -96,7 +96,7 @@ contract XSushiStrategy is IStrategy, Controllable, AaveInteractor {
 
   function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens[token], "token is defined as not salvageable");
+    require(!unsalvageableTokens[token], "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

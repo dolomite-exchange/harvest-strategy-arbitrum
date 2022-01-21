@@ -106,7 +106,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
       }
   }
 
-  function unsalvagableTokens(address token) public view returns (bool) {
+  function unsalvageableTokens(address token) public view returns (bool) {
     return (token == rewardToken() || token == underlying());
   }
 
@@ -302,7 +302,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
   */
   function salvage(address recipient, address token, uint256 amount) external onlyControllerOrGovernance {
      // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens(token), "token is defined as not salvagable");
+    require(!unsalvageableTokens(token), "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

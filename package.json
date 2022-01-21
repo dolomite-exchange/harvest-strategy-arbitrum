@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "hardhat compile",
+    "lint": "solhint 'contracts/**/*.sol'",
     "test": "echo \"Error: please run tests individually\" && exit 1"
   },
   "repository": {
@@ -33,6 +34,7 @@
     "@nomiclabs/hardhat-web3": "2.0.0",
     "@openzeppelin/contracts": "2.5.1",
     "@openzeppelin/contracts-ethereum-package": "2.5.0",
-    "@openzeppelin/upgrades": "2.8.0"
+    "@openzeppelin/upgrades": "2.8.0",
+    "solhint": "^3.3.6"
   }
 }

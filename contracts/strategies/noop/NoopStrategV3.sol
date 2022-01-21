@@ -18,7 +18,7 @@ contract NoopStrategyV3 is IStrategyV3, Controllable {
   IVault public vault;
 
   // These tokens cannot be claimed by the controller
-  mapping(address => bool) public unsalvagableTokens;
+  mapping(address => bool) public unsalvageableTokens;
 
   bool public withdrawAllCalled = false;
 

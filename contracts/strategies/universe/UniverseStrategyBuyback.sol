@@ -4,12 +4,14 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+
 import "../../base/interface/uniswap/IUniswapV2Router02.sol";
 import "../../base/interface/IStrategy.sol";
 import "../../base/interface/IRewardPool.sol";
 import "../../base/interface/IVault.sol";
 import "../../base/upgradability/BaseUpgradeableStrategyUL.sol";
 import "../../base/interface/uniswap/IUniswapV2Pair.sol";
+
 import "./interface/IStaking.sol";
 import "./interface/IYieldFarming.sol";
 
@@ -92,7 +94,7 @@ contract UniverseStrategyBuyback is IStrategy, BaseUpgradeableStrategyUL {
       }
   }
 
-  function unsalvagableTokens(address token) public view returns (bool) {
+  function unsalvageableTokens(address token) public view returns (bool) {
     return (token == rewardToken() || token == underlying());
   }
 
@@ -283,7 +285,7 @@ contract UniverseStrategyBuyback is IStrategy, BaseUpgradeableStrategyUL {
   */
   function salvage(address recipient, address token, uint256 amount) external onlyControllerOrGovernance {
      // To make sure that governance cannot come in and take away the coins
-    require(!unsalvagableTokens(token), "token is defined as not salvagable");
+    require(!unsalvageableTokens(token), "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

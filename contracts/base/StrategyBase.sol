@@ -16,7 +16,7 @@ contract StrategyBase is IStrategy, RewardTokenProfitNotifier  {
 
   address public underlying;
   address public vault;
-  mapping (address => bool) public unsalvagableTokens;
+  mapping (address => bool) public unsalvageableTokens;
   address public uniswapRouterV2;
 
 
@@ -35,8 +35,8 @@ contract StrategyBase is IStrategy, RewardTokenProfitNotifier  {
   ) RewardTokenProfitNotifier(_storage, _rewardToken) public {
     underlying = _underlying;
     vault = _vault;
-    unsalvagableTokens[_rewardToken] = true;
-    unsalvagableTokens[_underlying] = true;
+    unsalvageableTokens[_rewardToken] = true;
+    unsalvageableTokens[_underlying] = true;
     uniswapRouterV2 = _uniswap;
   }
 
