@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
@@ -71,21 +71,12 @@ contract OneInchStrategy_ETH_X is StrategyBase {
 
     // making 1inch reward token salvageable to be able to
     // liquidate externally
-    unsalvageableTokens[oneInch] = false;
-    unsalvageableTokens[token1] = true;
+    isUnsalvageableToken[oneInch] = false;
+    isUnsalvageableToken[token1] = true;
   }
 
   function depositArbCheck() public view returns(bool) {
     return true;
-  }
-
-  /**
-  * Salvages a token. We should not be able to salvage underlying.
-  */
-  function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
-    // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   /**

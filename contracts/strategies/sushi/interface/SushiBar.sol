@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 interface SushiBar {
   function enter(uint256 _amount) external;

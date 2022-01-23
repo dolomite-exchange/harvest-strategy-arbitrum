@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -64,7 +64,7 @@ contract XSushiStrategyUpgradeable is IStrategy, Initializable, BaseUpgradeableS
     return true;
   }
 
-  function unsalvageableTokens(address _token) public view returns(bool) {
+  function isUnsalvageableToken(address _token) public view returns(bool) {
     return _token == underlying() || _token == xsushi() || _token == aTokenAddress();
   }
 
@@ -120,12 +120,6 @@ contract XSushiStrategyUpgradeable is IStrategy, Initializable, BaseUpgradeableS
     require(IERC20(underlying()).balanceOf(address(this)) >= amountUnderlying, "insufficient balance for the withdrawal");
     IERC20(underlying()).safeTransfer(vault(), amountUnderlying);
     wrap();
-  }
-
-  function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
-    // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens(token), "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   function doHardWork() public restricted {

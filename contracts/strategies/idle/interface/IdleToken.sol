@@ -2,7 +2,7 @@
  * @title: Idle Token interface
  * @author: Idle Labs Inc., idle.finance
  */
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 interface IIdleTokenV3_1 {
     // view

@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -11,6 +11,7 @@ import "../../base/interface/uniswap/IUniswapV2Router02.sol";
 import "./interface/IdleToken.sol";
 import "./interface/IIdleTokenHelper.sol";
 import "./interface/IStakedAave.sol";
+
 
 contract IdleFinanceStrategy is IStrategy, RewardTokenProfitNotifier {
 
@@ -46,7 +47,7 @@ contract IdleFinanceStrategy is IStrategy, RewardTokenProfitNotifier {
   address public multiSig = address(0xF49440C1F012d041802b25A73e5B0B9166a75c02);
 
   // These tokens cannot be claimed by the controller
-  mapping (address => bool) public unsalvageableTokens;
+  mapping (address => bool) public isUnsalvageableToken;
 
   modifier restricted() {
     require(msg.sender == vault || msg.sender == address(controller()) || msg.sender == address(governance()),
@@ -81,11 +82,11 @@ contract IdleFinanceStrategy is IStrategy, RewardTokenProfitNotifier {
     protected = true;
 
     // set these tokens to be not salvageable
-    unsalvageableTokens[_underlying] = true;
-    unsalvageableTokens[_idleUnderlying] = true;
+    isUnsalvageableToken[_underlying] = true;
+    isUnsalvageableToken[_idleUnderlying] = true;
     for (uint256 i = 0; i < rewardTokens.length; i++) {
       address token = rewardTokens[i];
-      unsalvageableTokens[token] = true;
+      isUnsalvageableToken[token] = true;
     }
     referral = address(0xf00dD244228F51547f0563e60bCa65a30FBF5f7f);
     claimAllowed = true;
@@ -159,15 +160,6 @@ contract IdleFinanceStrategy is IStrategy, RewardTokenProfitNotifier {
     investAllUnderlying();
 
     // state of supply/loan will be updated by the modifier
-  }
-
-  /**
-  * Salvages a token.
-  */
-  function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
-    // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   function claim() internal {

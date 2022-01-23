@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 interface IUSDCVault {
     /// @notice vault initialization time

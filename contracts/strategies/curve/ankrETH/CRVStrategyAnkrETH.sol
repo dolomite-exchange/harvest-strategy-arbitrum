@@ -1,16 +1,16 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../../../base/interface/curve/Gauge.sol";
+import "../../../base/interface/curve/IGauge.sol";
 import "../../../base/interface/curve/ICurveDeposit_2token.sol";
 import "../../../base/interface/IStrategy.sol";
 import "../../../base/interface/IVault.sol";
 import "../../../base/interface/ILiquidatorRegistry.sol";
-import "../../../base/interface/ILiquidator.sol";
+import "../../../base/interface/IUniversalLiquidator.sol";
 import "../../../base/interface/weth/Weth9.sol";
 
 import "../../../base/StrategyBaseUL.sol";
@@ -80,19 +80,19 @@ contract CRVStrategyAnkrETH is StrategyBaseUL {
 
     globalSell = true;
 
-    unsalvageableTokens[crv] = true;
+    isUnsalvageableToken[crv] = true;
     sell[crv] = true;
     sellFloor[crv] = 1e16;
     dex[crv] = bytes32(uint256(keccak256("uni")));
     liquidationPath[crv] = ILiquidatorRegistry(liquidatorRegistry).getPath(dex[crv], crv, weth);
 
-    unsalvageableTokens[onx] = true;
+    isUnsalvageableToken[onx] = true;
     sell[onx] = true;
     sellFloor[onx] = 1e16;
     dex[onx] = bytes32(uint256(keccak256("sushi")));
     liquidationPath[onx] = ILiquidatorRegistry(liquidatorRegistry).getPath(dex[onx], onx, weth);
 
-    unsalvageableTokens[ankr] = true;
+    isUnsalvageableToken[ankr] = true;
     sell[ankr] = true;
     sellFloor[ankr] = 1e16;
     dex[ankr] = bytes32(uint256(keccak256("uni")));
@@ -107,18 +107,12 @@ contract CRVStrategyAnkrETH is StrategyBaseUL {
     return true;
   }
 
-  function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
-    // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
-  }
-
   /**
   * Withdraws underlying from the investment pool that mints crops.
   */
   function withdrawUnderlyingFromPool(uint256 amount) internal {
-    Gauge(pool).withdraw(
-      Math.min(Gauge(pool).balanceOf(address(this)), amount)
+    IGauge(pool).withdraw(
+      Math.min(IGauge(pool).balanceOf(address(this)), amount)
     );
   }
 
@@ -149,7 +143,7 @@ contract CRVStrategyAnkrETH is StrategyBaseUL {
     if (underlyingBalance > 0) {
       IERC20(underlying).safeApprove(pool, 0);
       IERC20(underlying).safeApprove(pool, underlyingBalance);
-      Gauge(pool).deposit(underlyingBalance);
+      IGauge(pool).deposit(underlyingBalance);
     }
   }
 
@@ -183,7 +177,7 @@ contract CRVStrategyAnkrETH is StrategyBaseUL {
         IERC20(rewardToken).safeApprove(liquidator, 0);
         IERC20(rewardToken).safeApprove(liquidator, rewardBalance);
         // we can accept 1 as the minimum because this will be called only by a trusted worker
-        ILiquidator(liquidator).swapTokenOnDEX(rewardBalance, 1, address(this), dex[rewardToken], liquidationPath[rewardToken]);
+        IUniversalLiquidator(liquidator).swapTokenOnDEX(rewardBalance, 1, address(this), dex[rewardToken], liquidationPath[rewardToken]);
       }
     }
 
@@ -213,7 +207,7 @@ contract CRVStrategyAnkrETH is StrategyBaseUL {
   * Investing all underlying.
   */
   function investedUnderlyingBalance() public view returns (uint256) {
-    return Gauge(pool).balanceOf(address(this)).add(
+    return IGauge(pool).balanceOf(address(this)).add(
       IERC20(underlying).balanceOf(address(this))
     );
   }

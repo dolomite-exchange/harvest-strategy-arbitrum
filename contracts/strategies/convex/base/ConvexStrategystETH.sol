@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -141,7 +141,7 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
     }
   }
 
-  function unsalvageableTokens(address token) public view returns (bool) {
+  function isUnsalvageableToken(address token) public view returns (bool) {
     return (token == rewardToken() || token == underlying() || token == depositReceipt());
   }
 
@@ -223,7 +223,7 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
 
     uint256 rewardBalance = IERC20(weth).balanceOf(address(this));
 
-    notifyProfitInRewardToken(rewardBalance);
+    _notifyProfitInRewardToken(rewardBalance);
     uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
 
     if (remainingRewardBalance == 0) {
@@ -295,16 +295,6 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
     return rewardPoolBalance()
       .add(IERC20(depositReceipt()).balanceOf(address(this)))
       .add(IERC20(underlying()).balanceOf(address(this)));
-  }
-
-  /*
-  *   Governance or Controller can claim coins that are somehow transferred into the contract
-  *   Note that they cannot come in take away coins that are used and defined in the strategy itself
-  */
-  function salvage(address recipient, address token, uint256 amount) external onlyControllerOrGovernance {
-     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens(token), "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   /*

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -13,10 +13,11 @@ import "@openzeppelin/contracts/ownership/Ownable.sol";
 
 import "./inheritance/Controllable.sol";
 import "./interface/IController.sol";
+import "./interface/IPotPool.sol";
 
 import "./MultipleRewardDistributionRecipient.sol";
 
-contract PotPool is MultipleRewardDistributionRecipient, Controllable, ERC20, ERC20Detailed {
+contract PotPool is MultipleRewardDistributionRecipient, Controllable, ERC20, ERC20Detailed, IPotPool {
 
     using Address for address;
     using SafeERC20 for IERC20;
@@ -278,7 +279,9 @@ contract PotPool is MultipleRewardDistributionRecipient, Controllable, ERC20, ER
         return rewardTokens.length;
     }
 
-    // Harvest Smart Contract recording
+    /**
+     * Harvest Smart Contract recording
+     */
     function recordSmartContract() internal {
         if (tx.origin != msg.sender) {
             smartContractStakers[msg.sender] = true;

@@ -1,6 +1,8 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 interface IController {
+
+    // ==================== Events ====================
 
     event SharePriceChangeLog(
         address indexed vault,
@@ -10,21 +12,22 @@ interface IController {
         uint256 timestamp
     );
 
-    // [Grey list]
-    // An EOA can safely interact with the system no matter what.
-    // If you're using Metamask, you're using an EOA.
-    // Only smart contracts may be affected by this grey list.
-    //
-    // This contract will not be able to ban any EOA from the system
-    // even if an EOA is being added to the greyList, he/she will still be able
-    // to interact with the whole system as if nothing happened.
-    // Only smart contracts will be affected by being added to the greyList.
-    // This grey list is only used in Vault.sol, see the code there for reference
+    // ==================== Functions ====================
+
+    /**
+     * An EOA can safely interact with the system no matter what. If you're using Metamask, you're using an EOA. Only
+     * smart contracts may be affected by this grey list. This contract will not be able to ban any EOA from the system
+     * even if an EOA is being added to the greyList, he/she will still be able to interact with the whole system as if
+     * nothing happened. Only smart contracts will be affected by being added to the greyList. This grey list is only
+     * used in Vault.sol, see the code there for reference
+     */
     function greyList(address _target) external view returns (bool);
 
     function stakingWhiteList(address _target) external view returns (bool);
 
     function addVaultAndStrategy(address _vault, address _strategy) external;
+
+    function addVaultsAndStrategies(address[] calldata _vaults, address[] calldata _strategies) external;
 
     function doHardWork(address _vault) external;
 
@@ -43,4 +46,12 @@ interface IController {
     function setFeeRewardForwarder(address _value) external;
 
     function addHardWorker(address _worker) external;
+
+    function universalLiquidator() external view returns (address);
+
+    function nextImplementationDelay() external view returns (uint256);
+
+    function profitSharingNumerator() external view returns (uint256);
+
+    function profitSharingDenominator() external view returns (uint256);
 }

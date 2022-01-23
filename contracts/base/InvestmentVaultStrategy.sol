@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -24,7 +24,7 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
   address public vault;
   address public investmentVault;
   address public potPool;
-  mapping(address => bool) public unsalvageableTokens;
+  mapping(address => bool) public isUnsalvageableToken;
 
   bool public hodlApproved = true;
 
@@ -44,9 +44,9 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
     potPool = _potPool;
     investmentVault = PotPool(potPool).lpToken();
     underlying = IVault(investmentVault).underlying();
-    unsalvageableTokens[underlying] = true;
-    unsalvageableTokens[investmentVault] = true;
-    unsalvageableTokens[potPool] = true;
+    isUnsalvageableToken[underlying] = true;
+    isUnsalvageableToken[investmentVault] = true;
+    isUnsalvageableToken[potPool] = true;
   }
 
   function withdrawAllToVault() public restricted {
@@ -71,12 +71,6 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
     require(IERC20(underlying).balanceOf(address(this)) >= amountUnderlying, "insufficient balance for the withdrawal");
     IERC20(underlying).safeTransfer(vault, amountUnderlying);
     investAllUnderlying();
-  }
-
-  function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
-    // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   function doHardWork() public restricted {

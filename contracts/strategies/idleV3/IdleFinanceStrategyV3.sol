@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -41,7 +41,7 @@ contract IdleFinanceStrategyV3 is IStrategyV3, RewardTokenProfitNotifier {
   address public referral;
 
   // These tokens cannot be claimed by the controller
-  mapping (address => bool) public unsalvageableTokens;
+  mapping (address => bool) public isUnsalvageableToken;
 
   modifier restricted() {
     require(msg.sender == vault || msg.sender == address(controller()) || msg.sender == address(governance()),
@@ -76,10 +76,10 @@ contract IdleFinanceStrategyV3 is IStrategyV3, RewardTokenProfitNotifier {
     protected = true;
 
     // set these tokens to be not salvageable
-    unsalvageableTokens[_underlying] = true;
-    unsalvageableTokens[_idleUnderlying] = true;
-    unsalvageableTokens[_comp] = true;
-    unsalvageableTokens[_idle] = true;
+    isUnsalvageableToken[_underlying] = true;
+    isUnsalvageableToken[_idleUnderlying] = true;
+    isUnsalvageableToken[_comp] = true;
+    isUnsalvageableToken[_idle] = true;
 
     uniswapComp = [_comp, _weth, _idle];
     uniswapIdle = [_idle, _weth, _underlying];
@@ -155,15 +155,6 @@ contract IdleFinanceStrategyV3 is IStrategyV3, RewardTokenProfitNotifier {
     investAllUnderlying();
 
     // state of supply/loan will be updated by the modifier
-  }
-
-  /**
-  * Salvages a token.
-  */
-  function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
-    // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   function claim() internal {

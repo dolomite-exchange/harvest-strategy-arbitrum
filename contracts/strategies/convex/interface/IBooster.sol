@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 interface IBooster {
     function deposit(uint256 _pid, uint256 _amount, bool _stake) external;

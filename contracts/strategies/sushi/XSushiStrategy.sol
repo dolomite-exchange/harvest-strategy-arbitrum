@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -20,7 +20,7 @@ contract XSushiStrategy is IStrategy, Controllable, AaveInteractor {
   address public xsushi;
   address public underlying; // sushi
   address public vault;
-  mapping(address => bool) public unsalvageableTokens;
+  mapping(address => bool) public isUnsalvageableToken;
   uint256 public aaveWrapCap;
 
   modifier restricted() {
@@ -42,9 +42,9 @@ contract XSushiStrategy is IStrategy, Controllable, AaveInteractor {
     xsushi = _xsushi;
     underlying = _underlying;
     vault = _vault;
-    unsalvageableTokens[_underlying] = true;
-    unsalvageableTokens[_xsushi] = true;
-    unsalvageableTokens[aTokenAddress] = true;
+    isUnsalvageableToken[_underlying] = true;
+    isUnsalvageableToken[_xsushi] = true;
+    isUnsalvageableToken[aTokenAddress] = true;
     aaveWrapCap = _aaveWrapCap;
   }
 
@@ -92,12 +92,6 @@ contract XSushiStrategy is IStrategy, Controllable, AaveInteractor {
     require(IERC20(underlying).balanceOf(address(this)) >= amountUnderlying, "insufficient balance for the withdrawal");
     IERC20(underlying).safeTransfer(vault, amountUnderlying);
     wrap();
-  }
-
-  function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
-    // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   function doHardWork() public restricted {

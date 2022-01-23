@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -80,7 +80,7 @@ contract UniverseStrategy is IStrategy, BaseUpgradeableStrategyUL {
       }
   }
 
-  function unsalvageableTokens(address token) public view returns (bool) {
+  function isUnsalvageableToken(address token) public view returns (bool) {
     return (token == rewardToken() || token == underlying());
   }
 
@@ -117,7 +117,7 @@ contract UniverseStrategy is IStrategy, BaseUpgradeableStrategyUL {
       return;
     }
 
-    notifyProfitInRewardToken(rewardBalance);
+    _notifyProfitInRewardToken(rewardBalance);
     uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
 
     if (remainingRewardBalance == 0) {
@@ -142,7 +142,7 @@ contract UniverseStrategy is IStrategy, BaseUpgradeableStrategyUL {
 
       if (storedLiquidationDexes[rewardToken()][lpComponentToken0].length > 0) {
         // if we need to liquidate the token0
-        ILiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
+        IUniversalLiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
           toToken0,
           amountOutMin,
           address(this), // target
@@ -159,7 +159,7 @@ contract UniverseStrategy is IStrategy, BaseUpgradeableStrategyUL {
 
       if (storedLiquidationDexes[rewardToken()][lpComponentToken1].length > 0) {
         // sell reward token to token1
-        ILiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
+        IUniversalLiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
           toToken1,
           amountOutMin,
           address(this), // target
@@ -191,7 +191,7 @@ contract UniverseStrategy is IStrategy, BaseUpgradeableStrategyUL {
         block.timestamp
       );
     } else {
-      ILiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
+      IUniversalLiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
         remainingRewardBalance,
         amountOutMin,
         address(this), // target
@@ -259,16 +259,6 @@ contract UniverseStrategy is IStrategy, BaseUpgradeableStrategyUL {
     // The second part is needed because there is the emergency exit mechanism
     // which would break the assumption that all the funds are always inside of the reward pool
     return rewardPoolBalance().add(IERC20(underlying()).balanceOf(address(this)));
-  }
-
-  /*
-  *   Governance or Controller can claim coins that are somehow transferred into the contract
-  *   Note that they cannot come in take away coins that are used and defined in the strategy itself
-  */
-  function salvage(address recipient, address token, uint256 amount) external onlyControllerOrGovernance {
-     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens(token), "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   /*

@@ -1,9 +1,12 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/upgrades/contracts/Initializable.sol";
 import "./Storage.sol";
 
-// A clone of Governable supporting the Initializable interface and pattern
+
+/**
+ * A clone of Governable supporting the Initializable interface and pattern
+ */
 contract GovernableInit is Initializable {
 
   bytes32 internal constant _STORAGE_SLOT = 0xa7ec62784904ff31cbcc32d09932a58e7f1e4476e1d041995b37c917990b16dc;

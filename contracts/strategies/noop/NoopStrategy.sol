@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -18,7 +18,7 @@ contract NoopStrategy is IStrategy, Controllable {
   IVault public vault;
 
   // These tokens cannot be claimed by the controller
-  mapping(address => bool) public unsalvageableTokens;
+  mapping(address => bool) public isUnsalvageableToken;
 
   modifier restricted() {
     require(msg.sender == address(vault) || msg.sender == address(controller()) || msg.sender == address(governance()),
@@ -33,7 +33,7 @@ contract NoopStrategy is IStrategy, Controllable {
     require(_vault != address(0), "_vault cannot be empty");
     underlying = IERC20(_underlying);
     vault = IVault(_vault);
-    unsalvageableTokens[_underlying] = true;
+    isUnsalvageableToken[_underlying] = true;
   }
 
   function depositArbCheck() public view returns(bool) {
@@ -80,10 +80,5 @@ contract NoopStrategy is IStrategy, Controllable {
   */
   function doHardWork() external restricted {
     // a no-op
-  }
-
-  // should only be called by controller
-  function salvage(address destination, address token, uint256 amount) external onlyController {
-    IERC20(token).safeTransfer(destination, amount);
   }
 }

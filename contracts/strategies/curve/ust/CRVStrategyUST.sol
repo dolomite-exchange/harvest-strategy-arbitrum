@@ -1,11 +1,11 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../../../base/interface/curve/Gauge.sol";
+import "../../../base/interface/curve/IGauge.sol";
 import "../../../base/interface/curve/ICurveDeposit_4token.sol";
 import "../../../base/interface/uniswap/IUniswapV2Router02.sol";
 import "../../../base/interface/IStrategy.sol";
@@ -70,8 +70,8 @@ contract CRVStrategyUST is StrategyBaseClaimable {
     // liquidating to usdt and we could deposit it (instead of going one more step to ust)
     uniswap_CRV2USDT = [crv, weth, usdt];
     // set these tokens to be not salvageable
-    unsalvageableTokens[underlying] = true;
-    unsalvageableTokens[crv] = true;
+    isUnsalvageableToken[underlying] = true;
+    isUnsalvageableToken[crv] = true;
     allowedRewardClaimable = true;
   }
 
@@ -80,20 +80,11 @@ contract CRVStrategyUST is StrategyBaseClaimable {
   }
 
   /**
-  * Salvages a token. We should not be able to salvage CRV and underlying.
-  */
-  function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
-    // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
-  }
-
-  /**
   * Withdraws underlying from the investment pool that mints crops.
   */
   function withdrawUnderlyingFromPool(uint256 amount) internal {
-    Gauge(pool).withdraw(
-      Math.min(Gauge(pool).balanceOf(address(this)), amount)
+    IGauge(pool).withdraw(
+      Math.min(IGauge(pool).balanceOf(address(this)), amount)
     );
   }
 
@@ -127,7 +118,7 @@ contract CRVStrategyUST is StrategyBaseClaimable {
     if (underlyingBalance > 0) {
       IERC20(underlying).safeApprove(pool, 0);
       IERC20(underlying).safeApprove(pool, underlyingBalance);
-      Gauge(pool).deposit(underlyingBalance);
+      IGauge(pool).deposit(underlyingBalance);
     }
   }
 
@@ -188,7 +179,7 @@ contract CRVStrategyUST is StrategyBaseClaimable {
   * Investing all underlying.
   */
   function investedUnderlyingBalance() public view returns (uint256) {
-    return Gauge(pool).balanceOf(address(this)).add(
+    return IGauge(pool).balanceOf(address(this)).add(
       IERC20(underlying).balanceOf(address(this))
     );
   }

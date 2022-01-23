@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "./inheritance/RewardTokenProfitNotifier.sol";
 import "./interface/IStrategy.sol";
 
-import "./interface/ILiquidator.sol";
+import "./interface/IUniversalLiquidator.sol";
 import "./interface/ILiquidatorRegistry.sol";
 
 contract StrategyBaseUL is IStrategy, RewardTokenProfitNotifier  {
@@ -17,7 +17,7 @@ contract StrategyBaseUL is IStrategy, RewardTokenProfitNotifier  {
 
   address public underlying;
   address public vault;
-  mapping (address => bool) public unsalvageableTokens;
+  mapping (address => bool) public isUnsalvageableToken;
   address public universalLiquidatorRegistry;
 
 
@@ -36,8 +36,8 @@ contract StrategyBaseUL is IStrategy, RewardTokenProfitNotifier  {
   ) RewardTokenProfitNotifier(_storage, _rewardToken) public {
     underlying = _underlying;
     vault = _vault;
-    unsalvageableTokens[_rewardToken] = true;
-    unsalvageableTokens[_underlying] = true;
+    isUnsalvageableToken[_rewardToken] = true;
+    isUnsalvageableToken[_underlying] = true;
     universalLiquidatorRegistry = _universalLiquidatorRegistry;
   }
 

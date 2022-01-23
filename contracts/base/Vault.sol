@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/math/Math.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
@@ -43,9 +43,7 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
       string(abi.encodePacked("f", ERC20Detailed(_underlying).symbol())),
       ERC20Detailed(_underlying).decimals()
     );
-    ControllableInit.initialize(
-      _storage
-    );
+    ControllableInit.initialize(_storage);
 
     uint256 underlyingUnit = 10 ** uint256(ERC20Detailed(address(_underlying)).decimals());
     uint256 implementationDelay = 12 hours;
@@ -109,9 +107,9 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
   }
 
   /**
-  * Chooses the best strategy and re-invests. If the strategy did not change, it just calls
-  * doHardWork on the current strategy. Call this through controller to claim hard rewards.
-  */
+   * Chooses the best strategy and re-invests. If the strategy did not change, it just calls
+   * doHardWork on the current strategy. Call this through controller to claim hard rewards.
+   */
   function doHardWork() whenStrategyDefined onlyControllerOrGovernance external {
     // ensure that new funds are invested too
     invest();
@@ -125,8 +123,9 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
     return IERC20(underlying()).balanceOf(address(this));
   }
 
-  /* Returns the current underlying (e.g., DAI's) balance together with
-   * the invested amount (if DAI is invested elsewhere by the strategy).
+  /**
+   * Returns the current underlying (e.g., DAI's) balance together with the invested amount (if DAI is invested
+   * elsewhere by the strategy).
    */
   function underlyingBalanceWithInvestment() view public returns (uint256) {
     if (address(strategy()) == address(0)) {

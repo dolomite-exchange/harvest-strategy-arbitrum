@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -9,6 +9,7 @@ import "./inheritance/Governable.sol";
 import "./interface/IRewardPool.sol";
 
 import "./interface/uniswap/IUniswapV2Router02.sol";
+
 
 // TODO fix this contract to use the right addresses
 contract FeeRewardForwarder is Governable {

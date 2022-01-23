@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -50,7 +50,7 @@ contract CompoundWETHFoldStrategy is IStrategy, RewardTokenProfitNotifier, Compo
   uint256 public borrowMinThreshold = 0;
 
   // These tokens cannot be claimed by the controller
-  mapping(address => bool) public unsalvageableTokens;
+  mapping(address => bool) public isUnsalvageableToken;
 
   modifier restricted() {
     require(msg.sender == vault || msg.sender == address(controller()) || msg.sender == address(governance()),
@@ -82,9 +82,9 @@ contract CompoundWETHFoldStrategy is IStrategy, RewardTokenProfitNotifier, Compo
     uniswapRouterV2 = _uniswap;
 
     // set these tokens to be not salvageable
-    unsalvageableTokens[_underlying] = true;
-    unsalvageableTokens[_ctoken] = true;
-    unsalvageableTokens[_comp] = true;
+    isUnsalvageableToken[_underlying] = true;
+    isUnsalvageableToken[_ctoken] = true;
+    isUnsalvageableToken[_comp] = true;
   }
 
   modifier updateSupplyInTheEnd() {
@@ -208,15 +208,6 @@ contract CompoundWETHFoldStrategy is IStrategy, RewardTokenProfitNotifier, Compo
     );
     redeemMaximum();
     require(underlying.balanceOf(address(this)) >= amountUnderlying, "Unable to withdraw the entire amountUnderlying");
-  }
-
-  /**
-  * Salvages a token.
-  */
-  function salvage(address recipient, address token, uint256 amount) public onlyGovernance {
-    // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   function liquidateComp() internal {

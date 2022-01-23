@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -46,7 +46,7 @@ contract LiquidityRecipient is Controllable {
   address public uniLp;
 
   // These tokens cannot be claimed by the controller
-  mapping(address => bool) public unsalvageableTokens;
+  mapping(address => bool) public isUnsalvageableToken;
 
   constructor(
     address _storage,
@@ -66,8 +66,8 @@ contract LiquidityRecipient is Controllable {
     uniswap = _uniswap;
     require(_uniLp != address(0), "uniLp cannot be address(0)");
     uniLp = _uniLp;
-    unsalvageableTokens[_weth] = true;
-    unsalvageableTokens[_uniLp] = true;
+    isUnsalvageableToken[_weth] = true;
+    isUnsalvageableToken[_uniLp] = true;
     wethStrategy = _wethStrategy;
   }
 
@@ -170,7 +170,7 @@ contract LiquidityRecipient is Controllable {
   */
   function salvage(address recipient, address token, uint256 amount) external onlyGovernance {
     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
+    require(!isUnsalvageableToken[token], "token is defined as not salvageable");
     IERC20(token).safeTransfer(recipient, amount);
   }
 

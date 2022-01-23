@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -18,7 +18,7 @@ contract NoopStrategyV3 is IStrategyV3, Controllable {
   IVault public vault;
 
   // These tokens cannot be claimed by the controller
-  mapping(address => bool) public unsalvageableTokens;
+  mapping(address => bool) public isUnsalvageableToken;
 
   bool public withdrawAllCalled = false;
 

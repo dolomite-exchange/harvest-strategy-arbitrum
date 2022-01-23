@@ -1,6 +1,7 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "./Governable.sol";
+
 
 contract Controllable is Governable {
 

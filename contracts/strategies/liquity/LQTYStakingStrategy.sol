@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/Math.sol";
@@ -77,7 +77,7 @@ contract LQTYStakingStrategy is IStrategy, BaseUpgradeableStrategyUL {
 
     // ---------------- IStrategy methods ----------------
 
-    function unsalvageableTokens(address token) public view returns (bool) {
+    function isUnsalvageableToken(address token) public view returns (bool) {
         return (token == lqty);
     }
 
@@ -127,24 +127,6 @@ contract LQTYStakingStrategy is IStrategy, BaseUpgradeableStrategyUL {
             rewardPoolBalance().add(
                 IERC20(underlying()).balanceOf(address(this))
             );
-    }
-
-    /**
-     * @dev Governance or controller can claim coins that are somehow transferred
-     *      into the contract (eg. by mistake). Note that the underlying LP token
-     *      is not salvageable.
-     */
-    function salvage(
-        address recipient,
-        address token,
-        uint256 amount
-    ) external onlyControllerOrGovernance {
-        // Make sure governance or controller cannot come in and take away the invested tokens
-        require(
-            !unsalvageableTokens(token),
-            "Token is defined as non-salvageable"
-        );
-        IERC20(token).safeTransfer(recipient, amount);
     }
 
     function depositArbCheck() public view returns (bool) {
@@ -260,7 +242,7 @@ contract LQTYStakingStrategy is IStrategy, BaseUpgradeableStrategyUL {
             if (usdcBalance > 0) {
                 IERC20(usdc).safeApprove(universalLiquidator(), 0);
                 IERC20(usdc).safeApprove(universalLiquidator(), usdcBalance);
-                ILiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
+                IUniversalLiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
                     usdcBalance,
                     1,
                     address(this),
@@ -286,7 +268,7 @@ contract LQTYStakingStrategy is IStrategy, BaseUpgradeableStrategyUL {
             return;
         }
 
-        notifyProfitInRewardToken(rewardBalance);
+        _notifyProfitInRewardToken(rewardBalance);
         uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(
             address(this)
         );
@@ -301,7 +283,7 @@ contract LQTYStakingStrategy is IStrategy, BaseUpgradeableStrategyUL {
             universalLiquidator(),
             remainingRewardBalance
         );
-        ILiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
+        IUniversalLiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
             remainingRewardBalance,
             1,
             address(this),

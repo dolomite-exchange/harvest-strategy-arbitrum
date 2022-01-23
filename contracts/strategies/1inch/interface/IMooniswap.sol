@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 contract IMooniswap {
     function token0() external view returns (address);

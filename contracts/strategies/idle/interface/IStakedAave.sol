@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 interface IStakedAave {
 function stake(address to, uint256 amount) external;

@@ -1,7 +1,8 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
-import "../inheritance/IUpgradeSource.sol";
 import "@openzeppelin/upgrades/contracts/upgradeability/BaseUpgradeabilityProxy.sol";
+import "../interface/IUpgradeSource.sol";
+
 
 contract StrategyProxy is BaseUpgradeabilityProxy {
 
@@ -10,9 +11,8 @@ contract StrategyProxy is BaseUpgradeabilityProxy {
   }
 
   /**
-  * The main logic. If the timer has elapsed and there is a schedule upgrade,
-  * the governance can upgrade the strategy
-  */
+   * If the timer has elapsed and there is a schedule upgrade, Governance can upgrade the strategy.
+   */
   function upgrade() external {
     (bool should, address newImplementation) = IUpgradeSource(address(this)).shouldUpgrade();
     require(should, "Upgrade not scheduled");

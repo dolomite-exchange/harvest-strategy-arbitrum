@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -161,7 +161,7 @@ contract Basis2FarmStrategyV3 is StrategyBaseUL {
     IERC20(rewardToken).safeApprove(uliquidator, 0);
     IERC20(rewardToken).safeApprove(uliquidator, rewardBalance);
 
-    ILiquidator(uliquidator).swapTokenOnMultipleDEXes(
+    IUniversalLiquidator(uliquidator).swapTokenOnMultipleDEXes(
       rewardBalance,
       1,
       address(this), // target
@@ -244,17 +244,6 @@ contract Basis2FarmStrategyV3 is StrategyBaseUL {
     // The second part is needed because there is the emergency exit mechanism
     // which would break the assumption that all the funds are always inside of the reward pool
     return rewardPool.balanceOf(poolId, address(this)).add(IERC20(underlying).balanceOf(address(this)));
-  }
-
-  /*
-  *   Governance or Controller can claim coins that are somehow transferred into the contract
-  *   Note that they cannot come in take away coins that are used and defined in the strategy itself
-  *   Those are protected by the "unsalvageableTokens". To check, see where those are being flagged.
-  */
-  function salvage(address recipient, address token, uint256 amount) external onlyControllerOrGovernance {
-     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens[token], "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
   }
 
   /*

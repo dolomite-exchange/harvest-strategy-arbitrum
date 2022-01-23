@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -11,7 +11,6 @@ import "./interface/IAaveProtocolDataProvider.sol";
 
 
 contract AaveInteractor {
-
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 

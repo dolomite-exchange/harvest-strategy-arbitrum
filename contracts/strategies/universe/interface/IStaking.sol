@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 interface IStaking {
     function deposit(address token, uint256 amount) external;

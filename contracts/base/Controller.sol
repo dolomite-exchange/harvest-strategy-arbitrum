@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -66,20 +66,20 @@ contract Controller is IController, Governable {
 
     modifier confirmSharePrice(
         address vault,
-        uint256 hint,
-        uint256 deviationNumerator,
-        uint256 deviationDenominator
+        uint256 _hint,
+        uint256 _deviationNumerator,
+        uint256 _deviationDenominator
     ) {
         uint256 sharePrice = IVault(vault).getPricePerFullShare();
         uint256 resolution = 1e18;
-        if (sharePrice > hint) {
+        if (sharePrice > _hint) {
             require(
-                sharePrice.mul(resolution).div(hint) <= deviationNumerator.mul(resolution).div(deviationDenominator),
+                sharePrice.mul(resolution).div(_hint) <= _deviationNumerator.mul(resolution).div(_deviationDenominator),
                 "share price deviation"
             );
         } else {
             require(
-                hint.mul(resolution).div(sharePrice) <= deviationNumerator.mul(resolution).div(deviationDenominator),
+                _hint.mul(resolution).div(sharePrice) <= _deviationNumerator.mul(resolution).div(_deviationDenominator),
                 "share price deviation"
             );
         }
@@ -151,14 +151,20 @@ contract Controller is IController, Governable {
     }
 
     function addVaultAndStrategy(address _vault, address _strategy) external onlyGovernance {
-        require(_vault != address(0), "new vault shouldn't be empty");
-        require(!vaults[_vault], "vault already exists");
-        require(_strategy != address(0), "new strategy shouldn't be empty");
+        _addVaultAndStrategy(_vault, _strategy);
+    }
 
-        vaults[_vault] = true;
-        // no need to protect against sandwich, because there will be no call to withdrawAll
-        // as the vault and strategy is brand new
-        IVault(_vault).setStrategy(_strategy);
+    function addVaultsAndStrategies(
+        address[] calldata _vaults,
+        address[] calldata _strategies
+    ) external onlyGovernance {
+        require(
+            _vaults.length == _strategies.length,
+            "invalid vaults/strategies length"
+        );
+        for (uint i = 0; i < vaults.length; i++) {
+            _addVaultAndStrategy(_vaults[i], _strategies[i]);
+        }
     }
 
     function getPricePerFullShare(address _vault) public view returns (uint256) {
@@ -167,14 +173,14 @@ contract Controller is IController, Governable {
 
     function doHardWork(
         address _vault,
-        uint256 hint,
-        uint256 deviationNumerator,
-        uint256 deviationDenominator
+        uint256 _hint,
+        uint256 _deviationNumerator,
+        uint256 _deviationDenominator
     )
     external
     validVault(_vault)
     onlyHardWorkerOrGovernance
-    confirmSharePrice(_vault, hint, deviationNumerator, deviationDenominator) {
+    confirmSharePrice(_vault, _hint, _deviationNumerator, _deviationDenominator) {
         uint256 oldSharePrice = IVault(_vault).getPricePerFullShare();
         IVault(_vault).doHardWork();
         if (address(hardRewards) != address(0)) {
@@ -192,12 +198,12 @@ contract Controller is IController, Governable {
 
     function withdrawAll(
         address _vault,
-        uint256 hint,
-        uint256 deviationNumerator,
-        uint256 deviationDenominator
+        uint256 _hint,
+        uint256 _deviationNumerator,
+        uint256 _deviationDenominator
     )
     external
-    confirmSharePrice(_vault, hint, deviationNumerator, deviationDenominator)
+    confirmSharePrice(_vault, _hint, _deviationNumerator, _deviationDenominator)
     onlyGovernance
     validVault(_vault) {
         IVault(_vault).withdrawAll();
@@ -205,16 +211,16 @@ contract Controller is IController, Governable {
 
     function setStrategy(
         address _vault,
-        address strategy,
-        uint256 hint,
-        uint256 deviationNumerator,
-        uint256 deviationDenominator
+        address _strategy,
+        uint256 _hint,
+        uint256 _deviationNumerator,
+        uint256 _deviationDenominator
     )
     external
-    confirmSharePrice(_vault, hint, deviationNumerator, deviationDenominator)
+    confirmSharePrice(_vault, _hint, _deviationNumerator, _deviationDenominator)
     onlyGovernance
     validVault(_vault) {
-        IVault(_vault).setStrategy(strategy);
+        IVault(_vault).setStrategy(_strategy);
     }
 
     function setHardRewards(address _hardRewards) external onlyGovernance {
@@ -233,12 +239,23 @@ contract Controller is IController, Governable {
         IStrategy(_strategy).salvage(governance(), _token, _amount);
     }
 
-    function notifyFee(address underlying, uint256 fee) external {
-        if (fee > 0) {
-            IERC20(underlying).safeTransferFrom(msg.sender, address(this), fee);
-            IERC20(underlying).safeApprove(feeRewardForwarder, 0);
-            IERC20(underlying).safeApprove(feeRewardForwarder, fee);
-            FeeRewardForwarder(feeRewardForwarder).poolNotifyFixedTarget(underlying, fee);
+    function notifyFee(address _underlying, uint256 _fee) external {
+        if (_fee > 0) {
+            IERC20(_underlying).safeTransferFrom(msg.sender, address(this), _fee);
+            IERC20(_underlying).safeApprove(feeRewardForwarder, 0);
+            IERC20(_underlying).safeApprove(feeRewardForwarder, _fee);
+            FeeRewardForwarder(feeRewardForwarder).poolNotifyFixedTarget(_underlying, _fee);
         }
+    }
+
+    function _addVaultAndStrategy(address _vault, address _strategy) internal {
+        require(_vault != address(0), "new vault shouldn't be empty");
+        require(!vaults[_vault], "vault already exists");
+        require(_strategy != address(0), "new strategy shouldn't be empty");
+
+        vaults[_vault] = true;
+        // no need to protect against sandwich, because there will be no call to withdrawAll
+        // as the vault and strategy is brand new
+        IVault(_vault).setStrategy(_strategy);
     }
 }

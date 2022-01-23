@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -23,7 +23,6 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
   bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
   bytes32 internal constant _USE_UNI_SLOT = 0x1132c1de5e5b6f1c4c7726265ddcf1f4ae2a9ecf258a0002de174248ecbf2c7a;
   bytes32 internal constant _IS_LP_ASSET_SLOT = 0xc2f3dabf55b1bdda20d5cf5fcba9ba765dfc7c9dbaf28674ce46d43d60d58768;
-  bytes32 internal constant _MULTISIG_SLOT = 0x3e9de78b54c338efbc04e3a091b87dc7efb5d7024738302c548fc59fba1c34e6;
 
   // this would be reset on each upgrade
   mapping (address => address[]) public uniswapRoutes;
@@ -37,7 +36,6 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
     assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
     assert(_USE_UNI_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.useUni")) - 1));
     assert(_IS_LP_ASSET_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.isLpAsset")) - 1));
-    assert(_MULTISIG_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.multiSig")) - 1));
   }
 
   function initializeStrategy(
@@ -50,7 +48,6 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
     bool _isLpAsset,
     bool _useUni
   ) public initializer {
-
     BaseUpgradeableStrategy.initialize(
       _storage,
       _underlying,
@@ -60,8 +57,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
       300, // profit sharing numerator
       1000, // profit sharing denominator
       true, // sell
-      1e18, // sell floor
-      12 hours // implementation change delay
+      1e18 // sell floor
     );
 
     address _lpt;
@@ -106,7 +102,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
       }
   }
 
-  function unsalvageableTokens(address token) public view returns (bool) {
+  function isUnsalvageableToken(address token) public view returns (bool) {
     return (token == rewardToken() || token == underlying());
   }
 
@@ -148,7 +144,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
       return;
     }
 
-    notifyProfitInRewardToken(rewardBalance);
+    _notifyProfitInRewardToken(rewardBalance);
     uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
 
     if (remainingRewardBalance == 0) {
@@ -297,16 +293,6 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
   }
 
   /*
-  *   Governance or Controller can claim coins that are somehow transferred into the contract
-  *   Note that they cannot come in take away coins that are used and defined in the strategy itself
-  */
-  function salvage(address recipient, address token, uint256 amount) external onlyControllerOrGovernance {
-     // To make sure that governance cannot come in and take away the coins
-    require(!unsalvageableTokens(token), "token is defined as not salvageable");
-    IERC20(token).safeTransfer(recipient, amount);
-  }
-
-  /*
   *   Get the reward, sell it in exchange for underlying, invest what you got.
   *   It's not much, but it's honest work.
   *
@@ -323,7 +309,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
   function claimRewards() external onlyMultiSigOrGovernance {
     ILiquidityMining(rewardPool()).claim();
     uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    notifyProfitInRewardToken(rewardBalance);
+    _notifyProfitInRewardToken(rewardBalance);
     uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
     IERC20(rewardToken()).safeTransfer(msg.sender, remainingRewardBalance);
   }

@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 import "./inheritance/RewardTokenProfitNotifier.sol";
 import "./interface/IStrategy.sol";
@@ -14,7 +14,7 @@ contract StrategyBaseClaimable is IStrategy, RewardTokenProfitNotifier  {
 
   address public underlying;
   address public vault;
-  mapping (address => bool) public unsalvageableTokens;
+  mapping (address => bool) public isUnsalvageableToken;
   address public uniswapRouterV2;
 
   address public rewardTokenForLiquidation;
@@ -43,8 +43,8 @@ contract StrategyBaseClaimable is IStrategy, RewardTokenProfitNotifier  {
     rewardTokenForLiquidation = _rewardTokenForLiquidation;
     underlying = _underlying;
     vault = _vault;
-    unsalvageableTokens[_rewardTokenForLiquidation] = true;
-    unsalvageableTokens[_underlying] = true;
+    isUnsalvageableToken[_rewardTokenForLiquidation] = true;
+    isUnsalvageableToken[_underlying] = true;
     uniswapRouterV2 = _uniswap;
     require(underlying != _rewardTokenForLiquidation, "reward token cannot be the same as underlying for StrategyBaseClaimable");
   }

@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 interface IBaseRewardPool {
     function balanceOf(address account) external view returns(uint256 amount);

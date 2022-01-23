@@ -1,4 +1,4 @@
-pragma solidity 0.5.16;
+pragma solidity ^0.5.16;
 
 interface IProxyActions {
     function mintAndJoinPool(address _pool, uint256 _collateralAmount, address, uint256, address, uint256, uint256) external;
