@@ -42,5 +42,4 @@ interface IDolomiteLiquidationCallback {
         uint owedMarketId,
         DolomiteMarginTypes.Wei calldata owedDeltaWei
     ) external;
-
 }

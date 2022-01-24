@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../base/MultipleRewardDistributionRecipient.sol";
-import "../base/inheritance/Controllable.sol";
-import "../base/interface/IController.sol";
+import "../MultipleRewardDistributionRecipient.sol";
+import "../inheritance/Controllable.sol";
+import "../interface/IController.sol";
 
 import "./interfaces/IDolomiteLiquidationCallback.sol";
 import "./interfaces/IDolomiteMargin.sol";
@@ -20,7 +20,13 @@ import "./lib/DolomiteMarginTypes.sol";
 import "./lib/Require.sol";
 import "./lib/DolomiteMarginActions.sol";
 
-contract LeveragedNoMintPotPool is MultipleRewardDistributionRecipient, Controllable, IDolomiteLiquidationCallback, ReentrancyGuard {
+
+contract LeveragedNoMintPotPool is
+    MultipleRewardDistributionRecipient,
+    Controllable,
+    IDolomiteLiquidationCallback,
+    ReentrancyGuard
+{
     using Address for address;
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -322,8 +328,9 @@ contract LeveragedNoMintPotPool is MultipleRewardDistributionRecipient, Controll
         DolomiteMarginTypes.Wei memory
     )
     public {
+        IDolomiteMargin _dolomiteMargin = dolomiteMargin;
         Require.that(
-            msg.sender == address(dolomiteMargin),
+            msg.sender == address(_dolomiteMargin) || _dolomiteMargin.getIsGlobalOperator(msg.sender),
             FILE,
             "only dolomite margin can call"
         );
