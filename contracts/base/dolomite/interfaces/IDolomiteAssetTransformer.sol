@@ -39,6 +39,8 @@ interface IDolomiteAssetTransformer {
      * @param amounts       The amount of `tokens` that will be pulled into this contract for transformation. Each
      *                      index of `tokens` corresponds with an index of `amounts`.
      * @param dustRecipient The address that will receive any leftover `tokens` in case a full deposit cannot be made.
+     *                      Can be set to `address(0)` to deny receiving leftover dust. The only reason to do this is
+     *                      to lower the gas fees, since doing so would lessen the number of transfers.
      * @return              The amount of `fToken` that was transformed via `tokens` and `amounts`.
      */
     function transform(
@@ -55,7 +57,7 @@ interface IDolomiteAssetTransformer {
      *                      index of `tokens` corresponds with an index of `amounts`.
      * @return              The amount of `fToken` that was transformed via `tokens` and `amounts`.
      */
-    function getTransformResult(
+    function getTransformationResult(
         address[] calldata tokens,
         uint[] calldata amounts
     ) external returns (uint fAmount);

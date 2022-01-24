@@ -12,6 +12,8 @@ import "../MultipleRewardDistributionRecipient.sol";
 import "../inheritance/Controllable.sol";
 import "../interface/IController.sol";
 
+import "./helpers/DolomiteMarginActionHelpers.sol";
+
 import "./interfaces/IDolomiteLiquidationCallback.sol";
 import "./interfaces/IDolomiteMargin.sol";
 
@@ -25,13 +27,14 @@ contract LeveragedNoMintPotPool is
     MultipleRewardDistributionRecipient,
     Controllable,
     IDolomiteLiquidationCallback,
-    ReentrancyGuard
+    ReentrancyGuard,
+    DolomiteMarginActionHelpers
 {
     using Address for address;
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    bytes32 public constant FILE = "LeveragedNoMintRewardPool";
+    bytes32 public constant FILE = "LeveragedNoMintPotPool";
 
     IDolomiteMargin public dolomiteMargin;
     address public lpToken;
@@ -90,11 +93,16 @@ contract LeveragedNoMintPotPool is
         uint rewardTokensLength = rewardTokens.length;
         for (uint256 i = 0; i < rewardTokensLength; i++) {
             address rewardToken = rewardTokens[i];
-            rewardPerTokenStoredForToken[rewardToken] = rewardPerToken(rewardToken);
+            uint rewardPerTokenStored = rewardPerToken(rewardToken);
+            rewardPerTokenStoredForToken[rewardToken] = rewardPerTokenStored;
             lastUpdateTimeForToken[rewardToken] = lastTimeRewardApplicable(rewardToken);
             if (_user != address(0)) {
-                rewardsForToken[rewardToken][_user][_userAccountNumber] = earned(rewardToken, _user, _userAccountNumber);
-                userRewardPerTokenPaidForToken[rewardToken][_user][_userAccountNumber] = rewardPerTokenStoredForToken[rewardToken];
+                rewardsForToken[rewardToken][_user][_userAccountNumber] = earned(
+                    rewardToken,
+                    _user,
+                    _userAccountNumber
+                );
+                userRewardPerTokenPaidForToken[rewardToken][_user][_userAccountNumber] = rewardPerTokenStored;
             }
         }
         _;
@@ -206,7 +214,7 @@ contract LeveragedNoMintPotPool is
             0,
             1,
             marketId,
-            DolomiteMarginTypes.AssetAmount(false, DolomiteMarginTypes.AssetDenomination.Wei, DolomiteMarginTypes.AssetReference.Delta, _fAmountWei)
+            _createAmountForTransfer(_fAmountWei)
         );
         for (uint i = 0; i < _borrowTokens.length; i++) {
             actions[1 + i] = _encodeTransfer(
@@ -241,9 +249,6 @@ contract LeveragedNoMintPotPool is
         emit Staked(_user, _userAccountNumber, _fAmountWei);
     }
 
-    /**
-     * @notice The user must set this contract as a local operator in order to successfully withdraw.
-     */
     function withdraw(
         address _user,
         uint _userAccountNumber,
@@ -267,7 +272,7 @@ contract LeveragedNoMintPotPool is
             0,
             1,
             marketId,
-            DolomiteMarginTypes.AssetAmount(false, DolomiteMarginTypes.AssetDenomination.Wei, DolomiteMarginTypes.AssetReference.Delta, _fAmountWei)
+            _createAmountForTransfer(_fAmountWei)
         );
         for (uint i = 0; i < _borrowTokens.length; i++) {
             actions[1 + i] = _encodeTransfer(
@@ -301,7 +306,9 @@ contract LeveragedNoMintPotPool is
         address _user,
         uint _userAccountNumber,
         address[] calldata _borrowTokens
-    ) external requireIsAuthorized(_user) {
+    )
+    external
+    requireIsAuthorized(_user) {
         _recordSmartContract();
         DolomiteMarginTypes.AssetAmount[] memory borrowAmounts = new DolomiteMarginTypes.AssetAmount[](_borrowTokens.length);
         for (uint i = 0; i < _borrowTokens.length; i++) {
@@ -599,23 +606,5 @@ contract LeveragedNoMintPotPool is
                 "must be negative or ZERO"
             );
         }
-    }
-
-    function _encodeTransfer(
-        uint _accountIndexFrom,
-        uint _accountIndexTo,
-        uint _marketId,
-        DolomiteMarginTypes.AssetAmount memory _amount
-    ) internal pure returns (DolomiteMarginActions.ActionArgs memory) {
-        return DolomiteMarginActions.ActionArgs({
-        actionType: DolomiteMarginActions.ActionType.Transfer,
-        accountId: _accountIndexFrom,
-        amount: _amount,
-        primaryMarketId: _marketId,
-        secondaryMarketId: 0,
-        otherAddress: address(0),
-        otherAccountId: _accountIndexTo,
-        data: bytes("")
-        });
     }
 }
