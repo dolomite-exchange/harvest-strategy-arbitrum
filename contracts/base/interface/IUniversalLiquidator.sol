@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.5.16;
+pragma experimental ABIEncoderV2;
+
 
 interface IUniversalLiquidator {
 
@@ -18,22 +20,33 @@ interface IUniversalLiquidator {
     // ==================== Functions ====================
 
     /**
-     * @path The path that is used for selling token at path[0] into path[path.length - 1]
-     * @dexs The DEX to use for each step in the path. Must be `path.length - 1`. Each uint represents a different DEX
+     * @param path      The path that is used for selling token at path[0] into path[path.length - 1].
+     * @param router    The router to use for this path.
      */
     function configureSwap(
-        address[] memory path,
-        uint[] memory dexs
+        address[] calldata path,
+        address router
     ) external;
 
-    // TODO refactor and simplify to the following. Where `path` is pieced into iterations of tokenA and tokenB, and the
-    // TODO ideal DEX is read from storage
-    function swapToken(
+    /**
+     * @param paths     The paths that are used for selling token at path[i][0] into path[i][path[i].length - 1].
+     * @param routers   The routers to use for each index, `i`.
+     */
+    function configureSwaps(
+        address[][] calldata paths,
+        address[] calldata routers
+    ) external;
+
+    /**
+     * @return The router used to execute the swap from `inputToken` to `outputToken`
+     */
+    function getSwapRouter(address inputToken, address outputToken) external view returns (address);
+
+    function swapTokens(
         uint256 _amountIn,
         uint256 _amountOutMin,
-        address _recipient,
-        address[] calldata _path
-    ) external;
-
-    function getDexForSwap() external view returns (bytes32);
+        address _tokenIn,
+        address _tokenOut,
+        address _recipient
+    ) external returns (uint _amountOut);
 }

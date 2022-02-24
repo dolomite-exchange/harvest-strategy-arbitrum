@@ -1,12 +1,20 @@
 pragma solidity ^0.5.16;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/upgrades/contracts/Initializable.sol";
 
+import "../inheritance/ControllableInit.sol";
+
+import "../interface/IController.sol";
 import "../interface/IFeeRewardForwarder.sol";
 import "../interface/IUpgradeSource.sol";
 
 
-contract BaseUpgradeableStrategyStorage is IUpgradeSource {
+contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
+    using SafeERC20 for IERC20;
+    using SafeMath for uint256;
 
     // ==================== Events ====================
 
@@ -33,7 +41,6 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource {
     bytes32 internal constant _NEXT_IMPLEMENTATION_DELAY_SLOT = 0x82b330ca72bcd6db11a26f10ce47ebcfe574a9c646bccbc6f1cd4478eae16b31;
 
     bytes32 internal constant _REWARD_CLAIMABLE_SLOT = 0xbc7c0d42a71b75c3129b337a259c346200f901408f273707402da4b51db3b8e7;
-    bytes32 internal constant _MULTISIG_SLOT = 0x3e9de78b54c338efbc04e3a091b87dc7efb5d7024738302c548fc59fba1c34e6;
 
     constructor() public {
         assert(_UNDERLYING_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.underlying")) - 1));
@@ -52,7 +59,6 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource {
         assert(_NEXT_IMPLEMENTATION_DELAY_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.nextImplementationDelay")) - 1));
 
         assert(_REWARD_CLAIMABLE_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.rewardClaimable")) - 1));
-        assert(_MULTISIG_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.multiSig")) - 1));
     }
 
     // ==================== Internal Functions ====================
@@ -91,7 +97,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource {
 
     /**
      * @dev a flag for disabling selling for simplified emergency exit
-   */
+     */
     function _setSell(bool _value) internal {
         setBoolean(_SELL_SLOT, _value);
     }
@@ -116,20 +122,12 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource {
         return getUint256(_SELL_FLOOR_SLOT);
     }
 
-    function _setProfitSharingNumerator(uint256 _value) internal {
-        setUint256(_PROFIT_SHARING_NUMERATOR_SLOT, _value);
-    }
-
     function profitSharingNumerator() public view returns (uint256) {
-        return getUint256(_PROFIT_SHARING_NUMERATOR_SLOT);
-    }
-
-    function _setProfitSharingDenominator(uint256 _value) internal {
-        setUint256(_PROFIT_SHARING_DENOMINATOR_SLOT, _value);
+        return IController(controller()).profitSharingNumerator();
     }
 
     function profitSharingDenominator() public view returns (uint256) {
-        return getUint256(_PROFIT_SHARING_DENOMINATOR_SLOT);
+        return IController(controller()).profitSharingDenominator();
     }
 
     function allowedRewardClaimable() public view returns (bool) {
@@ -138,14 +136,6 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource {
 
     function _setRewardClaimable(bool _value) internal {
         setBoolean(_REWARD_CLAIMABLE_SLOT, _value);
-    }
-
-    function multiSig() public view returns (address) {
-        return getAddress(_MULTISIG_SLOT);
-    }
-
-    function _setMultiSig(address _address) internal {
-        setAddress(_MULTISIG_SLOT, _address);
     }
 
     // ==================== Functionality ====================
@@ -157,34 +147,71 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource {
             IERC20(rewardToken()).safeApprove(controller(), 0);
             IERC20(rewardToken()).safeApprove(controller(), feeAmount);
 
-            IController(controller()).notifyFee(
-                rewardToken(),
-                feeAmount
-            );
+            IController(controller()).notifyFee(rewardToken(), feeAmount);
         } else {
             emit ProfitLogInReward(0, 0, block.timestamp);
         }
     }
 
-    function _notifyProfitAndBuybackInRewardToken(uint256 _rewardBalance, address pool, uint256 _buybackRatio) internal {
-        if (_rewardBalance > 0) {
-            uint256 feeAmount = _rewardBalance.mul(profitSharingNumerator()).div(profitSharingDenominator());
-            uint256 buybackAmount = _rewardBalance.sub(feeAmount).mul(_buybackRatio).div(10000);
+    /**
+     * @return the amounts bought back of each buybackToken
+     */
+    function _notifyProfitAndBuybackInRewardToken(
+        uint256 _rewardBalance,
+        address[] memory _buybackTokens
+    ) internal returns (uint[] memory) {
+        uint[] memory weights = new uint[](_buybackTokens.length);
+        for (uint i = 0; i < _buybackTokens.length; i++) {
+            weights[i] = 1;
+        }
 
-            address forwarder = IController(controller()).feeRewardForwarder();
+        return _notifyProfitAndBuybackInRewardTokenWithWeights(_rewardBalance, _buybackTokens, weights);
+    }
+
+    /**
+     * @param _rewardBalance    The amount of rewardToken to be sold for FARM and _buybackTokens
+     * @param _buybackTokens    The tokens to be bought for reinvestment
+     * @param _weights          the weights to be applied for each buybackToken. For example [100, 300] applies 25% to
+     *                          buybackTokens[0] and 75% to buybackTokens[1]
+     */
+    function _notifyProfitAndBuybackInRewardTokenWithWeights(
+        uint256 _rewardBalance,
+        address[] memory _buybackTokens,
+        uint[] memory _weights
+    ) internal returns (uint[] memory) {
+        if (_rewardBalance > 0 && _buybackTokens.length > 0) {
+            uint256 feeAmount = _rewardBalance.mul(profitSharingNumerator()).div(profitSharingDenominator());
+            uint256 buybackAmount = _rewardBalance.sub(feeAmount);
+
+            uint totalWeight = 0;
+            for (uint i = 0; i < _weights.length; i++) {
+                totalWeight += _weights[i];
+            }
+            require(
+                totalWeight > 0,
+                "totalWeight must be greater than zero"
+            );
+
+            uint[] memory buybackAmounts = new uint[](_buybackTokens.length);
+            for (uint i = 0; i < buybackAmounts.length; i++) {
+                buybackAmounts[i] = buybackAmount.mul(_weights[i]).div(totalWeight);
+            }
+
             emit ProfitAndBuybackLog(_rewardBalance, feeAmount, block.timestamp);
 
+            address forwarder = IController(controller()).feeRewardForwarder();
             IERC20(rewardToken()).safeApprove(forwarder, 0);
             IERC20(rewardToken()).safeApprove(forwarder, _rewardBalance);
 
-            IFeeRewardForwarder(forwarder).notifyFeeAndBuybackAmounts(
+            return IFeeRewardForwarder(forwarder).notifyFeeAndBuybackAmounts(
                 rewardToken(),
                 feeAmount,
-                pool,
-                buybackAmount
+                _buybackTokens,
+                buybackAmounts
             );
         } else {
             emit ProfitAndBuybackLog(0, 0, block.timestamp);
+            return new uint[](_buybackTokens.length);
         }
     }
 
@@ -207,7 +234,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource {
     }
 
     function nextImplementationDelay() public view returns (uint256) {
-        return con;
+        return IController(controller()).nextImplementationDelay();
     }
 
     function setBoolean(bytes32 slot, bool _value) internal {
@@ -229,6 +256,38 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(slot, _value)
+        }
+    }
+
+    function setUint256Array(bytes32 slot, uint256[] memory _values) internal {
+        // solhint-disable-next-line no-inline-assembly
+        setUint256(slot, _values.length);
+        for (uint i = 0; i < _values.length; i++) {
+            setUint256(bytes32(uint(slot) + 1 + i), _values[i]);
+        }
+    }
+
+    function setAddressArray(bytes32 slot, address[] memory _values) internal {
+        // solhint-disable-next-line no-inline-assembly
+        setUint256(slot, _values.length);
+        for (uint i = 0; i < _values.length; i++) {
+            setAddress(bytes32(uint(slot) + 1 + i), _values[i]);
+        }
+    }
+
+    function getUint256Array(bytes32 slot) internal view returns (uint[] memory values) {
+        // solhint-disable-next-line no-inline-assembly
+        values = new uint[](getUint256(slot));
+        for (uint i = 0; i < values.length; i++) {
+            values[i] = getUint256(bytes32(uint(slot) + 1 + i));
+        }
+    }
+
+    function getAddressArray(bytes32 slot) internal view returns (address[] memory values) {
+        // solhint-disable-next-line no-inline-assembly
+        values = new address[](getUint256(slot));
+        for (uint i = 0; i < values.length; i++) {
+            values[i] = getAddress(bytes32(uint(slot) + 1 + i));
         }
     }
 

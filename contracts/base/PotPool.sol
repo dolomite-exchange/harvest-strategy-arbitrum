@@ -18,7 +18,6 @@ import "./interface/IPotPool.sol";
 import "./MultipleRewardDistributionRecipient.sol";
 
 contract PotPool is MultipleRewardDistributionRecipient, Controllable, ERC20, ERC20Detailed, IPotPool {
-
     using Address for address;
     using SafeERC20 for IERC20;
     using SafeMath for uint256;

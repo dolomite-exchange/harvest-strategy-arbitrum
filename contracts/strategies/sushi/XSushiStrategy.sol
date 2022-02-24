@@ -20,7 +20,6 @@ contract XSushiStrategy is IStrategy, Controllable, AaveInteractor {
   address public xsushi;
   address public underlying; // sushi
   address public vault;
-  mapping(address => bool) public isUnsalvageableToken;
   uint256 public aaveWrapCap;
 
   modifier restricted() {
@@ -42,10 +41,11 @@ contract XSushiStrategy is IStrategy, Controllable, AaveInteractor {
     xsushi = _xsushi;
     underlying = _underlying;
     vault = _vault;
-    isUnsalvageableToken[_underlying] = true;
-    isUnsalvageableToken[_xsushi] = true;
-    isUnsalvageableToken[aTokenAddress] = true;
     aaveWrapCap = _aaveWrapCap;
+  }
+
+  function isUnsalvageableToken(address token) public view returns (bool) {
+    return token == underlying || token == xsushi || token == aTokenAddress;
   }
 
   function setAaveCap(uint256 _newCap) public onlyGovernance {

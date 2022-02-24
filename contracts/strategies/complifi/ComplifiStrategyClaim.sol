@@ -27,15 +27,11 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
   // this would be reset on each upgrade
   mapping (address => address[]) public uniswapRoutes;
 
-  modifier onlyMultiSigOrGovernance() {
-    require(msg.sender == multiSig() || msg.sender == governance(), "The sender has to be multiSig or governance");
-    _;
-  }
-
   constructor() public BaseUpgradeableStrategy() {
     assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
     assert(_USE_UNI_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.useUni")) - 1));
     assert(_IS_LP_ASSET_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.isLpAsset")) - 1));
+    revert("THIS STRATEGY NEEDS TO BE REFACTORED");
   }
 
   function initializeStrategy(
@@ -53,11 +49,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
       _underlying,
       _vault,
       _rewardPool,
-      _rewardToken,
-      300, // profit sharing numerator
-      1000, // profit sharing denominator
-      true, // sell
-      1e18 // sell floor
+      _rewardToken
     );
 
     address _lpt;
@@ -306,7 +298,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
     investAllUnderlying();
   }
 
-  function claimRewards() external onlyMultiSigOrGovernance {
+  function claimRewards() external onlyGovernance {
     ILiquidityMining(rewardPool()).claim();
     uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
     _notifyProfitInRewardToken(rewardBalance);
@@ -350,14 +342,6 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
     return getBoolean(_IS_LP_ASSET_SLOT);
   }
 
-  function setMultiSig(address _address) public onlyGovernance {
-    setAddress(_MULTISIG_SLOT, _address);
-  }
-
-  function multiSig() public view returns (address) {
-    return getAddress(_MULTISIG_SLOT);
-  }
-
   function finalizeUpgrade() external onlyGovernance {
     _finalizeUpgrade();
     // reset the liquidation paths
@@ -369,6 +353,5 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
       uniswapRoutes[underlying()] = new address[](0);
     }
     _setPausedInvesting(true);
-    setMultiSig(address(0xF49440C1F012d041802b25A73e5B0B9166a75c02));
   }
 }

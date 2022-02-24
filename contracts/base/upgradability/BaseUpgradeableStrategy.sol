@@ -8,9 +8,10 @@ import "../inheritance/Constants.sol";
 import "../inheritance/ControllableInit.sol";
 import "../interface/IController.sol";
 import "./BaseUpgradeableStrategyStorage.sol";
+import "../interface/IStrategy.sol";
 
 
-contract BaseUpgradeableStrategy is Initializable, ControllableInit, BaseUpgradeableStrategyStorage, Constants {
+contract BaseUpgradeableStrategy is IStrategy, Initializable, ControllableInit, BaseUpgradeableStrategyStorage, Constants {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -46,22 +47,15 @@ contract BaseUpgradeableStrategy is Initializable, ControllableInit, BaseUpgrade
         address _underlying,
         address _vault,
         address _rewardPool,
-        address _rewardToken,
-        uint256 _profitSharingNumerator,
-        uint256 _profitSharingDenominator,
-        bool _sell,
-        uint256 _sellFloor
+        address _rewardToken
     ) public initializer {
         ControllableInit.initialize(_storage);
         _setUnderlying(_underlying);
         _setVault(_vault);
         _setRewardPool(_rewardPool);
         _setRewardToken(_rewardToken);
-        _setProfitSharingNumerator(_profitSharingNumerator);
-        _setProfitSharingDenominator(_profitSharingDenominator);
-        _setSell(_sell);
-        _setSellFloor(_sellFloor);
-
+        _setSell(true);
+        _setSellFloor(0);
         _setPausedInvesting(false);
     }
 
@@ -73,12 +67,7 @@ contract BaseUpgradeableStrategy is Initializable, ControllableInit, BaseUpgrade
         _setNextImplementationTimestamp(block.timestamp.add(nextImplementationDelay()));
     }
 
-    function _finalizeUpgrade() internal {
-        _setNextImplementation(address(0));
-        _setNextImplementationTimestamp(0);
-    }
-
-    function shouldUpgrade() external view returns (bool, address) {
+    function shouldUpgrade() public view returns (bool, address) {
         return (
         nextImplementationTimestamp() != 0
         && block.timestamp > nextImplementationTimestamp()
@@ -87,4 +76,23 @@ contract BaseUpgradeableStrategy is Initializable, ControllableInit, BaseUpgrade
         );
     }
 
+    /**
+     * Governance or Controller can claim coins that are somehow transferred into the contract. Note that they cannot
+     * come in take away coins that are used and defined in the strategy itself. Those are protected by the
+     * `isUnsalvageableToken` function. To check, see where those are being flagged.
+     */
+    function salvageToken(
+        address recipient,
+        address token,
+        uint256 amount
+    ) public onlyControllerOrGovernance {
+        // To make sure that governance cannot come in and take away the coins
+        require(!isUnsalvageableToken(token), "token is defined as not salvageable");
+        IERC20(token).safeTransfer(recipient, amount);
+    }
+
+    function _finalizeUpgrade() internal {
+        _setNextImplementation(address(0));
+        _setNextImplementationTimestamp(0);
+    }
 }

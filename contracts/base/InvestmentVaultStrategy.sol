@@ -24,7 +24,6 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
   address public vault;
   address public investmentVault;
   address public potPool;
-  mapping(address => bool) public isUnsalvageableToken;
 
   bool public hodlApproved = true;
 
@@ -44,9 +43,10 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
     potPool = _potPool;
     investmentVault = PotPool(potPool).lpToken();
     underlying = IVault(investmentVault).underlying();
-    isUnsalvageableToken[underlying] = true;
-    isUnsalvageableToken[investmentVault] = true;
-    isUnsalvageableToken[potPool] = true;
+  }
+
+  function isUnsalvageableToken(address token) public view returns (bool) {
+    return token == underlying || token == investmentVault || token == potPool;
   }
 
   function withdrawAllToVault() public restricted {

@@ -7,283 +7,234 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../../base/interface/uniswap/IUniswapV2Router02.sol";
 import "../../base/interface/IStrategy.sol";
 import "../../base/interface/IVault.sol";
-import "../../base/upgradability/BaseUpgradeableStrategyUL.sol";
+import "../../base/upgradability/BaseUpgradeableStrategy.sol";
 import "../../base/interface/uniswap/IUniswapV2Pair.sol";
 import "./interface/IBVault.sol";
 
-contract BalancerStrategy is IStrategy, BaseUpgradeableStrategyUL {
+contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
 
-  using SafeMath for uint256;
-  using SafeERC20 for IERC20;
+    using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
-  // additional storage slots (on top of BaseUpgradeableStrategy ones) are defined here
-  bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
-  bytes32 internal constant _BVAULT_SLOT = 0x85cbd475ba105ca98d9a2db62dcf7cf3c0074b36303ef64160d68a3e0fdd3c67;
-  bytes32 internal constant _LIQUIDATION_RATIO_SLOT = 0x88a908c31cfd33a7a64870721e6da89f529116031d2cb9ed0bf1c4ba0873d19f;
+    // additional storage slots (on top of BaseUpgradeableStrategy ones) are defined here
+    bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
+    bytes32 internal constant _BVAULT_SLOT = 0x85cbd475ba105ca98d9a2db62dcf7cf3c0074b36303ef64160d68a3e0fdd3c67;
+    bytes32 internal constant _WEIGHTS_SLOT = 0x836a60b998dc8c21b3cceb353eb01320c0886b91db35570b7b27d9d6a769400b;
 
-  // this would be reset on each upgrade
-  mapping (address => address[]) public swapRoutes;
+    // this would be reset on each upgrade
+    mapping(address => address[]) public swapRoutes;
 
-  constructor() public BaseUpgradeableStrategyUL() {
-    assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
-    assert(_BVAULT_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.bVault")) - 1));
-    assert(_LIQUIDATION_RATIO_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.liquidationRatio")) - 1));
-  }
-
-  function initializeStrategy(
-    address _storage,
-    address _underlying,
-    address _vault,
-    address _rewardPool,
-    address _rewardToken,
-    address _bVault,
-    bytes32 _poolID,
-    uint256 _liquidationRatio
-  ) public initializer {
-    BaseUpgradeableStrategyUL.initialize(
-      _storage,
-      _underlying,
-      _vault,
-      _rewardPool,
-      _rewardToken,
-      300, // profit sharing numerator
-      1000, // profit sharing denominator
-      true, // sell
-      1e18, // sell floor
-      12 hours, // implementation change delay
-      address(0x7882172921E99d590E097cD600554339fBDBc480) //UL Registry
-    );
-
-    (address _lpt,) = IBVault(_bVault).getPool(_poolID);
-    require(_lpt == _underlying, "Underlying mismatch");
-    require(_liquidationRatio < 1000, "Invalid ratio"); //Ratio base = 1000
-
-    setLiquidationRatio(_liquidationRatio);
-    _setPoolId(_poolID);
-    _setBVault(_bVault);
-  }
-
-  function depositArbCheck() public view returns(bool) {
-    return true;
-  }
-
-  function underlyingBalance() internal view returns (uint256 bal) {
-      bal = IERC20(underlying()).balanceOf(address(this));
-  }
-
-  function isUnsalvageableToken(address token) public view returns (bool) {
-    return (token == rewardToken() || token == underlying());
-  }
-
-  // We assume that all the tradings can be done on Uniswap
-  function _liquidateReward(uint256 rewardAmount) internal {
-    if (!sell() || rewardAmount < sellFloor()) {
-      // Profits can be disabled for possible simplified and rapid exit
-      emit ProfitsNotCollected(sell(), rewardAmount < sellFloor());
-      return;
+    constructor() public BaseUpgradeableStrategy() {
+        assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
+        assert(_BVAULT_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.bVault")) - 1));
+        assert(_WEIGHTS_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.weights")) - 1));
     }
 
-    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    _notifyProfitInRewardToken(rewardAmount);
-    uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    uint256 toLiquidate = rewardAmount.sub(rewardBalance.sub(remainingRewardBalance));
+    /**
+     * @param _weights  the weights to be applied for each buybackToken. For example [100, 300] applies 25% to
+     *                  buybackTokens[0] and 75% to buybackTokens[1]
+     */
+    function initializeStrategy(
+        address _storage,
+        address _underlying,
+        address _vault,
+        address _rewardPool,
+        address _rewardToken,
+        address _bVault,
+        bytes32 _poolID,
+        uint[] memory _weights
+    ) public initializer {
+        BaseUpgradeableStrategy.initialize(
+            _storage,
+            _underlying,
+            _vault,
+            _rewardPool,
+            _rewardToken
+        );
 
-    if (toLiquidate == 0) {
-      return;
+        (address _lpt,) = IBVault(_bVault).getPool(_poolID);
+        require(_lpt == _underlying, "Underlying mismatch");
+
+        _setPoolId(_poolID);
+        _setBVault(_bVault);
+        _setWeights(_weights);
+
+        (IERC20[] memory erc20Tokens,,) = IBVault(bVault()).getPoolTokens(poolId());
+        require(
+            erc20Tokens.length == _weights.length,
+            "weights length must equal ERC20 tokens length"
+        );
     }
 
-    // allow Uniswap to sell our reward
-    IERC20(rewardToken()).safeApprove(universalLiquidator(), 0);
-    IERC20(rewardToken()).safeApprove(universalLiquidator(), toLiquidate);
-
-    (IERC20[] memory componentTokens,,) = IBVault(bVault()).getPoolTokens(poolId());
-    address lpComponentToken0 = address(componentTokens[0]);
-    address lpComponentToken1 = address(componentTokens[1]);
-
-    uint256 toToken0 = toLiquidate.div(2);
-    uint256 toToken1 = toLiquidate.sub(toToken0);
-
-    uint256 token0Amount;
-
-    if (storedLiquidationDexes[rewardToken()][lpComponentToken0].length > 0) {
-      // if we need to liquidate the token0
-      IUniversalLiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
-        toToken0,
-        1,
-        address(this), // target
-        storedLiquidationDexes[rewardToken()][lpComponentToken0],
-        storedLiquidationPaths[rewardToken()][lpComponentToken0]
-      );
-      token0Amount = IERC20(lpComponentToken0).balanceOf(address(this));
-    } else {
-      // otherwise we assume token0 is the reward token itself
-      token0Amount = toToken0;
+    function depositArbCheck() public view returns (bool) {
+        return true;
     }
 
-    uint256 token1Amount;
-
-    if (storedLiquidationDexes[rewardToken()][lpComponentToken1].length > 0) {
-      // sell reward token to token1
-      IUniversalLiquidator(universalLiquidator()).swapTokenOnMultipleDEXes(
-        toToken1,
-        1,
-        address(this), // target
-        storedLiquidationDexes[rewardToken()][lpComponentToken1],
-        storedLiquidationPaths[rewardToken()][lpComponentToken1]
-      );
-      token1Amount = IERC20(lpComponentToken1).balanceOf(address(this));
-    } else {
-      token1Amount = toToken1;
+    function underlyingBalance() internal view returns (uint256 bal) {
+        bal = IERC20(underlying()).balanceOf(address(this));
     }
 
-    // provide token1 and token2 to Balancer
-    IERC20(lpComponentToken0).safeApprove(bVault(), 0);
-    IERC20(lpComponentToken0).safeApprove(bVault(), token0Amount);
-
-    IERC20(lpComponentToken1).safeApprove(bVault(), 0);
-    IERC20(lpComponentToken1).safeApprove(bVault(), token1Amount);
-
-    IAsset[] memory assets = new IAsset[](2);
-    assets[0] = IAsset(lpComponentToken0);
-    assets[1] = IAsset(lpComponentToken1);
-
-    IBVault.JoinKind joinKind = IBVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT;
-    uint256[] memory amountsIn = new uint256[](2);
-    amountsIn[0] = token0Amount;
-    amountsIn[1] = token1Amount;
-    uint256 minAmountOut = 1;
-
-    bytes memory userData = abi.encode(joinKind, amountsIn, minAmountOut);
-
-    IBVault.JoinPoolRequest memory request;
-    request.assets = assets;
-    request.maxAmountsIn = amountsIn;
-    request.userData = userData;
-    request.fromInternalBalance = false;
-
-    IBVault(bVault()).joinPool(
-      poolId(),
-      address(this),
-      address(this),
-      request
-      );
-  }
-
-  /*
-  *   Withdraws all the asset to the vault
-  */
-  function withdrawAllToVault() public restricted {
-    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    _liquidateReward(rewardBalance);
-    IERC20(underlying()).safeTransfer(vault(), IERC20(underlying()).balanceOf(address(this)));
-  }
-
-  /*
-  *   Withdraws all the asset to the vault
-  */
-  function withdrawToVault(uint256 amount) public restricted {
-    // Typically there wouldn't be any amount here
-    // however, it is possible because of the emergencyExit
-    uint256 entireBalance = IERC20(underlying()).balanceOf(address(this));
-
-    if (amount >= entireBalance){
-      withdrawAllToVault();
-    } else {
-      IERC20(underlying()).safeTransfer(vault(), amount);
+    function isUnsalvageableToken(address token) public view returns (bool) {
+        return (token == rewardToken() || token == underlying());
     }
-  }
 
-  /*
-  *   Note that we currently do not have a mechanism here to include the
-  *   amount of reward that is accrued.
-  */
-  function investedUnderlyingBalance() external view returns (uint256) {
-    return underlyingBalance();
-  }
+    // We assume that all the tradings can be done on Uniswap
+    function _liquidateReward(uint256 rewardAmount) internal {
+        if (!sell() || rewardAmount < sellFloor()) {
+            // Profits can be disabled for possible simplified and rapid exit
+            emit ProfitsNotCollected(sell(), rewardAmount < sellFloor());
+            return;
+        }
 
-  /*
-  *   Get the reward, sell it in exchange for underlying, invest what you got.
-  *   It's not much, but it's honest work.
-  *
-  *   Note that although `onlyNotPausedInvesting` is not added here,
-  *   calling `investAllUnderlying()` affectively blocks the usage of `doHardWork`
-  *   when the investing is being paused by governance.
-  */
-  function doHardWork() external onlyNotPausedInvesting restricted {
-    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    _liquidateReward(rewardBalance.mul(liquidationRatio()).div(1000));
-  }
+        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
 
-  function liquidateAll() external onlyGovernance {
-    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    _liquidateReward(rewardBalance);
-  }
+        (IERC20[] memory erc20Tokens,,) = IBVault(bVault()).getPoolTokens(poolId());
 
-  /**
-  * Can completely disable claiming UNI rewards and selling. Good for emergency withdraw in the
-  * simplest possible way.
-  */
-  function setSell(bool s) public onlyGovernance {
-    _setSell(s);
-  }
+        address[] memory tokens = new address[](erc20Tokens.length);
+        for (uint i = 0; i < tokens.length; i++) {
+            tokens[i] = address(erc20Tokens[i]);
+        }
 
-  /**
-  * Sets the minimum amount of CRV needed to trigger a sale.
-  */
-  function setSellFloor(uint256 floor) public onlyGovernance {
-    _setSellFloor(floor);
-  }
+        uint[] memory buybackAmounts = _notifyProfitAndBuybackInRewardTokenWithWeights(
+            rewardBalance,
+            tokens,
+            weights()
+        );
 
-  // masterchef rewards pool ID
-  function _setPoolId(bytes32 _value) internal {
-    setBytes32(_POOLID_SLOT, _value);
-  }
+        // provide token1 and token2 to Balancer
+        for (uint i = 0; i < tokens.length; i++) {
+            IERC20(address(tokens[i])).safeApprove(bVault(), 0);
+            IERC20(address(tokens[i])).safeApprove(bVault(), buybackAmounts[i]);
+        }
 
-  function poolId() public view returns (bytes32) {
-    return getBytes32(_POOLID_SLOT);
-  }
+        IAsset[] memory assets = new IAsset[](tokens.length);
+        uint256[] memory amountsIn = new uint256[](tokens.length);
+        for (uint i = 0; i < tokens.length; i++) {
+            assets[i] = IAsset(tokens[i]);
+            amountsIn[i] = buybackAmounts[i];
+        }
 
-  function _setBVault(address _address) internal {
-    setAddress(_BVAULT_SLOT, _address);
-  }
+        IBVault.JoinKind joinKind = IBVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT;
+        uint256 minAmountOut = 1;
+        bytes memory userData = abi.encode(joinKind, amountsIn, minAmountOut);
 
-  function bVault() public view returns (address) {
-    return getAddress(_BVAULT_SLOT);
-  }
+        IBVault.JoinPoolRequest memory request;
+        request.assets = assets;
+        request.maxAmountsIn = amountsIn;
+        request.userData = userData;
+        request.fromInternalBalance = false;
 
-  function setLiquidationRatio(uint256 _ratio) public onlyGovernance {
-    require(_ratio < 1000, "Invalid ratio"); //Ratio base = 1000
-    setUint256(_LIQUIDATION_RATIO_SLOT, _ratio);
-  }
-
-  function liquidationRatio() public view returns (uint256) {
-    return getUint256(_LIQUIDATION_RATIO_SLOT);
-  }
-
-  function setBytes32(bytes32 slot, bytes32 _value) internal {
-    // solhint-disable-next-line no-inline-assembly
-    assembly {
-      sstore(slot, _value)
+        IBVault(bVault()).joinPool(
+            poolId(),
+            address(this),
+            address(this),
+            request
+        );
     }
-  }
 
-  function getBytes32(bytes32 slot) internal view returns (bytes32 str) {
-    // solhint-disable-next-line no-inline-assembly
-    assembly {
-      str := sload(slot)
+    /**
+     * Withdraws all the asset to the vault
+     */
+    function withdrawAllToVault() public restricted {
+        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
+        _liquidateReward(rewardBalance);
+        IERC20(underlying()).safeTransfer(vault(), IERC20(underlying()).balanceOf(address(this)));
     }
-  }
 
-  function finalizeUpgrade() external onlyGovernance {
-    _finalizeUpgrade();
-    // reset the liquidation paths
-    // they need to be re-set manually
-    (IERC20[] memory componentTokens,,) = IBVault(bVault()).getPoolTokens(poolId());
-    address lpComponentToken0 = address(componentTokens[0]);
-    address lpComponentToken1 = address(componentTokens[1]);
-    storedLiquidationPaths[rewardToken()][lpComponentToken0] = new address[](0);
-    storedLiquidationDexes[rewardToken()][lpComponentToken0] = new bytes32[](0);
-    storedLiquidationPaths[rewardToken()][lpComponentToken1] = new address[](0);
-    storedLiquidationDexes[rewardToken()][lpComponentToken1] = new bytes32[](0);
-  }
+    /**
+     * Withdraws all the asset to the vault
+     */
+    function withdrawToVault(uint256 amount) public restricted {
+        // Typically there wouldn't be any amount here
+        // however, it is possible because of the emergencyExit
+        uint256 entireBalance = IERC20(underlying()).balanceOf(address(this));
+
+        if (amount >= entireBalance) {
+            withdrawAllToVault();
+        } else {
+            IERC20(underlying()).safeTransfer(vault(), amount);
+        }
+    }
+
+    /**
+     *   @notice We currently do not have a mechanism here to include the amount of reward that is accrued.
+     */
+    function investedUnderlyingBalance() external view returns (uint256) {
+        return underlyingBalance();
+    }
+
+    /**
+     *   Get the reward, sell it in exchange for underlying, invest what you got.
+     *   It's not much, but it's honest work.
+     *
+     *   Note that although `onlyNotPausedInvesting` is not added here,
+     *   calling `investAllUnderlying()` affectively blocks the usage of `doHardWork`
+     *   when the investing is being paused by governance.
+     */
+    function doHardWork() external onlyNotPausedInvesting restricted {
+        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
+        _liquidateReward(rewardBalance);
+    }
+
+    function liquidateAll() external onlyGovernance {
+        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
+        _liquidateReward(rewardBalance);
+    }
+
+    /**
+     * Can completely disable claiming UNI rewards and selling. Good for emergency withdraw in the
+     * simplest possible way.
+     */
+    function setSell(bool s) public onlyGovernance {
+        _setSell(s);
+    }
+
+    /**
+     * Sets the minimum amount of CRV needed to trigger a sale.
+     */
+    function setSellFloor(uint256 floor) public onlyGovernance {
+        _setSellFloor(floor);
+    }
+
+    function _setPoolId(bytes32 _value) internal {
+        setBytes32(_POOLID_SLOT, _value);
+    }
+
+    function poolId() public view returns (bytes32) {
+        return getBytes32(_POOLID_SLOT);
+    }
+
+    function _setBVault(address _address) internal {
+        setAddress(_BVAULT_SLOT, _address);
+    }
+
+    function _setWeights(uint[] memory _weights) internal {
+        setUint256Array(_WEIGHTS_SLOT, _weights);
+    }
+
+    function weights() public view returns (uint[] memory) {
+        return getUint256Array(_WEIGHTS_SLOT);
+    }
+
+    function bVault() public view returns (address) {
+        return getAddress(_BVAULT_SLOT);
+    }
+
+    function setBytes32(bytes32 slot, bytes32 _value) internal {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            sstore(slot, _value)
+        }
+    }
+
+    function getBytes32(bytes32 slot) internal view returns (bytes32 str) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            str := sload(slot)
+        }
+    }
+
+    function finalizeUpgrade() external onlyGovernance {
+        _finalizeUpgrade();
+    }
 }

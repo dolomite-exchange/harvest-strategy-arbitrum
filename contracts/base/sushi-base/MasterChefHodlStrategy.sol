@@ -50,17 +50,12 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
     ) public initializer {
         require(_rewardPool != address(0), "reward pool is empty");
 
-        revert("TODO figure out #feeRatio");
         BaseUpgradeableStrategy.initialize(
             _storage,
             _underlying,
             _vault,
             _rewardPool,
-            _rewardToken,
-            0, // specialized profit sharing numerator
-            0, // specialized profit sharing denominator
-            true, // sell
-            1e18 // sell floor
+            _rewardToken
         );
 
         address _lpt;
@@ -69,6 +64,7 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
         _setPoolId(_poolId);
         setAddress(_HODLVAULT_SLOT, _hodlVault);
         setAddress(_POTPOOL_SLOT, _potPool);
+        revert("TODO figure out #feeRatio");
     }
 
     function depositArbCheck() public view returns (bool) {

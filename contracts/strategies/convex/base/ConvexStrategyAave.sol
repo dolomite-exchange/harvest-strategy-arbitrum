@@ -56,18 +56,12 @@ contract ConvexStrategyAave is IStrategy, BaseUpgradeableStrategy {
     uint256 _depositArrayPosition,
     address _curveDeposit
   ) public initializer {
-
     BaseUpgradeableStrategy.initialize(
       _storage,
       _underlying,
       _vault,
       _rewardPool,
-      weth,
-      300, // profit sharing numerator
-      1000, // profit sharing denominator
-      true, // sell
-      0, // sell floor
-      12 hours // implementation change delay
+      weth
     );
 
     address _lpt;

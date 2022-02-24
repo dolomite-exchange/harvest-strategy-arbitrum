@@ -23,7 +23,6 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
   address public constant booster = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
   address public constant weth = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
   address public constant cvx = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-  address public constant multiSigAddr = 0xF49440C1F012d041802b25A73e5B0B9166a75c02;
 
   // additional storage slots (on top of BaseUpgradeableStrategy ones) are defined here
   bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
@@ -31,9 +30,6 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
   bytes32 internal constant _DEPOSIT_RECEIPT_SLOT = 0x414478d5ad7f54ead8a3dd018bba4f8d686ba5ab5975cd376e0c98f98fb713c5;
   bytes32 internal constant _DEPOSIT_ARRAY_POSITION_SLOT = 0xb7c50ef998211fff3420379d0bf5b8dfb0cee909d1b7d9e517f311c104675b09;
   bytes32 internal constant _CURVE_DEPOSIT_SLOT = 0xb306bb7adebd5a22f5e4cdf1efa00bc5f62d4f5554ef9d62c1b16327cd3ab5f9;
-  bytes32 internal constant _HODL_RATIO_SLOT = 0xb487e573671f10704ed229d25cf38dda6d287a35872859d096c0395110a0adb1;
-  bytes32 internal constant _HODL_VAULT_SLOT = 0xc26d330f887c749cb38ae7c37873ff08ac4bba7aec9113c82d48a0cf6cc145f2;
-  uint256 public constant hodlRatioBase = 10000;
 
   mapping (address => address[]) public reward2WETH;
   address[] public rewardTokens;
@@ -44,8 +40,6 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
     assert(_DEPOSIT_RECEIPT_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositReceipt")) - 1));
     assert(_DEPOSIT_ARRAY_POSITION_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositArrayPosition")) - 1));
     assert(_CURVE_DEPOSIT_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.curveDeposit")) - 1));
-    assert(_HODL_RATIO_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.hodlRatio")) - 1));
-    assert(_HODL_VAULT_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.hodlVault")) - 1));
   }
 
   function initializeBaseStrategy(
@@ -64,12 +58,7 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
       _underlying,
       _vault,
       _rewardPool,
-      weth,
-      300, // profit sharing numerator
-      1000, // profit sharing denominator
-      true, // sell
-      1e18, // sell floor
-      12 hours // implementation change delay
+      weth
     );
 
     address _lpt;
@@ -82,25 +71,7 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
     _setDepositToken(_depositToken);
     _setDepositReceipt(_depositReceipt);
     _setCurveDeposit(_curveDeposit);
-    setHodlRatio(1000);
-    setHodlVault(multiSigAddr);
     rewardTokens = new address[](0);
-  }
-
-  function setHodlRatio(uint256 _value) public onlyGovernance {
-    setUint256(_HODL_RATIO_SLOT, _value);
-  }
-
-  function hodlRatio() public view returns (uint256) {
-    return getUint256(_HODL_RATIO_SLOT);
-  }
-
-  function setHodlVault(address _address) public onlyGovernance {
-    setAddress(_HODL_VAULT_SLOT, _address);
-  }
-
-  function hodlVault() public view returns (address) {
-    return getAddress(_HODL_VAULT_SLOT);
   }
 
   function depositArbCheck() public view returns(bool) {
@@ -171,7 +142,7 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
   }
 
   function setRewardLiquidationPath(address [] memory _route) public onlyGovernance {
-    require(_route[_route.length-1] == weth, "Path should end with WETH");
+    require(_route[_route.length - 1] == weth, "Path should end with WETH");
     bool isReward = false;
     for(uint256 i = 0; i < rewardTokens.length; i++){
       if (_route[0] == rewardTokens[i]) {
@@ -202,15 +173,6 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
       uint256 rewardBalance = IERC20(token).balanceOf(address(this));
       if (rewardBalance == 0 || reward2WETH[token].length < 2) {
         continue;
-      }
-
-      uint256 toHodl = rewardBalance.mul(hodlRatio()).div(hodlRatioBase);
-      if (toHodl > 0) {
-        IERC20(token).safeTransfer(hodlVault(), toHodl);
-        rewardBalance = rewardBalance.sub(toHodl);
-        if (rewardBalance == 0) {
-          continue;
-        }
       }
 
       IERC20(token).safeApprove(sushiswapRouterV2, 0);
@@ -369,8 +331,6 @@ contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
 
   function finalizeUpgrade() external onlyGovernance {
     _finalizeUpgrade();
-    setHodlVault(multiSigAddr);
-    setHodlRatio(1000); // 10%
   }
 
   function () external payable {}

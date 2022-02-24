@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./inheritance/Governable.sol";
-import "./interface/IRewardPool.sol";
+import "./interface/IPotPool.sol";
 
 import "./interface/uniswap/IUniswapV2Router02.sol";
 
@@ -90,7 +90,7 @@ contract FeeRewardForwarder is Governable {
     *   based on the address of the reward Token
     */
     function setTokenPool(address _pool) public onlyGovernance {
-        require(farm == IRewardPool(_pool).rewardToken(), "The RewardPool token is not FARM");
+        require(IPotPool(_pool).getRewardTokenIndex(farm) != uint(-1), "The PotPool does not contain FARM");
         profitSharingPool = _pool;
         targetToken = farm;
         emit TokenPoolSet(targetToken, _pool);
@@ -120,24 +120,25 @@ contract FeeRewardForwarder is Governable {
         if (targetToken == address(0)) {
             return; // a No-op if target pool is not set yet
         }
-        if (_token == farm) {
+        address _farm = farm;
+        if (_token == _farm) {
             // this is already the right token
             // Note: Under current structure, this would be FARM.
             // designed for NotifyHelper calls
             // This is assuming that NO strategy would notify profits in FARM
             IERC20(_token).safeTransferFrom(msg.sender, profitSharingPool, _amount);
-            IRewardPool(profitSharingPool).notifyRewardAmount(_amount);
+            IPotPool(profitSharingPool).notifyTargetRewardAmount(_farm, _amount);
         } else {
             // we need to convert _token to FARM
-            if (uniswapRoutes[_token][farm].length > 1) {
+            if (uniswapRoutes[_token][_farm].length > 1) {
                 IERC20(_token).safeTransferFrom(msg.sender, address(this), remainingAmount);
                 uint256 balanceToSwap = IERC20(_token).balanceOf(address(this));
-                liquidate(_token, farm, balanceToSwap);
+                liquidate(_token, _farm, balanceToSwap);
 
                 // now we can send this token forward
-                uint256 convertedRewardAmount = IERC20(farm).balanceOf(address(this));
-                IERC20(farm).safeTransfer(profitSharingPool, convertedRewardAmount);
-                IRewardPool(profitSharingPool).notifyRewardAmount(convertedRewardAmount);
+                uint256 convertedRewardAmount = IERC20(_farm).balanceOf(address(this));
+                IERC20(_farm).safeTransfer(profitSharingPool, convertedRewardAmount);
+                IPotPool(profitSharingPool).notifyTargetRewardAmount(_farm, convertedRewardAmount);
             } else {
                 // else the route does not exist for this token
                 // do not take any fees and revert.

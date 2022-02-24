@@ -19,15 +19,11 @@ contract ConvexStrategyLP is IStrategy, BaseUpgradeableStrategy {
   address public constant uniswapRouterV2 = address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
   address public constant sushiswapRouterV2 = address(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
   address public constant weth = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-  address public constant multiSigAddr = 0xF49440C1F012d041802b25A73e5B0B9166a75c02;
 
   // additional storage slots (on top of BaseUpgradeableStrategy ones) are defined here
   bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
-  bytes32 internal constant _HODL_RATIO_SLOT = 0xb487e573671f10704ed229d25cf38dda6d287a35872859d096c0395110a0adb1;
-  bytes32 internal constant _HODL_VAULT_SLOT = 0xc26d330f887c749cb38ae7c37873ff08ac4bba7aec9113c82d48a0cf6cc145f2;
 
   // this would be reset on each upgrade
-  uint256 public constant hodlRatioBase = 10000;
   mapping (address => address[]) public WETH2deposit;
   mapping (address => address[]) public reward2WETH;
   mapping (address => bool) public useUni;
@@ -35,8 +31,6 @@ contract ConvexStrategyLP is IStrategy, BaseUpgradeableStrategy {
 
   constructor() public BaseUpgradeableStrategy() {
     assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
-    assert(_HODL_RATIO_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.hodlRatio")) - 1));
-    assert(_HODL_VAULT_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.hodlVault")) - 1));
   }
 
   function initializeBaseStrategy(
@@ -52,12 +46,7 @@ contract ConvexStrategyLP is IStrategy, BaseUpgradeableStrategy {
       _underlying,
       _vault,
       _rewardPool,
-      weth,
-      300, // profit sharing numerator
-      1000, // profit sharing denominator
-      true, // sell
-      1e18, // sell floor
-      12 hours // implementation change delay
+      weth
     );
 
     address _lpt = IMasterChefV2(rewardPool()).lpToken(_poolID);
@@ -71,8 +60,6 @@ contract ConvexStrategyLP is IStrategy, BaseUpgradeableStrategy {
     WETH2deposit[lpComponentToken0] = new address[](0);
     WETH2deposit[lpComponentToken1] = new address[](0);
 
-    setHodlRatio(1000);
-    setHodlVault(multiSigAddr);
     rewardTokens = new address[](0);
   }
 
@@ -168,12 +155,6 @@ contract ConvexStrategyLP is IStrategy, BaseUpgradeableStrategy {
     for(uint256 i = 0; i < rewardTokens.length; i++){
       address token = rewardTokens[i];
       uint256 rewardBalance = IERC20(token).balanceOf(address(this));
-
-      uint256 toHodl = rewardBalance.mul(hodlRatio()).div(hodlRatioBase);
-      if (toHodl > 0) {
-        IERC20(token).safeTransfer(hodlVault(), toHodl);
-        rewardBalance = rewardBalance.sub(toHodl);
-      }
 
       if (rewardBalance == 0 || reward2WETH[token].length < 2) {
         continue;
@@ -369,22 +350,6 @@ contract ConvexStrategyLP is IStrategy, BaseUpgradeableStrategy {
 
   function poolId() public view returns (uint256) {
     return getUint256(_POOLID_SLOT);
-  }
-
-  function setHodlRatio(uint256 _value) public onlyGovernance {
-    setUint256(_HODL_RATIO_SLOT, _value);
-  }
-
-  function hodlRatio() public view returns (uint256) {
-    return getUint256(_HODL_RATIO_SLOT);
-  }
-
-  function setHodlVault(address _address) public onlyGovernance {
-    setAddress(_HODL_VAULT_SLOT, _address);
-  }
-
-  function hodlVault() public view returns (address) {
-    return getAddress(_HODL_VAULT_SLOT);
   }
 
   function finalizeUpgrade() external onlyGovernance {

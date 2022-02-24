@@ -41,16 +41,12 @@ contract VaultStorage is Initializable {
         address _underlying,
         uint256 _toInvestNumerator,
         uint256 _toInvestDenominator,
-        uint256 _underlyingUnit,
-        uint256 _implementationChangeDelay,
-        uint256 _strategyChangeDelay
+        uint256 _underlyingUnit
     ) public initializer {
         _setUnderlying(_underlying);
         _setVaultFractionToInvestNumerator(_toInvestNumerator);
         _setVaultFractionToInvestDenominator(_toInvestDenominator);
         _setUnderlyingUnit(_underlyingUnit);
-        _setNextImplementationDelay(_implementationChangeDelay);
-        _setStrategyTimeLock(_strategyChangeDelay);
         _setStrategyUpdateTime(0);
         _setFutureStrategy(address(0));
         _setAllowSharePriceDecrease(false);
@@ -127,14 +123,6 @@ contract VaultStorage is Initializable {
 
     function _nextImplementationTimestamp() internal view returns (uint256) {
         return getUint256(_NEXT_IMPLEMENTATION_TIMESTAMP_SLOT);
-    }
-
-    function _setNextImplementationDelay(uint256 _value) internal {
-        setUint256(_NEXT_IMPLEMENTATION_DELAY_SLOT, _value);
-    }
-
-    function _nextImplementationDelay() internal view returns (uint256) {
-        return getUint256(_NEXT_IMPLEMENTATION_DELAY_SLOT);
     }
 
     function _setStrategyTimeLock(uint256 _value) internal {

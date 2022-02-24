@@ -14,7 +14,7 @@ import "../aave/AaveInteractorInit.sol";
 import "./interface/SushiBar.sol";
 
 
-contract XSushiStrategyUpgradeable is IStrategy, Initializable, BaseUpgradeableStrategy, AaveInteractorInit {
+contract XSushiStrategyUpgradeable is IStrategy, AaveInteractorInit, BaseUpgradeableStrategy {
 
   using SafeERC20 for IERC20;
   using SafeMath for uint256;
@@ -41,12 +41,7 @@ contract XSushiStrategyUpgradeable is IStrategy, Initializable, BaseUpgradeableS
       _underlying,
       _vault,
       address(0), // unused
-      address(0), // unused
-      0, // unused
-      0, // unused
-      false, // unused
-      0, // unused
-      12 hours
+      address(0) // unused
     );
     AaveInteractorInit.initialize(
       _xsushi, _lendingPoolProvider, _protocolDataProvider

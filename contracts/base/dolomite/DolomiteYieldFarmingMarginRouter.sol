@@ -17,6 +17,7 @@
 */
 
 pragma solidity ^0.5.16;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
@@ -36,9 +37,11 @@ import "./LeveragedNoMintPotPool.sol";
 
 contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActionHelpers {
     using SafeERC20 for IERC20;
+    using SafeMath for uint;
     using Require for *;
 
     bytes32 public constant FILE = "DolomiteYieldFarmingMarginRouter";
+    uint256 public constant MAX_UINT = uint(- 1);
 
     IDolomiteMargin public dolomiteMargin;
     AssetTransformerInternal public transformerInternal;
@@ -64,15 +67,15 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
      *                          slippage, deadlines, etc.
      */
     function startFarming(
-        address[] calldata _depositTokens,
-        uint[] calldata _depositAmounts,
-        address[] calldata _borrowTokens,
-        uint[] calldata _borrowAmounts,
+        address[] memory _depositTokens,
+        uint[] memory _depositAmounts,
+        address[] memory _borrowTokens,
+        uint[] memory _borrowAmounts,
         address _transformer,
         address _stakingPool,
-        bytes calldata _extraData
+        bytes memory _extraData
     )
-    external
+    public
     nonReentrant {
         Require.that(
             _depositTokens.length == _depositAmounts.length,
@@ -92,19 +95,26 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
             "staking pool fToken mismatch"
         );
 
+        (
+            address[] memory allTokens,
+            uint[] memory allAmounts
+        ) = _getAllTokensAndAmounts(_depositTokens, _depositAmounts, _borrowTokens, _borrowAmounts);
+
+        uint fAmountWei = IDolomiteAssetTransformer(_transformer).getTransformationResult(allTokens, allAmounts);
+
         uint fTokenMarketId = IDolomiteMargin(dolomiteMargin).getMarketIdByTokenAddress(fToken);
 
         address accountOwner = _stakingPool;
         uint accountNumber = LeveragedNoMintPotPool(_stakingPool).getAccountNumber(msg.sender, 0);
 
         // TODO ERC20::safeTransferFrom _depositTokens into here
-        // TODO approve _depositTokens, if necessary on `transformerInternal`
+        // TODO approve _depositTokens, if necessary, on `transformerInternal`
         // TODO withdraw (borrow) all _borrowAmounts to `transformerInternal`
-        // TODO DolomiteMargin::CALL, encoding `_depositTokens`, `_depositAmounts`, `_borrowTokens`, `_borrowAmounts`, and `_extraData`
+        // TODO DolomiteMargin::CALL, encoding `allTokens`, `allAmounts`, `_extraData`
         // TODO ERC20::safeTransferFrom `_depositTokens` into `_transformer` via `callFunction.sender`
         // TODO perform transformation logic from _depositTokens + _borrowTokens --> fToken in `_transformer`
-        // TODO deposit all created fTokens into DolomiteMargin, using `getTransformationResult`
-        // TODO stake upon completion if needed by transferring + notifying `LeveragedNoMintPotPool`
+        // TODO deposit fToken into DolomiteMargin (_stakingPool, _stakingPool#getAccountNumber), using `fAmountWei`
+        // TODO stake upon completion by transferring + notifying `LeveragedNoMintPotPool`
 
         LeveragedNoMintPotPool(_stakingPool).notifyStake(msg.sender, 0, fAmountWei);
     }
@@ -124,8 +134,8 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
      */
     function endFarming(
         uint _fAmountWei,
-        address[] calldata _outputTokens,
-        uint256[] calldata _outputAmountsWei,
+        address[] memory _outputTokens,
+        uint256[] memory _outputAmountsWei,
         Decimal.D256 memory _slippageTolerance,
         DolomiteMarginTypes.AssetAmount[] memory _withdrawalAmounts,
         address _transformer,
@@ -135,7 +145,7 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
     public
     nonReentrant {
         Require.that(
-            _outputTokens.length == _repayAmounts.length,
+            _outputTokens.length == _outputAmountsWei.length,
             FILE,
             "invalid repayAmounts length"
         );
@@ -162,5 +172,64 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
         // TODO check slippage tolerance of `#getTransformBackResult`
         // TODO deposit `_outputTokens` from `transformerInternal` address using `#getTransformBackResult`
         // TODO use `_withdrawalAmounts` to withdraw all `_outputTokens` back to `msg.sender`
+    }
+
+    function _getAllTokensAndAmounts(
+        address[] memory _depositTokens,
+        uint[] memory _depositAmounts,
+        address[] memory _borrowTokens,
+        uint[] memory _borrowAmounts
+    ) internal pure returns (address[] memory, uint[] memory) {
+        uint uniqueCount = 0;
+        address[] memory allTokens = new address[](_depositTokens.length + _borrowTokens.length);
+        uint[] memory allAmounts = new uint[](_depositAmounts.length + _borrowAmounts.length);
+        for (uint i = 0; i < _depositTokens.length; i++) {
+            uint index = _linearSearch(allTokens, _depositTokens[i]);
+            if (index != MAX_UINT) {
+                allTokens[uniqueCount] = _depositTokens[i];
+                allAmounts[uniqueCount] = _depositAmounts[i];
+                uniqueCount += 1;
+            } else {
+                allAmounts[index] = allAmounts[index].add(_depositAmounts[i]);
+            }
+        }
+        for (uint i = 0; i < _borrowTokens.length; i++) {
+            uint index = _linearSearch(allTokens, _borrowTokens[i]);
+            if (index != MAX_UINT) {
+                allTokens[uniqueCount] = _borrowTokens[i];
+                allAmounts[uniqueCount] = _borrowAmounts[i];
+                uniqueCount += 1;
+            } else {
+                // the token already exists; add the amount to allAmounts
+                allAmounts[index] = allAmounts[index].add(_borrowAmounts[i]);
+            }
+        }
+
+        return (_compressAddressArray(allTokens, uniqueCount), _compressUintArray(allAmounts, uniqueCount));
+    }
+
+    function _linearSearch(address[] memory tokens, address searchToken) internal pure returns (uint) {
+        for (uint i = 0; i < tokens.length; i++) {
+            if (tokens[i] == searchToken) {
+                return i;
+            }
+        }
+        return MAX_UINT;
+    }
+
+    function _compressAddressArray(address[] memory tokens, uint realSize) internal pure returns (address[] memory) {
+        address[] memory newTokens = new address[](realSize);
+        for (uint i = 0; i < newTokens.length; i++) {
+            newTokens[i] = tokens[i];
+        }
+        return newTokens;
+    }
+
+    function _compressUintArray(uint[] memory amounts, uint realSize) internal pure returns (uint[] memory) {
+        uint[] memory newAmounts = new uint[](realSize);
+        for (uint i = 0; i < newAmounts.length; i++) {
+            newAmounts[i] = amounts[i];
+        }
+        return newAmounts;
     }
 }

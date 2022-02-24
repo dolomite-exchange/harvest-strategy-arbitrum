@@ -62,12 +62,7 @@ contract ComplifiDerivStrategy is IStrategy, BaseUpgradeableStrategy {
       _underlying,
       _vault,
       _rewardPool,
-      _rewardToken,
-      300, // profit sharing numerator
-      1000, // profit sharing denominator
-      true, // sell
-      1e18, // sell floor
-      12 hours // implementation change delay
+      _rewardToken
     );
 
     address _lpt;

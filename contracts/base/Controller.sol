@@ -23,6 +23,15 @@ contract Controller is IController, Governable {
     // external parties
     address public feeRewardForwarder;
 
+    uint256 public nextImplementationDelay;
+
+    uint256 public profitSharingNumerator = 2500;
+
+    uint256 public nextProfitSharingNumerator = 0;
+    uint256 public nextProfitSharingNumeratorTimestamp = 0;
+
+    uint256 public profitSharingDenominator = 10000;
+
     // [Grey list]
     // An EOA can safely interact with the system no matter what.
     // If you're using Metamask, you're using an EOA.
@@ -45,9 +54,6 @@ contract Controller is IController, Governable {
     // Rewards for hard work. Nullable.
     HardRewards public hardRewards;
 
-    uint256 public constant profitSharingNumerator = 5;
-    uint256 public constant profitSharingDenominator = 100;
-
     event SharePriceChangeLog(
         address indexed vault,
         address indexed strategy,
@@ -55,6 +61,9 @@ contract Controller is IController, Governable {
         uint256 newSharePrice,
         uint256 timestamp
     );
+
+    event QueueProfitSharingNumeratorChange(uint profitSharingNumerator, uint validAtTimestamp);
+    event ConfirmProfitSharingNumeratorChange(uint profitSharingNumerator);
 
     event AddedStakingContract(address indexed stakingContract);
     event RemovedStakingContract(address indexed stakingContract);
@@ -94,12 +103,14 @@ contract Controller is IController, Governable {
 
     constructor(
         address _storage,
-        address _feeRewardForwarder
+        address _feeRewardForwarder,
+        uint _nextImplementationDelay
     )
     Governable(_storage)
     public {
         require(_feeRewardForwarder != address(0), "feeRewardForwarder should not be empty");
         feeRewardForwarder = _feeRewardForwarder;
+        nextImplementationDelay = _nextImplementationDelay;
     }
 
     function addHardWorker(address _worker) public onlyGovernance {
@@ -162,7 +173,7 @@ contract Controller is IController, Governable {
             _vaults.length == _strategies.length,
             "invalid vaults/strategies length"
         );
-        for (uint i = 0; i < vaults.length; i++) {
+        for (uint i = 0; i < _vaults.length; i++) {
             _addVaultAndStrategy(_vaults[i], _strategies[i]);
         }
     }
@@ -236,7 +247,7 @@ contract Controller is IController, Governable {
         // the strategy is responsible for maintaining the list of
         // salvageable tokens, to make sure that governance cannot come
         // in and take away the coins
-        IStrategy(_strategy).salvage(governance(), _token, _amount);
+        IStrategy(_strategy).salvageToken(governance(), _token, _amount);
     }
 
     function notifyFee(address _underlying, uint256 _fee) external {
@@ -246,6 +257,25 @@ contract Controller is IController, Governable {
             IERC20(_underlying).safeApprove(feeRewardForwarder, _fee);
             FeeRewardForwarder(feeRewardForwarder).poolNotifyFixedTarget(_underlying, _fee);
         }
+    }
+
+    function confirmSetProfitSharingNumerator() public onlyGovernance {
+        require(
+            nextProfitSharingNumerator != 0
+                && nextProfitSharingNumeratorTimestamp != 0
+                && block.timestamp >= nextProfitSharingNumeratorTimestamp,
+            "invalid timestamp or no new profit sharing number confirmed"
+        );
+        profitSharingNumerator = nextProfitSharingNumerator;
+        nextProfitSharingNumerator = 0;
+        nextProfitSharingNumeratorTimestamp = 0;
+        emit ConfirmProfitSharingNumeratorChange(profitSharingNumerator);
+    }
+
+    function setProfitSharingNumerator(uint _profitSharingNumerator) public onlyGovernance {
+        nextProfitSharingNumerator = _profitSharingNumerator;
+        nextProfitSharingNumeratorTimestamp = block.timestamp + nextImplementationDelay;
+        emit QueueProfitSharingNumeratorChange(nextProfitSharingNumerator, nextProfitSharingNumeratorTimestamp);
     }
 
     function _addVaultAndStrategy(address _vault, address _strategy) internal {
