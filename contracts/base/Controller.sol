@@ -7,15 +7,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./inheritance/Governable.sol";
 
-import "./interface/IController.sol";
-import "./interface/IStrategy.sol";
-import "./interface/IVault.sol";
+import "./interfaces/IController.sol";
+import "./interfaces/IStrategy.sol";
+import "./interfaces/IVault.sol";
 
 import "./FeeRewardForwarder.sol";
 import "./HardRewards.sol";
 
 contract Controller is IController, Governable {
-
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -48,6 +47,9 @@ contract Controller is IController, Governable {
 
     // All vaults that we have
     mapping (address => bool) public vaults;
+
+    // All strategies that we have
+    mapping (address => bool) public strategies;
 
     mapping (address => bool) public hardWorkers;
 
@@ -125,6 +127,10 @@ contract Controller is IController, Governable {
 
     function hasVault(address _vault) external view returns (bool) {
         return vaults[_vault];
+    }
+
+    function hasStrategy(address _strategy) external view returns (bool) {
+        return strategies[_strategy];
     }
 
     // Only smart contracts will be affected by the greyList.
@@ -255,7 +261,12 @@ contract Controller is IController, Governable {
             IERC20(_underlying).safeTransferFrom(msg.sender, address(this), _fee);
             IERC20(_underlying).safeApprove(feeRewardForwarder, 0);
             IERC20(_underlying).safeApprove(feeRewardForwarder, _fee);
-            FeeRewardForwarder(feeRewardForwarder).poolNotifyFixedTarget(_underlying, _fee);
+            IFeeRewardForwarder(feeRewardForwarder).notifyFeeAndBuybackAmounts(
+                _underlying,
+                _fee,
+                new address[](0),
+                new uint[](0)
+            );
         }
     }
 
@@ -281,9 +292,12 @@ contract Controller is IController, Governable {
     function _addVaultAndStrategy(address _vault, address _strategy) internal {
         require(_vault != address(0), "new vault shouldn't be empty");
         require(!vaults[_vault], "vault already exists");
+        require(!strategies[_strategy], "strategy already exists");
         require(_strategy != address(0), "new strategy shouldn't be empty");
 
         vaults[_vault] = true;
+        strategies[_strategy] = true;
+
         // no need to protect against sandwich, because there will be no call to withdrawAll
         // as the vault and strategy is brand new
         IVault(_vault).setStrategy(_strategy);

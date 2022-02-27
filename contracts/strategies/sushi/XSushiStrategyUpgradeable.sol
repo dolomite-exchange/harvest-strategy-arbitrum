@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/upgrades/contracts/Initializable.sol";
-import "../../base/interface/IStrategy.sol";
-import "../../base/interface/IVault.sol";
-import "../../base/interface/IController.sol";
+import "../../base/interfaces/IStrategy.sol";
+import "../../base/interfaces/IVault.sol";
+import "../../base/interfaces/IController.sol";
 import "../../base/inheritance/ControllableInit.sol";
 import "../../base/upgradability/BaseUpgradeableStrategy.sol";
 import "../aave/AaveInteractorInit.sol";
-import "./interface/SushiBar.sol";
+import "./interfaces/SushiBar.sol";
 
 
 contract XSushiStrategyUpgradeable is IStrategy, AaveInteractorInit, BaseUpgradeableStrategy {

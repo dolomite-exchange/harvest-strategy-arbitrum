@@ -7,10 +7,10 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20Deta
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
-import "./interface/IStrategy.sol";
-import "./interface/IVault.sol";
-import "./interface/IController.sol";
-import "./interface/IUpgradeSource.sol";
+import "./interfaces/IStrategy.sol";
+import "./interfaces/IVault.sol";
+import "./interfaces/IController.sol";
+import "./interfaces/IUpgradeSource.sol";
 import "./inheritance/ControllableInit.sol";
 import "./VaultStorage.sol";
 
@@ -137,8 +137,9 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
         : underlyingUnit().mul(underlyingBalanceWithInvestment()).div(totalSupply());
     }
 
-    /* get the user's share (in underlying)
-    */
+    /**
+     * Get the user's share (in underlying)
+     */
     function underlyingBalanceWithInvestmentForHolder(address holder) view external returns (uint256) {
         if (totalSupply() == 0) {
             return 0;

@@ -7,9 +7,9 @@ import "@openzeppelin/upgrades/contracts/Initializable.sol";
 
 import "../inheritance/ControllableInit.sol";
 
-import "../interface/IController.sol";
-import "../interface/IFeeRewardForwarder.sol";
-import "../interface/IUpgradeSource.sol";
+import "../interfaces/IController.sol";
+import "../interfaces/IFeeRewardForwarder.sol";
+import "../interfaces/IUpgradeSource.sol";
 
 
 contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {

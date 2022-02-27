@@ -21,6 +21,8 @@ interface IVault {
 
     function underlying() external view returns (address);
 
+    function underlyingUnit() external view returns (uint);
+
     function strategy() external view returns (address);
 
     function setStrategy(address _strategy) external;

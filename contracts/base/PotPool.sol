@@ -12,8 +12,8 @@ import "@openzeppelin/contracts/GSN/Context.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 
 import "./inheritance/Controllable.sol";
-import "./interface/IController.sol";
-import "./interface/IPotPool.sol";
+import "./interfaces/IController.sol";
+import "./interfaces/IPotPool.sol";
 
 import "./MultipleRewardDistributionRecipient.sol";
 

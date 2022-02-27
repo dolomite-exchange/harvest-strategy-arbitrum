@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../strategies/aave/AaveInteractor.sol";
-import "../../strategies/sushi/interface/SushiBar.sol";
+import "../../strategies/sushi/interfaces/SushiBar.sol";
 
 
 contract SushiHODLWallet is Ownable, AaveInteractor {

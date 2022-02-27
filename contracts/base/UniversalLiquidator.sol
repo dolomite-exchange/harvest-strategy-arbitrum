@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/upgrades/contracts/Initializable.sol";
 import "./inheritance/Constants.sol";
 import "./inheritance/ControllableInit.sol";
-import "./interface/IController.sol";
-import "./interface/IUpgradeSource.sol";
-import "./interface/IUniversalLiquidator.sol";
-import "./interface/uniswap/IUniswapV2Router02.sol";
+import "./interfaces/IController.sol";
+import "./interfaces/IUpgradeSource.sol";
+import "./interfaces/IUniversalLiquidator.sol";
+import "./interfaces/uniswap/IUniswapV2Router02.sol";
 import "./upgradability/BaseUpgradeableStrategyStorage.sol";
 
 
@@ -50,6 +50,28 @@ contract UniversalLiquidator is Initializable, BaseUpgradeableStrategyStorage, C
         address _storage
     ) public initializer {
         ControllableInit.initialize(_storage);
+
+        _configureSwap(_address4ToMemory([CRV, WETH, USDC, FARM]), SUSHI_ROUTER);
+        _configureSwap(_address4ToMemory([DAI, WETH, USDC, FARM]), SUSHI_ROUTER);
+        _configureSwap(_address4ToMemory([SUSHI, WETH, USDC, FARM]), SUSHI_ROUTER);
+        _configureSwap(_address2ToMemory([USDC, FARM]), SUSHI_ROUTER);
+        _configureSwap(_address4ToMemory([USDT, WETH, USDC, FARM]), SUSHI_ROUTER);
+        _configureSwap(_address4ToMemory([WBTC, WETH, USDC, FARM]), SUSHI_ROUTER);
+        _configureSwap(_address3ToMemory([WETH, USDC, FARM]), SUSHI_ROUTER);
+
+        _configureSwap(_address2ToMemory([CRV, WETH]), SUSHI_ROUTER);
+        _configureSwap(_address2ToMemory([DAI, WETH]), SUSHI_ROUTER);
+        _configureSwap(_address2ToMemory([USDC, WETH]), SUSHI_ROUTER);
+        _configureSwap(_address2ToMemory([USDT, WETH]), SUSHI_ROUTER);
+        _configureSwap(_address2ToMemory([SUSHI, WETH]), SUSHI_ROUTER);
+        _configureSwap(_address2ToMemory([WBTC, WETH]), SUSHI_ROUTER);
+
+        _configureSwap(_address3ToMemory([CRV, WETH, USDC]), SUSHI_ROUTER);
+        _configureSwap(_address3ToMemory([DAI, WETH, USDC]), SUSHI_ROUTER);
+        _configureSwap(_address3ToMemory([SUSHI, WETH, USDC]), SUSHI_ROUTER);
+        _configureSwap(_address3ToMemory([USDT, WETH, USDC]), SUSHI_ROUTER);
+        _configureSwap(_address3ToMemory([WBTC, WETH, USDC]), SUSHI_ROUTER);
+        _configureSwap(_address2ToMemory([WETH, USDC]), SUSHI_ROUTER);
     }
 
     function shouldUpgrade() public view returns (bool, address) {
@@ -116,6 +138,30 @@ contract UniversalLiquidator is Initializable, BaseUpgradeableStrategyStorage, C
             amountOutMin,
             recipient
         );
+    }
+
+    function _address2ToMemory(address[2] memory tokens) internal pure returns (address[] memory) {
+        address[] memory dynamicTokens = new address[](tokens.length);
+        for (uint i = 0; i < tokens.length; i++) {
+            dynamicTokens[i] = tokens[i];
+        }
+        return dynamicTokens;
+    }
+
+    function _address3ToMemory(address[3] memory tokens) internal pure returns (address[] memory) {
+        address[] memory dynamicTokens = new address[](tokens.length);
+        for (uint i = 0; i < tokens.length; i++) {
+            dynamicTokens[i] = tokens[i];
+        }
+        return dynamicTokens;
+    }
+
+    function _address4ToMemory(address[4] memory tokens) internal pure returns (address[] memory) {
+        address[] memory dynamicTokens = new address[](tokens.length);
+        for (uint i = 0; i < tokens.length; i++) {
+            dynamicTokens[i] = tokens[i];
+        }
+        return dynamicTokens;
     }
 
     function _performSwap(

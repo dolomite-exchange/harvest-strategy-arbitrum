@@ -41,12 +41,15 @@ interface IDolomiteAssetTransformer {
      * @param dustRecipient The address that will receive any leftover `tokens` in case a full deposit cannot be made.
      *                      Can be set to `address(0)` to deny receiving leftover dust. The only reason to do this is
      *                      to lower the gas fees, since doing so would lessen the number of transfers.
+     * @param extraData     Any extra data needed to be passed along for doing safety checks (like checking deadlines,
+     *                      slippage, etc.)
      * @return              The amount of `fToken` that was transformed via `tokens` and `amounts`.
      */
     function transform(
         address[] calldata tokens,
         uint[] calldata amounts,
-        address dustRecipient
+        address dustRecipient,
+        bytes calldata extraData
     ) external returns (uint fAmount);
 
     /**
@@ -67,12 +70,15 @@ interface IDolomiteAssetTransformer {
      *                      from `msg.sender` into this contract.
      * @param fAmount       The amount of fTokens to convert back to their original format
      * @param outputTokens  The tokens that should be outputted, by converting the fToken back to its origin format.
-     * @return              The tokens that were outputted, same as `outputTokens` and `amounts`
+     * @param extraData     Any extra data needed to be passed along for doing safety checks (like checking deadlines,
+     *                      slippage, etc.)
+     * @return              The amounts that were outputted, each index corresponds with `outputTokens`
      */
     function transformBack(
         uint fAmount,
-        address[] calldata outputTokens
-    ) external returns (address[] memory tokens, uint[] memory amounts);
+        address[] calldata outputTokens,
+        bytes calldata extraData
+    ) external returns (uint[] memory outputAmounts);
 
 
     /**
@@ -80,11 +86,11 @@ interface IDolomiteAssetTransformer {
      *                      its underlying `outputTokens`
      * @param fAmount       The amount of fTokens to convert back to their original format
      * @param outputTokens  The tokens that should be outputted, by converting the fToken back to its origin format.
-     * @return              The tokens that were outputted, same as `outputTokens` and `amounts`
+     * @return              The amounts that were outputted, each index corresponds with `outputTokens`
      */
     function getTransformBackResult(
         uint fAmount,
         address[] calldata outputTokens
-    ) external view returns (address[] memory tokens, uint[] memory amounts);
+    ) external view returns (uint[] memory outputAmounts);
 
 }

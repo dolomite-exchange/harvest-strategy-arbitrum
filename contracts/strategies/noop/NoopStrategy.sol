@@ -4,9 +4,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../../base/interface/IStrategy.sol";
+import "../../base/interfaces/IStrategy.sol";
 import "../../base/inheritance/Controllable.sol";
-import "../../base/interface/IVault.sol";
+import "../../base/interfaces/IVault.sol";
 
 
 contract NoopStrategyV3 is IStrategy, Controllable {

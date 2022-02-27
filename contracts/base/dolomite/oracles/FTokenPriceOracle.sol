@@ -19,26 +19,26 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces/IDolomiteMargin.sol";
-import "./interfaces/IPriceOracle.sol";
+import "../interfaces/IDolomiteMargin.sol";
+import "../interfaces/IPriceOracle.sol";
 
-import "./lib/DolomiteMarginMonetary.sol";
-import "./lib/DolomiteMarginTypes.sol";
-import "./lib/Require.sol";
+import "../lib/DolomiteMarginMonetary.sol";
 
 /**
  * @notice  Calculates the USD value of a given fToken by breaking it down into it's underlying tokens.
  */
 contract FTokenPriceOracle is IPriceOracle {
 
-    function getPrice(
-        address token
-    )
-    public
-    view
-    returns (DolomiteMarginMonetary.Price memory) {
-        // TODO
-        return DolomiteMarginMonetary.Price(0);
+    IDolomiteMargin public dolomiteMargin;
+
+    constructor(address _dolomiteMargin) public {
+        dolomiteMargin = IDolomiteMargin(_dolomiteMargin);
     }
+
+    /**
+     * @param _fToken   The fToken whose components make it up should be received
+     * @return The tokens that the fToken is comprised
+     */
+    function getFTokenParts(address _fToken) public view returns (address[] memory);
 
 }

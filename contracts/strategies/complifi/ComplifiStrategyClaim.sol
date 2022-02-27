@@ -4,12 +4,12 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../../base/interface/uniswap/IUniswapV2Router02.sol";
-import "../../base/interface/IStrategy.sol";
-import "../../base/interface/IVault.sol";
+import "../../base/interfaces/uniswap/IUniswapV2Router02.sol";
+import "../../base/interfaces/IStrategy.sol";
+import "../../base/interfaces/IVault.sol";
 import "../../base/upgradability/BaseUpgradeableStrategy.sol";
 import "./interfaces/ILiquidityMining.sol";
-import "../../base/interface/uniswap/IUniswapV2Pair.sol";
+import "../../base/interfaces/uniswap/IUniswapV2Pair.sol";
 
 contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
 

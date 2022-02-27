@@ -4,15 +4,15 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../../../base/interface/uniswap/IUniswapV2Router02.sol";
-import "../../../base/interface/IStrategy.sol";
-import "../../../base/interface/IVault.sol";
+import "../../../base/interfaces/uniswap/IUniswapV2Router02.sol";
+import "../../../base/interfaces/IStrategy.sol";
+import "../../../base/interfaces/IVault.sol";
 import "../../../base/upgradability/BaseUpgradeableStrategy.sol";
-import "../../../base/interface/uniswap/IUniswapV2Pair.sol";
-import "../interface/IBooster.sol";
-import "../interface/IBaseRewardPool.sol";
-import "../../../base/interface/curve/ICurveDeposit_2token.sol";
-import "../../../base/interface/weth/Weth9.sol";
+import "../../../base/interfaces/uniswap/IUniswapV2Pair.sol";
+import "../interfaces/IBooster.sol";
+import "../interfaces/IBaseRewardPool.sol";
+import "../../../base/interfaces/curve/ICurveDeposit_2token.sol";
+import "../../../base/interfaces/weth/Weth9.sol";
 
 contract ConvexStrategystETH is IStrategy, BaseUpgradeableStrategy {
 

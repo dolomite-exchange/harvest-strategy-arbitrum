@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./inheritance/Controllable.sol";
-import "./interface/IStrategy.sol";
-import "./interface/IVault.sol";
+import "./interfaces/IStrategy.sol";
+import "./interfaces/IVault.sol";
 import "./PotPool.sol";
 
 /*

@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/upgrades/contracts/Initializable.sol";
 import "../inheritance/Constants.sol";
 import "../inheritance/ControllableInit.sol";
-import "../interface/IController.sol";
+import "../interfaces/IController.sol";
 import "./BaseUpgradeableStrategyStorage.sol";
-import "../interface/IStrategy.sol";
+import "../interfaces/IStrategy.sol";
 
 
 contract BaseUpgradeableStrategy is IStrategy, Initializable, ControllableInit, BaseUpgradeableStrategyStorage, Constants {

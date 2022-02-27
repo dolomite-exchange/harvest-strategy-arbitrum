@@ -1,6 +1,6 @@
 pragma solidity ^0.5.16;
 
-import "../interface/IController.sol";
+import "../interfaces/IController.sol";
 
 
 contract Storage {

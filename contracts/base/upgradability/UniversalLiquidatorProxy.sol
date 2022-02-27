@@ -1,7 +1,7 @@
 pragma solidity ^0.5.16;
 
 import "@openzeppelin/upgrades/contracts/upgradeability/BaseUpgradeabilityProxy.sol";
-import "../interface/IUpgradeSource.sol";
+import "../interfaces/IUpgradeSource.sol";
 
 
 contract UniversalLiquidatorProxy is BaseUpgradeabilityProxy {

@@ -10,27 +10,28 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../MultipleRewardDistributionRecipient.sol";
 import "../inheritance/Controllable.sol";
-import "../interface/IController.sol";
+import "../interfaces/IController.sol";
 
-import "./helpers/DolomiteMarginActionHelpers.sol";
+import "./lib/DolomiteMarginActionsHelper.sol";
 
 import "./interfaces/IDolomiteLiquidationCallback.sol";
 import "./interfaces/IDolomiteMargin.sol";
 
 import "./lib/DolomiteMarginAccount.sol";
+import "./lib/DolomiteMarginActions.sol";
+import "./lib/DolomiteMarginActionsHelper.sol";
 import "./lib/DolomiteMarginTypes.sol";
 import "./lib/Require.sol";
-import "./lib/DolomiteMarginActions.sol";
 
 
 contract LeveragedNoMintPotPool is
     MultipleRewardDistributionRecipient,
     Controllable,
     IDolomiteLiquidationCallback,
-    ReentrancyGuard,
-    DolomiteMarginActionHelpers
+    ReentrancyGuard
 {
     using Address for address;
+    using DolomiteMarginActionsHelper for *;
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -90,6 +91,13 @@ contract LeveragedNoMintPotPool is
     }
 
     modifier updateRewards(address _user, uint _userAccountNumber) {
+        Require.that(
+            _user != address(this),
+            FILE,
+            "invalid user",
+            _user
+        );
+
         uint rewardTokensLength = rewardTokens.length;
         for (uint256 i = 0; i < rewardTokensLength; i++) {
             address rewardToken = rewardTokens[i];
@@ -191,48 +199,6 @@ contract LeveragedNoMintPotPool is
         .add(rewardsForToken[_rewardToken][_user][_userAccountNumber]);
     }
 
-    function stake(
-        address _user,
-        uint _userAccountNumber,
-        uint _fAmountWei,
-        address[] memory _borrowTokens,
-        DolomiteMarginTypes.AssetAmount[] memory _borrowAmounts
-    )
-    public
-    nonReentrant
-    requireIsAuthorized(_user)
-    updateRewards(_user, _userAccountNumber) {
-        _validateAmounts(_borrowAmounts, _borrowTokens);
-
-        DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](2);
-        accounts[0] = DolomiteMarginAccount.Info(_user, _userAccountNumber);
-        accounts[1] = DolomiteMarginAccount.Info(address(this), getAccountNumber(_user, _userAccountNumber));
-
-        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](1 + _borrowTokens.length);
-        IDolomiteMargin _dolomiteMargin = dolomiteMargin;
-        actions[0] = _encodeTransfer(
-            0,
-            1,
-            marketId,
-            _createAmountForTransfer(_fAmountWei)
-        );
-        for (uint i = 0; i < _borrowTokens.length; i++) {
-            actions[1 + i] = _encodeTransfer(
-                0,
-                1,
-                _dolomiteMargin.getMarketIdByTokenAddress(_borrowTokens[i]),
-                _borrowAmounts[i]
-            );
-        }
-
-        _dolomiteMargin.operate(accounts, actions);
-
-        _recordAccountIfNew(_user, _userAccountNumber);
-        totalSupply = totalSupply.add(_fAmountWei);
-
-        emit Staked(_user, _userAccountNumber, _fAmountWei);
-    }
-
     function notifyStake(
         address _user,
         uint _userAccountNumber,
@@ -249,46 +215,6 @@ contract LeveragedNoMintPotPool is
         emit Staked(_user, _userAccountNumber, _fAmountWei);
     }
 
-    function withdraw(
-        address _user,
-        uint _userAccountNumber,
-        uint _fAmountWei,
-        address[] memory _borrowTokens,
-        DolomiteMarginTypes.AssetAmount[] memory _borrowAmounts
-    )
-    public
-    nonReentrant
-    requireIsAuthorized(_user)
-    updateRewards(_user, _userAccountNumber) {
-        _validateAmounts(_borrowAmounts, _borrowTokens);
-
-        DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](2);
-        accounts[0] = DolomiteMarginAccount.Info(address(this), getAccountNumber(_user, _userAccountNumber));
-        accounts[1] = DolomiteMarginAccount.Info(_user, _userAccountNumber);
-
-        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](1 + _borrowTokens.length);
-        IDolomiteMargin _dolomiteMargin = dolomiteMargin;
-        actions[0] = _encodeTransfer(
-            0,
-            1,
-            marketId,
-            _createAmountForTransfer(_fAmountWei)
-        );
-        for (uint i = 0; i < _borrowTokens.length; i++) {
-            actions[1 + i] = _encodeTransfer(
-                0,
-                1,
-                _dolomiteMargin.getMarketIdByTokenAddress(_borrowTokens[i]),
-                _borrowAmounts[i]
-            );
-        }
-
-        _dolomiteMargin.operate(accounts, actions);
-        totalSupply = totalSupply.sub(_fAmountWei);
-
-        emit Withdrawn(_user, _userAccountNumber, _fAmountWei);
-    }
-
     function notifyWithdraw(
         address _user,
         uint _userAccountNumber,
@@ -300,26 +226,7 @@ contract LeveragedNoMintPotPool is
     updateRewards(_user, _userAccountNumber) {
         totalSupply = totalSupply.sub(_fAmountWei);
         emit Withdrawn(_user, _userAccountNumber, _fAmountWei);
-    }
 
-    function exit(
-        address _user,
-        uint _userAccountNumber,
-        address[] calldata _borrowTokens
-    )
-    external
-    requireIsAuthorized(_user) {
-        _recordSmartContract();
-        DolomiteMarginTypes.AssetAmount[] memory borrowAmounts = new DolomiteMarginTypes.AssetAmount[](_borrowTokens.length);
-        for (uint i = 0; i < _borrowTokens.length; i++) {
-            borrowAmounts[i] = DolomiteMarginTypes.AssetAmount({
-            sign : false,
-            denomination : DolomiteMarginTypes.AssetDenomination.Wei,
-            ref : DolomiteMarginTypes.AssetReference.Target,
-            value : 0
-            });
-        }
-        withdraw(_user, _userAccountNumber, balanceOf(_user, _userAccountNumber), _borrowTokens, borrowAmounts);
         bool shouldRewardPayout = !smartContractStakers[_user] || !IController(controller()).greyList(_user);
         uint rewardTokensLength = rewardTokens.length;
         for (uint i = 0; i < rewardTokensLength; i++) {

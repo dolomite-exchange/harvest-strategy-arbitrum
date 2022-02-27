@@ -25,17 +25,17 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./helpers/DolomiteMarginActionHelpers.sol";
-
 import "./interfaces/IDolomiteMargin.sol";
 
 import "./lib/DolomiteMarginAccount.sol";
+import "./lib/DolomiteMarginActionsHelper.sol";
 import "./lib/Require.sol";
 
 import "./AssetTransformerInternal.sol";
 import "./LeveragedNoMintPotPool.sol";
 
-contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActionHelpers {
+contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerInternal {
+    using DolomiteMarginActionsHelper for *;
     using SafeERC20 for IERC20;
     using SafeMath for uint;
     using Require for *;
@@ -48,8 +48,7 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
 
     constructor(
         address _dolomiteMargin,
-        address _transformerInternal,
-        address _reverterInternal
+        address _transformerInternal
     ) public {
         dolomiteMargin = IDolomiteMargin(_dolomiteMargin);
         transformerInternal = AssetTransformerInternal(_transformerInternal);
@@ -98,33 +97,67 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
         (
             address[] memory allTokens,
             uint[] memory allAmounts
-        ) = _getAllTokensAndAmounts(_depositTokens, _depositAmounts, _borrowTokens, _borrowAmounts);
+        ) = _getAllTokensAndAmountsFromDepositAndBorrowTokens(
+            _depositTokens,
+            _depositAmounts,
+            _borrowTokens,
+            _borrowAmounts
+        );
 
+        _transferTokensInAndApproveIfNecessary(_depositTokens, _depositAmounts);
+
+        DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
+        accounts[0] = DolomiteMarginAccount.Info({
+            owner: _stakingPool,
+            number: LeveragedNoMintPotPool(_stakingPool).getAccountNumber(msg.sender, 0)
+        });
+
+        IDolomiteMargin _dolomiteMargin = dolomiteMargin; // save gas costs
+
+        // actions.length == borrowToken withdrawals + DolomiteMargin::CALL + DolomiteMargin::DEPOSIT
+        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](_borrowTokens.length + 2);
+        for (uint i = 0; i < _borrowAmounts.length; i++) {
+            actions[i] = DolomiteMarginActionsHelper.createWithdrawal(
+                0,
+                _dolomiteMargin.getMarketIdByTokenAddress(_borrowTokens[i]),
+                address(transformerInternal),
+                _borrowAmounts[i]
+            );
+        }
+        // Call the transformer, notifying it of the tokens and amounts it will receive in exchange for fToken
+        // The call to transformer should send the fTokens to address(this) for the subsequent deposit
+        actions[_borrowAmounts.length] = DolomiteMarginActionsHelper.createCall(
+            0,
+            address(transformerInternal),
+            abi.encode(
+                TransformationType.TRANSFORM,
+                abi.encode(_transformer, fToken, allTokens, allAmounts, msg.sender, _extraData)
+            ) // msg.sender serves as a dust recipient here
+        );
+
+        // Deposit the converted fToken into DolomiteMargin from this contract
         uint fAmountWei = IDolomiteAssetTransformer(_transformer).getTransformationResult(allTokens, allAmounts);
+        actions[_borrowAmounts.length + 1] = DolomiteMarginActionsHelper.createDeposit(
+            0,
+            IDolomiteMargin(_dolomiteMargin).getMarketIdByTokenAddress(fToken),
+            address(this),
+            fAmountWei
+        );
 
-        uint fTokenMarketId = IDolomiteMargin(dolomiteMargin).getMarketIdByTokenAddress(fToken);
+        // approve the fToken to be transferred into DolomiteMargin from this contract
+        IERC20(fToken).approve(address(_dolomiteMargin), 0);
+        IERC20(fToken).approve(address(_dolomiteMargin), fAmountWei);
 
-        address accountOwner = _stakingPool;
-        uint accountNumber = LeveragedNoMintPotPool(_stakingPool).getAccountNumber(msg.sender, 0);
+        _dolomiteMargin.operate(accounts, actions);
 
-        // TODO ERC20::safeTransferFrom _depositTokens into here
-        // TODO approve _depositTokens, if necessary, on `transformerInternal`
-        // TODO withdraw (borrow) all _borrowAmounts to `transformerInternal`
-        // TODO DolomiteMargin::CALL, encoding `allTokens`, `allAmounts`, `_extraData`
-        // TODO ERC20::safeTransferFrom `_depositTokens` into `_transformer` via `callFunction.sender`
-        // TODO perform transformation logic from _depositTokens + _borrowTokens --> fToken in `_transformer`
-        // TODO deposit fToken into DolomiteMargin (_stakingPool, _stakingPool#getAccountNumber), using `fAmountWei`
-        // TODO stake upon completion by transferring + notifying `LeveragedNoMintPotPool`
-
+        // notify the staking pool of the received tokens that are now being staked
         LeveragedNoMintPotPool(_stakingPool).notifyStake(msg.sender, 0, fAmountWei);
     }
 
     /**
-     * @param _fAmountWei           The amount of `fToken` to be converted back to `_outputTokens`
+     * @param _fAmountWei           The amount of `fToken` to be converted back to `_outputTokens`. Setting to MAX_UINT
+     *                              withdraws the user's full balance
      * @param _outputTokens         The tokens to which `fToken` will be converted
-     * @param _outputAmountsWei     The amounts that should be outputted upon converting to `_outputTokens`, within
-     *                              `_slippageTolerance`.
-     * @param _slippageTolerance    The slippage tolerance for `_outputAmountsWei`
      * @param _withdrawalAmounts    The amounts to be withdrawn to the user from the DolomiteMargin protocol.
      * @param _transformer          The contract that will perform the transformation from `fToken` to `_outputTokens`.
      * @param _stakingPool          The pool from which the `fToken` will be withdrawn if the user is staking. Can be
@@ -135,8 +168,6 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
     function endFarming(
         uint _fAmountWei,
         address[] memory _outputTokens,
-        uint256[] memory _outputAmountsWei,
-        Decimal.D256 memory _slippageTolerance,
         DolomiteMarginTypes.AssetAmount[] memory _withdrawalAmounts,
         address _transformer,
         address _stakingPool,
@@ -144,11 +175,6 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
     )
     public
     nonReentrant {
-        Require.that(
-            _outputTokens.length == _outputAmountsWei.length,
-            FILE,
-            "invalid repayAmounts length"
-        );
         Require.that(
             _outputTokens.length == _withdrawalAmounts.length,
             FILE,
@@ -164,17 +190,104 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, DolomiteMarginActi
 
         LeveragedNoMintPotPool(_stakingPool).notifyWithdraw(msg.sender, 0, _fAmountWei);
 
-        address accountOwner = _stakingPool;
-        uint accountNumber = LeveragedNoMintPotPool(_stakingPool).getAccountNumber(msg.sender, 0);
+        IDolomiteMargin _dolomiteMargin = dolomiteMargin; // save gas costs
+        DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
+        {
+            accounts[0] = DolomiteMarginAccount.Info({
+            owner: _stakingPool,
+            number: LeveragedNoMintPotPool(_stakingPool).getAccountNumber(msg.sender, 0)
+            });
+        }
 
-        // TODO withdraw `_fAmountWei` from msg.sender or `_stakingPool` to `transformer`
-        // TODO DolomiteMargin::CALL, encode bytes as data using `_fAmountWei`, `_outputTokens`, and `_extraData`
-        // TODO check slippage tolerance of `#getTransformBackResult`
-        // TODO deposit `_outputTokens` from `transformerInternal` address using `#getTransformBackResult`
-        // TODO use `_withdrawalAmounts` to withdraw all `_outputTokens` back to `msg.sender`
+        // actions.length == WITHDRAW + CALL + DEPOSIT-outputTokens.length + WITHDRAW-outputTokens.length
+        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](
+            2 + (_outputTokens.length * 2)
+        );
+
+        // withdraw the fToken to the transformer
+        {
+            uint fMarketId = _dolomiteMargin.getMarketIdByTokenAddress(fToken);
+            _fAmountWei = _fAmountWei == MAX_UINT
+                ? _dolomiteMargin.getAccountWei(accounts[0], fMarketId).value
+                : _fAmountWei;
+            actions[0] = DolomiteMarginActionsHelper.createWithdrawal(
+                0,
+                fMarketId,
+                address(transformerInternal),
+                _fAmountWei
+            );
+        }
+
+        // Create the CALL to transformerInternal; the outputted tokens and their amounts should be sent to
+        // address(this) for the deposit to work
+        actions[1] = DolomiteMarginActionsHelper.createCall(
+            0,
+            address(transformerInternal),
+            abi.encode(
+                TransformationType.REVERT,
+                abi.encode(_transformer, fToken, _fAmountWei, _outputTokens, _extraData)
+            )
+        );
+
+        uint[] memory outputMarketIds = _mapTokensToMarketIds(_outputTokens, _dolomiteMargin);
+        uint[] memory outputAmounts = IDolomiteAssetTransformer(_transformer).getTransformBackResult(
+            _fAmountWei,
+            _outputTokens
+        );
+
+        // deposit the converted tokens back into DolomiteMargin
+        for (uint i = 0; i < _outputTokens.length; i++) {
+            // approve the output token to be transferred into DolomiteMargin from this contract
+            IERC20(_outputTokens[i]).approve(address(_dolomiteMargin), 0);
+            IERC20(_outputTokens[i]).approve(address(_dolomiteMargin), outputAmounts[i]);
+
+            actions[2 + i] = DolomiteMarginActionsHelper.createDeposit(
+                0,
+                outputMarketIds[i],
+                address(this),
+                outputAmounts[i]
+            );
+        }
+
+        // withdraw the amounts the user specified to msg.sender
+        for (uint i = 0; i < _outputTokens.length; i++) {
+            actions[2 + _outputTokens.length + i] = DolomiteMarginActionsHelper.createWithdrawalWithAssetAmount(
+                0,
+                outputMarketIds[i],
+                msg.sender,
+                _withdrawalAmounts[i]
+            );
+        }
+
+        _dolomiteMargin.operate(accounts, actions);
     }
 
-    function _getAllTokensAndAmounts(
+    function _mapTokensToMarketIds(
+        address[] memory _tokens,
+        IDolomiteMargin _dolomiteMargin
+    ) internal view returns (uint[] memory) {
+        uint[] memory outputMarketIds = new uint[](_tokens.length);
+        for (uint i = 0; i < _tokens.length; i++) {
+            outputMarketIds[i] = _dolomiteMargin.getMarketIdByTokenAddress(_tokens[i]);
+        }
+        return outputMarketIds;
+    }
+
+    function _transferTokensInAndApproveIfNecessary(
+        address[] memory _tokens,
+        uint[] memory _amounts
+    ) internal {
+        address _transformerInternal = address(transformerInternal);
+        for (uint i = 0; i < _tokens.length; i++) {
+            IERC20(_tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
+            if (IERC20(_tokens[i]).allowance(address(this), _transformerInternal) < _amounts[i]) {
+                IERC20(_tokens[i]).safeApprove(_transformerInternal, 0);
+                IERC20(_tokens[i]).safeApprove(_transformerInternal, _amounts[i]);
+            }
+        }
+    }
+
+    function _getAllTokensAndAmountsFromDepositAndBorrowTokens(
         address[] memory _depositTokens,
         uint[] memory _depositAmounts,
         address[] memory _borrowTokens,

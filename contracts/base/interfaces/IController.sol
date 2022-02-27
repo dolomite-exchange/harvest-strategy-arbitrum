@@ -27,6 +27,10 @@ interface IController {
 
     function governance() external view returns (address);
 
+    function hasVault(address _vault) external view returns (bool);
+
+    function hasStrategy(address _strategy) external view returns (bool);
+
     function addVaultAndStrategy(address _vault, address _strategy) external;
 
     function addVaultsAndStrategies(address[] calldata _vaults, address[] calldata _strategies) external;
