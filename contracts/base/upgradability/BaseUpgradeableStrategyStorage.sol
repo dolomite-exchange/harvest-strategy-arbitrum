@@ -8,7 +8,7 @@ import "@openzeppelin/upgrades/contracts/Initializable.sol";
 import "../inheritance/ControllableInit.sol";
 
 import "../interfaces/IController.sol";
-import "../interfaces/IFeeRewardForwarder.sol";
+import "../interfaces/IRewardForwarder.sol";
 import "../interfaces/IUpgradeSource.sol";
 
 
@@ -203,7 +203,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
             IERC20(rewardToken()).safeApprove(forwarder, 0);
             IERC20(rewardToken()).safeApprove(forwarder, _rewardBalance);
 
-            return IFeeRewardForwarder(forwarder).notifyFeeAndBuybackAmounts(
+            return IRewardForwarder(forwarder).notifyFeeAndBuybackAmounts(
                 rewardToken(),
                 feeAmount,
                 _buybackTokens,

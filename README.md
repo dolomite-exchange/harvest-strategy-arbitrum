@@ -25,7 +25,7 @@ All tests are located under the `test` folder.
      // external setup
      // use block 11807770
     ```
-1. In `hardhat.config.js`, under `networks/hardhat/forking`, edit `blockNumber` accordingly:
+1. In `hardhat.config.ts`, under `networks/hardhat/forking`, edit `blockNumber` accordingly:
     ```
     networks: {
       hardhat: {

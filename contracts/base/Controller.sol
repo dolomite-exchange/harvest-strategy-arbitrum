@@ -20,7 +20,9 @@ contract Controller is IController, Governable {
     using SafeMath for uint256;
 
     // external parties
-    address public feeRewardForwarder;
+    address public rewardForwarder;
+
+    address public dolomiteYieldFarmingRouter;
 
     uint256 public nextImplementationDelay;
 
@@ -105,13 +107,13 @@ contract Controller is IController, Governable {
 
     constructor(
         address _storage,
-        address _feeRewardForwarder,
+        address _rewardForwarder,
         uint _nextImplementationDelay
     )
     Governable(_storage)
     public {
-        require(_feeRewardForwarder != address(0), "feeRewardForwarder should not be empty");
-        feeRewardForwarder = _feeRewardForwarder;
+        require(_rewardForwarder != address(0), "feeRewardForwarder should not be empty");
+        rewardForwarder = _rewardForwarder;
         nextImplementationDelay = _nextImplementationDelay;
     }
 
@@ -164,7 +166,12 @@ contract Controller is IController, Governable {
 
     function setFeeRewardForwarder(address _feeRewardForwarder) public onlyGovernance {
         require(_feeRewardForwarder != address(0), "new reward forwarder should not be empty");
-        feeRewardForwarder = _feeRewardForwarder;
+        rewardForwarder = _feeRewardForwarder;
+    }
+
+    function setDolomiteYieldFarmingRouter(address _dolomiteYieldFarmingRouter) public onlyGovernance {
+        require(_dolomiteYieldFarmingRouter != address(0), "new reward forwarder should not be empty");
+        dolomiteYieldFarmingRouter = _dolomiteYieldFarmingRouter;
     }
 
     function addVaultAndStrategy(address _vault, address _strategy) external onlyGovernance {
@@ -259,9 +266,9 @@ contract Controller is IController, Governable {
     function notifyFee(address _underlying, uint256 _fee) external {
         if (_fee > 0) {
             IERC20(_underlying).safeTransferFrom(msg.sender, address(this), _fee);
-            IERC20(_underlying).safeApprove(feeRewardForwarder, 0);
-            IERC20(_underlying).safeApprove(feeRewardForwarder, _fee);
-            IFeeRewardForwarder(feeRewardForwarder).notifyFeeAndBuybackAmounts(
+            IERC20(_underlying).safeApprove(rewardForwarder, 0);
+            IERC20(_underlying).safeApprove(rewardForwarder, _fee);
+            IRewardForwarder(rewardForwarder).notifyFeeAndBuybackAmounts(
                 _underlying,
                 _fee,
                 new address[](0),
@@ -270,23 +277,28 @@ contract Controller is IController, Governable {
         }
     }
 
+    function setProfitSharingNumerator(uint _profitSharingNumerator) public onlyGovernance {
+        require(
+            _profitSharingNumerator < profitSharingDenominator,
+            "invalid profit sharing numerator"
+        );
+
+        nextProfitSharingNumerator = _profitSharingNumerator;
+        nextProfitSharingNumeratorTimestamp = block.timestamp + nextImplementationDelay;
+        emit QueueProfitSharingNumeratorChange(nextProfitSharingNumerator, nextProfitSharingNumeratorTimestamp);
+    }
+
     function confirmSetProfitSharingNumerator() public onlyGovernance {
         require(
             nextProfitSharingNumerator != 0
-                && nextProfitSharingNumeratorTimestamp != 0
-                && block.timestamp >= nextProfitSharingNumeratorTimestamp,
+            && nextProfitSharingNumeratorTimestamp != 0
+            && block.timestamp >= nextProfitSharingNumeratorTimestamp,
             "invalid timestamp or no new profit sharing number confirmed"
         );
         profitSharingNumerator = nextProfitSharingNumerator;
         nextProfitSharingNumerator = 0;
         nextProfitSharingNumeratorTimestamp = 0;
         emit ConfirmProfitSharingNumeratorChange(profitSharingNumerator);
-    }
-
-    function setProfitSharingNumerator(uint _profitSharingNumerator) public onlyGovernance {
-        nextProfitSharingNumerator = _profitSharingNumerator;
-        nextProfitSharingNumeratorTimestamp = block.timestamp + nextImplementationDelay;
-        emit QueueProfitSharingNumeratorChange(nextProfitSharingNumerator, nextProfitSharingNumeratorTimestamp);
     }
 
     function _addVaultAndStrategy(address _vault, address _strategy) internal {

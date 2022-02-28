@@ -11,7 +11,8 @@ import "./BaseUpgradeableStrategyStorage.sol";
 import "../interfaces/IStrategy.sol";
 
 
-contract BaseUpgradeableStrategy is IStrategy, Initializable, ControllableInit, BaseUpgradeableStrategyStorage, Constants {
+contract BaseUpgradeableStrategy
+    is IStrategy, Initializable, ControllableInit, BaseUpgradeableStrategyStorage, Constants {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./inheritance/Governable.sol";
-import "./interfaces/IFeeRewardForwarder.sol";
+import "./interfaces/IRewardForwarder.sol";
 import "./interfaces/IPotPool.sol";
 import "./interfaces/IUniversalLiquidator.sol";
 import "./interfaces/uniswap/IUniswapV2Router02.sol";
@@ -14,7 +14,7 @@ import "./inheritance/Controllable.sol";
 import "./inheritance/Constants.sol";
 
 
-contract FeeRewardForwarder is IFeeRewardForwarder, Controllable, Constants {
+contract RewardForwarder is IRewardForwarder, Controllable, Constants {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -64,7 +64,6 @@ contract FeeRewardForwarder is IFeeRewardForwarder, Controllable, Constants {
         IERC20(_token).safeTransferFrom(msg.sender, address(this), totalTransferAmount);
 
         address liquidator = IController(controller()).universalLiquidator();
-
         uint amountOutMin = 1;
 
         IUniversalLiquidator(liquidator).swapTokens(

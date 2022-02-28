@@ -80,11 +80,11 @@ contract LeveragedNoMintPotPool is
         _;
     }
 
-    modifier requireIsGlobalOperator() {
+    modifier requireIsYieldFarmingRouter() {
         Require.that(
-            dolomiteMargin.getIsGlobalOperator(msg.sender),
+            IController(controller()).dolomiteYieldFarmingRouter() == msg.sender,
             FILE,
-            "sender must be global operator",
+            "sender must be farming router",
             msg.sender
         );
         _;
@@ -206,7 +206,7 @@ contract LeveragedNoMintPotPool is
     )
     external
     nonReentrant
-    requireIsGlobalOperator
+    requireIsYieldFarmingRouter
     updateRewards(_user, _userAccountNumber) {
         // for use by contracts like DolomiteYieldFarmingMarginRouter call this function to save gas
         _recordAccountIfNew(_user, _userAccountNumber);
@@ -222,7 +222,7 @@ contract LeveragedNoMintPotPool is
     )
     public
     nonReentrant
-    requireIsGlobalOperator
+    requireIsYieldFarmingRouter
     updateRewards(_user, _userAccountNumber) {
         totalSupply = totalSupply.sub(_fAmountWei);
         emit Withdrawn(_user, _userAccountNumber, _fAmountWei);

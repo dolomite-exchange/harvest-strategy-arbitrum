@@ -5,6 +5,12 @@ contract Constants {
 
     address constant public CRV = 0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978;
 
+    address constant public CRV_TRI_CRYPTO = 0x8e0B8c8BB9db49a46697F3a5Bb8A308e744821D2;
+
+    address constant public CRV_TRI_CRYPTO_POOL = 0x960ea3e3C7FB317332d990873d354E18d7645590;
+
+    address constant public CRV_TRI_CRYPTO_GAUGE = 0x97E2768e8E73511cA874545DC5Ff8067eB19B787;
+
     address constant public DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
     /// @notice Used as governance
@@ -23,6 +29,8 @@ contract Constants {
     address constant public SUSHI_ROUTER = 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506;
 
     address constant public UNI = 0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0;
+
+    address constant public UNISWAP_V3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
     address constant public USDC = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
 

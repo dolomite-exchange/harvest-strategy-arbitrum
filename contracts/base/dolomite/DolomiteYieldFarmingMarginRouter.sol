@@ -112,13 +112,15 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
             number: LeveragedNoMintPotPool(_stakingPool).getAccountNumber(msg.sender, 0)
         });
 
-        IDolomiteMargin _dolomiteMargin = dolomiteMargin; // save gas costs
+        IDolomiteMargin _dolomiteMargin = dolomiteMargin; // save gas costs by reading into memory once
 
         // actions.length == borrowToken withdrawals + DolomiteMargin::CALL + DolomiteMargin::DEPOSIT
-        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](_borrowTokens.length + 2);
+        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](
+            _borrowTokens.length + 2
+        );
         for (uint i = 0; i < _borrowAmounts.length; i++) {
             actions[i] = DolomiteMarginActionsHelper.createWithdrawal(
-                0,
+                /* accountIndex = */ 0,
                 _dolomiteMargin.getMarketIdByTokenAddress(_borrowTokens[i]),
                 address(transformerInternal),
                 _borrowAmounts[i]
@@ -127,18 +129,19 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
         // Call the transformer, notifying it of the tokens and amounts it will receive in exchange for fToken
         // The call to transformer should send the fTokens to address(this) for the subsequent deposit
         actions[_borrowAmounts.length] = DolomiteMarginActionsHelper.createCall(
-            0,
+            /* accountIndex = */ 0,
             address(transformerInternal),
             abi.encode(
                 TransformationType.TRANSFORM,
+                // msg.sender serves as a dust recipient here
                 abi.encode(_transformer, fToken, allTokens, allAmounts, msg.sender, _extraData)
-            ) // msg.sender serves as a dust recipient here
+            )
         );
 
         // Deposit the converted fToken into DolomiteMargin from this contract
         uint fAmountWei = IDolomiteAssetTransformer(_transformer).getTransformationResult(allTokens, allAmounts);
         actions[_borrowAmounts.length + 1] = DolomiteMarginActionsHelper.createDeposit(
-            0,
+            /* accountIndex = */ 0,
             IDolomiteMargin(_dolomiteMargin).getMarketIdByTokenAddress(fToken),
             address(this),
             fAmountWei
@@ -211,7 +214,7 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
                 ? _dolomiteMargin.getAccountWei(accounts[0], fMarketId).value
                 : _fAmountWei;
             actions[0] = DolomiteMarginActionsHelper.createWithdrawal(
-                0,
+                /* accountIndex = */ 0,
                 fMarketId,
                 address(transformerInternal),
                 _fAmountWei
@@ -221,7 +224,7 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
         // Create the CALL to transformerInternal; the outputted tokens and their amounts should be sent to
         // address(this) for the deposit to work
         actions[1] = DolomiteMarginActionsHelper.createCall(
-            0,
+            /* accountIndex = */ 0,
             address(transformerInternal),
             abi.encode(
                 TransformationType.REVERT,
@@ -242,7 +245,7 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
             IERC20(_outputTokens[i]).approve(address(_dolomiteMargin), outputAmounts[i]);
 
             actions[2 + i] = DolomiteMarginActionsHelper.createDeposit(
-                0,
+                /* accountIndex = */ 0,
                 outputMarketIds[i],
                 address(this),
                 outputAmounts[i]
@@ -252,7 +255,7 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
         // withdraw the amounts the user specified to msg.sender
         for (uint i = 0; i < _outputTokens.length; i++) {
             actions[2 + _outputTokens.length + i] = DolomiteMarginActionsHelper.createWithdrawalWithAssetAmount(
-                0,
+                /* accountIndex = */ 0,
                 outputMarketIds[i],
                 msg.sender,
                 _withdrawalAmounts[i]
@@ -280,10 +283,8 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
         address _transformerInternal = address(transformerInternal);
         for (uint i = 0; i < _tokens.length; i++) {
             IERC20(_tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
-            if (IERC20(_tokens[i]).allowance(address(this), _transformerInternal) < _amounts[i]) {
-                IERC20(_tokens[i]).safeApprove(_transformerInternal, 0);
-                IERC20(_tokens[i]).safeApprove(_transformerInternal, _amounts[i]);
-            }
+            IERC20(_tokens[i]).safeApprove(_transformerInternal, 0);
+            IERC20(_tokens[i]).safeApprove(_transformerInternal, _amounts[i]);
         }
     }
 

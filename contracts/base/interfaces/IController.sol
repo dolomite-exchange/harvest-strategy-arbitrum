@@ -51,6 +51,10 @@ interface IController {
 
     function universalLiquidator() external view returns (address);
 
+    function dolomiteYieldFarmingRouter() external view returns (address);
+
+    function setDolomiteYieldFarmingRouter(address _value) external;
+
     function nextImplementationDelay() external view returns (uint256);
 
     function profitSharingNumerator() external view returns (uint256);

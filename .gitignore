@@ -13,3 +13,5 @@ yarn.lock
 .DS_Store
 
 .idea
+
+src/types

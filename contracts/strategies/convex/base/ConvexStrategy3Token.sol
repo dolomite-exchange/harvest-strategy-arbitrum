@@ -15,7 +15,6 @@ import "../../../base/interfaces/curve/ICurveDeposit_3token.sol";
 
 
 contract ConvexStrategy3Token is IStrategy, BaseUpgradeableStrategy {
-
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 

@@ -3,6 +3,13 @@ pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 
+/**
+ * @dev A contract that handles all liquidations from an `inputToken` to an `outputToken`. This contract simplifies
+ *      all swap logic so strategies can be focused on management of funds and forwarding gains to this contract
+ *      for the most efficient liquidation. If the liquidation path of an asset changes, governance needs only to
+ *      create a new instance of this contract or modify the liquidation path via `configureSwap`, and all callers of
+ *      the contract benefit from the change and uniformity.
+ */
 interface IUniversalLiquidator {
 
     // ==================== Events ====================
