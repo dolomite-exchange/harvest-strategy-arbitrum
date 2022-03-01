@@ -18,16 +18,16 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
 
     // ==================== Events ====================
 
-    event ProfitsNotCollected(bool sell, bool floor);
-    event ProfitLogInReward(uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
-    event ProfitAndBuybackLog(uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
+    event ProfitsNotCollected(address indexed rewardToken, bool sell, bool floor);
+    event ProfitLogInReward(address indexed rewardToken, uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
+    event ProfitAndBuybackLog(address indexed rewardToken, uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
 
     // ==================== Internal Constants ====================
 
     bytes32 internal constant _UNDERLYING_SLOT = 0xa1709211eeccf8f4ad5b6700d52a1a9525b5f5ae1e9e5f9e5a0c2fc23c86e530;
     bytes32 internal constant _VAULT_SLOT = 0xefd7c7d9ef1040fc87e7ad11fe15f86e1d11e1df03c6d7c87f7e1f4041f08d41;
 
-    bytes32 internal constant _REWARD_TOKEN_SLOT = 0xdae0aafd977983cb1e78d8f638900ff361dc3c48c43118ca1dd77d1af3f47bbf;
+    bytes32 internal constant _REWARD_TOKENS_SLOT = 0x45418d9b5c2787ae64acbffccad43f2b487c1a16e24385aa9d2b059f9d1d163c;
     bytes32 internal constant _REWARD_POOL_SLOT = 0x3d9bb16e77837e25cada0cf894835418b38e8e18fbec6cfd192eb344bebfa6b8;
     bytes32 internal constant _SELL_FLOOR_SLOT = 0xc403216a7704d160f6a3b5c3b149a1226a6080f0a5dd27b27d9ba9c022fa0afc;
     bytes32 internal constant _SELL_SLOT = 0x656de32df98753b07482576beb0d00a6b949ebf84c066c765f54f26725221bb6;
@@ -45,7 +45,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
     constructor() public {
         assert(_UNDERLYING_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.underlying")) - 1));
         assert(_VAULT_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.vault")) - 1));
-        assert(_REWARD_TOKEN_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.rewardToken")) - 1));
+        assert(_REWARD_TOKENS_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.rewardTokens")) - 1));
         assert(_REWARD_POOL_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.rewardPool")) - 1));
         assert(_SELL_FLOOR_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.sellFloor")) - 1));
         assert(_SELL_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.sell")) - 1));
@@ -79,12 +79,22 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         return getAddress(_REWARD_POOL_SLOT);
     }
 
-    function _setRewardToken(address _address) internal {
-        setAddress(_REWARD_TOKEN_SLOT, _address);
+    function _setRewardTokens(address[] memory _addresses) internal {
+        setAddressArray(_REWARD_TOKENS_SLOT, _addresses);
     }
 
-    function rewardToken() public view returns (address) {
-        return getAddress(_REWARD_TOKEN_SLOT);
+    function isRewardToken(address _token) public view returns (bool) {
+        address[] memory tokens = rewardTokens();
+        for (uint i = 0; i < tokens.length; i++) {
+            if (tokens[i] == _token) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function rewardTokens() public view returns (address[] memory) {
+        return getAddressArray(_REWARD_TOKENS_SLOT);
     }
 
     function _setVault(address _address) internal {
@@ -140,16 +150,19 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
 
     // ==================== Functionality ====================
 
-    function _notifyProfitInRewardToken(uint256 _rewardBalance) internal {
+    function _notifyProfitInRewardToken(
+        address _rewardToken,
+        uint256 _rewardBalance
+    ) internal {
         if (_rewardBalance > 0) {
             uint256 feeAmount = _rewardBalance.mul(profitSharingNumerator()).div(profitSharingDenominator());
-            emit ProfitLogInReward(_rewardBalance, feeAmount, block.timestamp);
-            IERC20(rewardToken()).safeApprove(controller(), 0);
-            IERC20(rewardToken()).safeApprove(controller(), feeAmount);
+            emit ProfitLogInReward(_rewardToken, _rewardBalance, feeAmount, block.timestamp);
+            IERC20(_rewardToken).safeApprove(controller(), 0);
+            IERC20(_rewardToken).safeApprove(controller(), feeAmount);
 
-            IController(controller()).notifyFee(rewardToken(), feeAmount);
+            IController(controller()).notifyFee(_rewardToken, feeAmount);
         } else {
-            emit ProfitLogInReward(0, 0, block.timestamp);
+            emit ProfitLogInReward(_rewardToken, 0, 0, block.timestamp);
         }
     }
 
@@ -157,6 +170,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
      * @return the amounts bought back of each buybackToken
      */
     function _notifyProfitAndBuybackInRewardToken(
+        address _rewardToken,
         uint256 _rewardBalance,
         address[] memory _buybackTokens
     ) internal returns (uint[] memory) {
@@ -165,16 +179,18 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
             weights[i] = 1;
         }
 
-        return _notifyProfitAndBuybackInRewardTokenWithWeights(_rewardBalance, _buybackTokens, weights);
+        return _notifyProfitAndBuybackInRewardTokenWithWeights(_rewardToken, _rewardBalance, _buybackTokens, weights);
     }
 
     /**
-     * @param _rewardBalance    The amount of rewardToken to be sold for FARM and _buybackTokens
+     * @param _rewardToken      The reward token to be sold for FARM and _buybackTokens
+     * @param _rewardBalance    The amount of `_rewardToken` to be sold for FARM and _buybackTokens
      * @param _buybackTokens    The tokens to be bought for reinvestment
      * @param _weights          the weights to be applied for each buybackToken. For example [100, 300] applies 25% to
      *                          buybackTokens[0] and 75% to buybackTokens[1]
      */
     function _notifyProfitAndBuybackInRewardTokenWithWeights(
+        address _rewardToken,
         uint256 _rewardBalance,
         address[] memory _buybackTokens,
         uint[] memory _weights
@@ -197,20 +213,20 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
                 buybackAmounts[i] = buybackAmount.mul(_weights[i]).div(totalWeight);
             }
 
-            emit ProfitAndBuybackLog(_rewardBalance, feeAmount, block.timestamp);
+            emit ProfitAndBuybackLog(_rewardToken, _rewardBalance, feeAmount, block.timestamp);
 
             address forwarder = IController(controller()).feeRewardForwarder();
-            IERC20(rewardToken()).safeApprove(forwarder, 0);
-            IERC20(rewardToken()).safeApprove(forwarder, _rewardBalance);
+            IERC20(_rewardToken).safeApprove(forwarder, 0);
+            IERC20(_rewardToken).safeApprove(forwarder, _rewardBalance);
 
             return IRewardForwarder(forwarder).notifyFeeAndBuybackAmounts(
-                rewardToken(),
+                _rewardToken,
                 feeAmount,
                 _buybackTokens,
                 buybackAmounts
             );
         } else {
-            emit ProfitAndBuybackLog(0, 0, block.timestamp);
+            emit ProfitAndBuybackLog(_rewardToken, 0, 0, block.timestamp);
             return new uint[](_buybackTokens.length);
         }
     }

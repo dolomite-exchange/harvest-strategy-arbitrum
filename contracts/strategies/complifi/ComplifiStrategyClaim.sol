@@ -39,7 +39,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
     address _underlying,
     address _vault,
     address _rewardPool,
-    address _rewardToken,
+    address[] memory _rewardTokens,
     uint256 _poolID,
     bool _isLpAsset,
     bool _useUni
@@ -49,7 +49,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
       _underlying,
       _vault,
       _rewardPool,
-      _rewardToken
+      _rewardTokens
     );
 
     address _lpt;
@@ -95,7 +95,7 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
   }
 
   function isUnsalvageableToken(address token) public view returns (bool) {
-    return (token == rewardToken() || token == underlying());
+    return (isRewardToken(token) || token == underlying());
   }
 
   function enterRewardPool() internal {
@@ -129,101 +129,104 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
 
   // We assume that all the tradings can be done on Uniswap
   function _liquidateReward() internal {
-    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    if (!sell() || rewardBalance < sellFloor()) {
-      // Profits can be disabled for possible simplified and rapid exit
-      emit ProfitsNotCollected(sell(), rewardBalance < sellFloor());
-      return;
-    }
+    address[] memory _rewardTokens = rewardTokens();
+    for (uint i = 0; i < _rewardTokens.length; i++) {
+      uint256 rewardBalance = IERC20(_rewardTokens[i]).balanceOf(address(this));
+      if (!sell() || rewardBalance < sellFloor()) {
+        // Profits can be disabled for possible simplified and rapid exit
+        emit ProfitsNotCollected(_rewardTokens[i], sell(), rewardBalance < sellFloor());
+        return;
+      }
 
-    _notifyProfitInRewardToken(rewardBalance);
-    uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
+      _notifyProfitInRewardToken(_rewardTokens[i], rewardBalance);
+      uint256 remainingRewardBalance = IERC20(_rewardTokens[i]).balanceOf(address(this));
 
-    if (remainingRewardBalance == 0) {
-      return;
-    }
+      if (remainingRewardBalance == 0) {
+        return;
+      }
 
-    address routerV2;
-    if(useUni()) {
-      routerV2 = uniswapRouterV2;
-    } else {
-      routerV2 = sushiswapRouterV2;
-    }
+      address routerV2;
+      if(useUni()) {
+        routerV2 = uniswapRouterV2;
+      } else {
+        routerV2 = sushiswapRouterV2;
+      }
 
-    // allow Uniswap to sell our reward
-    IERC20(rewardToken()).safeApprove(routerV2, 0);
-    IERC20(rewardToken()).safeApprove(routerV2, remainingRewardBalance);
+      // allow Uniswap to sell our reward
+      IERC20(_rewardTokens[i]).safeApprove(routerV2, 0);
+      IERC20(_rewardTokens[i]).safeApprove(routerV2, remainingRewardBalance);
 
-    // we can accept 1 as minimum because this is called only by a trusted role
-    uint256 amountOutMin = 1;
+      // we can accept 1 as minimum because this is called only by a trusted role
+      uint256 amountOutMin = 1;
 
-    if (isLpAsset()) {
-      address uniLPComponentToken0 = IUniswapV2Pair(underlying()).token0();
-      address uniLPComponentToken1 = IUniswapV2Pair(underlying()).token1();
+      if (isLpAsset()) {
+        address uniLPComponentToken0 = IUniswapV2Pair(underlying()).token0();
+        address uniLPComponentToken1 = IUniswapV2Pair(underlying()).token1();
 
-      uint256 toToken0 = remainingRewardBalance.div(2);
-      uint256 toToken1 = remainingRewardBalance.sub(toToken0);
+        uint256 toToken0 = remainingRewardBalance.div(2);
+        uint256 toToken1 = remainingRewardBalance.sub(toToken0);
 
-      uint256 token0Amount;
+        uint256 token0Amount;
 
-      if (uniswapRoutes[uniLPComponentToken0].length > 1) {
-        // if we need to liquidate the token0
-        IUniswapV2Router02(routerV2).swapExactTokensForTokens(
-          toToken0,
-          amountOutMin,
-          uniswapRoutes[uniLPComponentToken0],
+        if (uniswapRoutes[uniLPComponentToken0].length > 1) {
+          // if we need to liquidate the token0
+          IUniswapV2Router02(routerV2).swapExactTokensForTokens(
+            toToken0,
+            amountOutMin,
+            uniswapRoutes[uniLPComponentToken0],
+            address(this),
+            block.timestamp
+          );
+          token0Amount = IERC20(uniLPComponentToken0).balanceOf(address(this));
+        } else {
+          // otherwise we assme token0 is the reward token itself
+          token0Amount = toToken0;
+        }
+
+        uint256 token1Amount;
+
+        if (uniswapRoutes[uniLPComponentToken1].length > 1) {
+          // sell reward token to token1
+          IUniswapV2Router02(routerV2).swapExactTokensForTokens(
+            toToken1,
+            amountOutMin,
+            uniswapRoutes[uniLPComponentToken1],
+            address(this),
+            block.timestamp
+          );
+          token1Amount = IERC20(uniLPComponentToken1).balanceOf(address(this));
+        } else {
+          token1Amount = toToken1;
+        }
+
+        // provide token1 and token2 to SUSHI
+        IERC20(uniLPComponentToken0).safeApprove(routerV2, 0);
+        IERC20(uniLPComponentToken0).safeApprove(routerV2, token0Amount);
+
+        IERC20(uniLPComponentToken1).safeApprove(routerV2, 0);
+        IERC20(uniLPComponentToken1).safeApprove(routerV2, token1Amount);
+
+        // we provide liquidity to sushi
+        uint256 liquidity;
+        (,,liquidity) = IUniswapV2Router02(routerV2).addLiquidity(
+          uniLPComponentToken0,
+          uniLPComponentToken1,
+          token0Amount,
+          token1Amount,
+          1,  // we are willing to take whatever the pair gives us
+          1,  // we are willing to take whatever the pair gives us
           address(this),
           block.timestamp
         );
-        token0Amount = IERC20(uniLPComponentToken0).balanceOf(address(this));
       } else {
-        // otherwise we assme token0 is the reward token itself
-        token0Amount = toToken0;
-      }
-
-      uint256 token1Amount;
-
-      if (uniswapRoutes[uniLPComponentToken1].length > 1) {
-        // sell reward token to token1
         IUniswapV2Router02(routerV2).swapExactTokensForTokens(
-          toToken1,
+          remainingRewardBalance,
           amountOutMin,
-          uniswapRoutes[uniLPComponentToken1],
+          uniswapRoutes[underlying()],
           address(this),
           block.timestamp
         );
-        token1Amount = IERC20(uniLPComponentToken1).balanceOf(address(this));
-      } else {
-        token1Amount = toToken1;
       }
-
-      // provide token1 and token2 to SUSHI
-      IERC20(uniLPComponentToken0).safeApprove(routerV2, 0);
-      IERC20(uniLPComponentToken0).safeApprove(routerV2, token0Amount);
-
-      IERC20(uniLPComponentToken1).safeApprove(routerV2, 0);
-      IERC20(uniLPComponentToken1).safeApprove(routerV2, token1Amount);
-
-      // we provide liquidity to sushi
-      uint256 liquidity;
-      (,,liquidity) = IUniswapV2Router02(routerV2).addLiquidity(
-        uniLPComponentToken0,
-        uniLPComponentToken1,
-        token0Amount,
-        token1Amount,
-        1,  // we are willing to take whatever the pair gives us
-        1,  // we are willing to take whatever the pair gives us
-        address(this),
-        block.timestamp
-      );
-    } else {
-      IUniswapV2Router02(routerV2).swapExactTokensForTokens(
-        remainingRewardBalance,
-        amountOutMin,
-        uniswapRoutes[underlying()],
-        address(this),
-        block.timestamp
-      );
     }
   }
 
@@ -300,10 +303,13 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
 
   function claimRewards() external onlyGovernance {
     ILiquidityMining(rewardPool()).claim();
-    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    _notifyProfitInRewardToken(rewardBalance);
-    uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    IERC20(rewardToken()).safeTransfer(msg.sender, remainingRewardBalance);
+    address[] memory _rewardTokens = rewardTokens();
+    for (uint i = 0; i < _rewardTokens.length; i++) {
+      uint256 rewardBalance = IERC20(_rewardTokens[i]).balanceOf(address(this));
+      _notifyProfitInRewardToken(_rewardTokens[i], rewardBalance);
+      uint256 remainingRewardBalance = IERC20(_rewardTokens[i]).balanceOf(address(this));
+      IERC20(_rewardTokens[i]).safeTransfer(msg.sender, remainingRewardBalance);
+    }
   }
 
   /**

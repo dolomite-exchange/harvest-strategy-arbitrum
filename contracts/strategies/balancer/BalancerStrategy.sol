@@ -39,7 +39,7 @@ contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
         address _underlying,
         address _vault,
         address _rewardPool,
-        address _rewardToken,
+        address [] memory _rewardTokens,
         address _bVault,
         bytes32 _poolID,
         uint[] memory _weights
@@ -49,7 +49,7 @@ contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
             _underlying,
             _vault,
             _rewardPool,
-            _rewardToken
+            _rewardTokens
         );
 
         (address _lpt,) = IBVault(_bVault).getPool(_poolID);
@@ -75,69 +75,71 @@ contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
     }
 
     function isUnsalvageableToken(address token) public view returns (bool) {
-        return (token == rewardToken() || token == underlying());
+        return (isRewardToken(token) || token == underlying());
     }
 
     // We assume that all the tradings can be done on Uniswap
-    function _liquidateReward(uint256 rewardAmount) internal {
-        if (!sell() || rewardAmount < sellFloor()) {
-            // Profits can be disabled for possible simplified and rapid exit
-            emit ProfitsNotCollected(sell(), rewardAmount < sellFloor());
-            return;
+    function _liquidateReward() internal {
+        address[] memory _rewardTokens = rewardTokens();
+        for (uint i = 0; i < _rewardTokens.length; i++) {
+            uint256 rewardBalance = IERC20(_rewardTokens[i]).balanceOf(address(this));
+            if (!sell() || rewardBalance < sellFloor()) {
+                // Profits can be disabled for possible simplified and rapid exit
+                emit ProfitsNotCollected(_rewardTokens[i], sell(), rewardBalance < sellFloor());
+                return;
+            }
+
+            (IERC20[] memory erc20Tokens,,) = IBVault(bVault()).getPoolTokens(poolId());
+
+            address[] memory tokens = new address[](erc20Tokens.length);
+            for (uint j = 0; j < tokens.length; j++) {
+                tokens[j] = address(erc20Tokens[j]);
+            }
+
+            uint[] memory buybackAmounts = _notifyProfitAndBuybackInRewardTokenWithWeights(
+                _rewardTokens[i],
+                rewardBalance,
+                tokens,
+                weights()
+            );
+
+            // provide token1 and token2 to Balancer
+            for (uint j = 0; j < tokens.length; j++) {
+                IERC20(address(tokens[j])).safeApprove(bVault(), 0);
+                IERC20(address(tokens[j])).safeApprove(bVault(), buybackAmounts[j]);
+            }
+
+            IAsset[] memory assets = new IAsset[](tokens.length);
+            uint256[] memory amountsIn = new uint256[](tokens.length);
+            for (uint j = 0; j < tokens.length; j++) {
+                assets[j] = IAsset(tokens[j]);
+                amountsIn[j] = buybackAmounts[j];
+            }
+
+            IBVault.JoinKind joinKind = IBVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT;
+            uint256 minAmountOut = 1;
+            bytes memory userData = abi.encode(joinKind, amountsIn, minAmountOut);
+
+            IBVault.JoinPoolRequest memory request;
+            request.assets = assets;
+            request.maxAmountsIn = amountsIn;
+            request.userData = userData;
+            request.fromInternalBalance = false;
+
+            IBVault(bVault()).joinPool(
+                poolId(),
+                address(this),
+                address(this),
+                request
+            );
         }
-
-        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-
-        (IERC20[] memory erc20Tokens,,) = IBVault(bVault()).getPoolTokens(poolId());
-
-        address[] memory tokens = new address[](erc20Tokens.length);
-        for (uint i = 0; i < tokens.length; i++) {
-            tokens[i] = address(erc20Tokens[i]);
-        }
-
-        uint[] memory buybackAmounts = _notifyProfitAndBuybackInRewardTokenWithWeights(
-            rewardBalance,
-            tokens,
-            weights()
-        );
-
-        // provide token1 and token2 to Balancer
-        for (uint i = 0; i < tokens.length; i++) {
-            IERC20(address(tokens[i])).safeApprove(bVault(), 0);
-            IERC20(address(tokens[i])).safeApprove(bVault(), buybackAmounts[i]);
-        }
-
-        IAsset[] memory assets = new IAsset[](tokens.length);
-        uint256[] memory amountsIn = new uint256[](tokens.length);
-        for (uint i = 0; i < tokens.length; i++) {
-            assets[i] = IAsset(tokens[i]);
-            amountsIn[i] = buybackAmounts[i];
-        }
-
-        IBVault.JoinKind joinKind = IBVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT;
-        uint256 minAmountOut = 1;
-        bytes memory userData = abi.encode(joinKind, amountsIn, minAmountOut);
-
-        IBVault.JoinPoolRequest memory request;
-        request.assets = assets;
-        request.maxAmountsIn = amountsIn;
-        request.userData = userData;
-        request.fromInternalBalance = false;
-
-        IBVault(bVault()).joinPool(
-            poolId(),
-            address(this),
-            address(this),
-            request
-        );
     }
 
     /**
      * Withdraws all the asset to the vault
      */
     function withdrawAllToVault() public restricted {
-        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-        _liquidateReward(rewardBalance);
+        _liquidateReward();
         IERC20(underlying()).safeTransfer(vault(), IERC20(underlying()).balanceOf(address(this)));
     }
 
@@ -172,13 +174,14 @@ contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
      *   when the investing is being paused by governance.
      */
     function doHardWork() external onlyNotPausedInvesting restricted {
-        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-        _liquidateReward(rewardBalance);
+        address[] memory _rewardTokens = rewardTokens();
+        for (uint i = 0; i < _rewardTokens.length; i++) {
+            _liquidateReward();
+        }
     }
 
     function liquidateAll() external onlyGovernance {
-        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-        _liquidateReward(rewardBalance);
+        _liquidateReward();
     }
 
     /**

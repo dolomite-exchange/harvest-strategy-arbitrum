@@ -16,12 +16,6 @@ contract BaseUpgradeableStrategy
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    // ==================== Events ====================
-
-    event ProfitsNotCollected(bool sell, bool floor);
-    event ProfitLogInReward(uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
-    event ProfitAndBuybackLog(uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
-
     // ==================== Modifiers ====================
 
     modifier restricted() {
@@ -48,13 +42,13 @@ contract BaseUpgradeableStrategy
         address _underlying,
         address _vault,
         address _rewardPool,
-        address _rewardToken
+        address[] memory _rewardTokens
     ) public initializer {
         ControllableInit.initialize(_storage);
         _setUnderlying(_underlying);
         _setVault(_vault);
         _setRewardPool(_rewardPool);
-        _setRewardToken(_rewardToken);
+        _setRewardTokens(_rewardTokens);
         _setSell(true);
         _setSellFloor(0);
         _setPausedInvesting(false);

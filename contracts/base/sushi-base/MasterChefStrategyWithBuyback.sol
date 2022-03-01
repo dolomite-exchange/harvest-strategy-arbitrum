@@ -29,7 +29,7 @@ contract MasterChefStrategyWithBuyback is IStrategy, BaseUpgradeableStrategy {
         address _underlying,
         address _vault,
         address _rewardPool,
-        address _rewardToken,
+        address[] memory _rewardTokens,
         uint256 _poolID
     ) public initializer {
         BaseUpgradeableStrategy.initialize(
@@ -37,7 +37,7 @@ contract MasterChefStrategyWithBuyback is IStrategy, BaseUpgradeableStrategy {
             _underlying,
             _vault,
             _rewardPool,
-            _rewardToken
+            _rewardTokens
         );
 
         address _lpt;
@@ -69,7 +69,7 @@ contract MasterChefStrategyWithBuyback is IStrategy, BaseUpgradeableStrategy {
     }
 
     function isUnsalvageableToken(address token) public view returns (bool) {
-        return (token == rewardToken() || token == underlying());
+        return (isRewardToken(token) || token == underlying());
     }
 
     function enterRewardPool() internal {
@@ -93,33 +93,37 @@ contract MasterChefStrategyWithBuyback is IStrategy, BaseUpgradeableStrategy {
 
     // We assume that all the tradings can be done on Uniswap
     function _liquidateReward() internal {
-        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-        if (rewardBalance < sellFloor()) {
-            // Profits can be disabled for possible simplified and rapid exit
-            emit ProfitsNotCollected(sell(), rewardBalance < sellFloor());
-            return;
+        address[] memory _rewardTokens = rewardTokens();
+        for (uint i = 0; i < _rewardTokens.length; i++) {
+            uint256 rewardBalance = IERC20(_rewardTokens[i]).balanceOf(address(this));
+            if (rewardBalance < sellFloor()) {
+                // Profits can be disabled for possible simplified and rapid exit
+                emit ProfitsNotCollected(_rewardTokens[i], sell(), rewardBalance < sellFloor());
+                return;
+            }
+
+            address[] memory outputTokens = new address[](2);
+            outputTokens[0] = IUniswapV2Pair(underlying()).token0();
+            outputTokens[1] = IUniswapV2Pair(underlying()).token1();
+
+            uint[] memory amounts = _notifyProfitAndBuybackInRewardToken(
+                _rewardTokens[i],
+                rewardBalance,
+                outputTokens
+            );
+
+            // the returned added liquidity is invested via the call to `investAllUnderlying`
+            IUniswapV2Router02(SUSHI_ROUTER).addLiquidity(
+                outputTokens[0],
+                outputTokens[1],
+                amounts[0],
+                amounts[1],
+                1, // we are willing to take whatever the pair gives us
+                1, // we are willing to take whatever the pair gives us
+                address(this),
+                block.timestamp
+            );
         }
-
-        address[] memory outputTokens = new address[](2);
-        outputTokens[0] = IUniswapV2Pair(underlying()).token0();
-        outputTokens[1] = IUniswapV2Pair(underlying()).token1();
-
-        uint[] memory amounts = _notifyProfitAndBuybackInRewardToken(
-            rewardBalance,
-            outputTokens
-        );
-
-        // the returned added liquidity is invested via the call to `investAllUnderlying`
-        IUniswapV2Router02(SUSHI_ROUTER).addLiquidity(
-            outputTokens[0],
-            outputTokens[1],
-            amounts[0],
-            amounts[1],
-            1, // we are willing to take whatever the pair gives us
-            1, // we are willing to take whatever the pair gives us
-            address(this),
-            block.timestamp
-        );
     }
 
     /**

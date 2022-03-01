@@ -52,7 +52,7 @@ contract ComplifiDerivStrategy is IStrategy, BaseUpgradeableStrategy {
     address _underlying,
     address _vault,
     address _rewardPool,
-    address _rewardToken,
+    address[] memory _rewardTokens,
     address _usdcVault,
     address _proxy
   ) public initializer {
@@ -62,7 +62,7 @@ contract ComplifiDerivStrategy is IStrategy, BaseUpgradeableStrategy {
       _underlying,
       _vault,
       _rewardPool,
-      _rewardToken
+      _rewardTokens
     );
 
     address _lpt;
@@ -119,7 +119,7 @@ contract ComplifiDerivStrategy is IStrategy, BaseUpgradeableStrategy {
   }
 
   function isUnsalvageableToken(address token) public view returns (bool) {
-    return (token == rewardToken() || token == underlying());
+    return (isRewardToken(token) || token == underlying());
   }
 
   function enterRewardPool(address _token) internal {
@@ -147,42 +147,39 @@ contract ComplifiDerivStrategy is IStrategy, BaseUpgradeableStrategy {
     _setPausedInvesting(false);
   }
 
-  function setLiquidationPath(address [] memory _route) public onlyGovernance {
-    require(_route[0] == rewardToken(), "Path should start with reward");
-    require(_route[_route.length-1] == usdc, "Path should end with USDC");
-    liquidationPath = _route;
-  }
-
   // We assume that all the tradings can be done on Uniswap
   function _liquidateReward() internal {
-    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    if (!sell() || rewardBalance < sellFloor()) {
-      // Profits can be disabled for possible simplified and rapid exit
-      emit ProfitsNotCollected(sell(), rewardBalance < sellFloor());
-      return;
+    address[] memory _rewardTokens = rewardTokens();
+    for (uint i = 0; i < _rewardTokens.length; i++) {
+      uint256 rewardBalance = IERC20(_rewardTokens[i]).balanceOf(address(this));
+      if (!sell() || rewardBalance < sellFloor()) {
+        // Profits can be disabled for possible simplified and rapid exit
+        emit ProfitsNotCollected(_rewardTokens[i], sell(), rewardBalance < sellFloor());
+        return;
+      }
+
+      _notifyProfitInRewardToken(_rewardTokens[i], rewardBalance);
+      uint256 remainingRewardBalance = IERC20(_rewardTokens[i]).balanceOf(address(this));
+
+      if (remainingRewardBalance == 0) {
+        return;
+      }
+
+      // allow Uniswap to sell our reward
+      IERC20(_rewardTokens[i]).safeApprove(uniswapRouterV2, 0);
+      IERC20(_rewardTokens[i]).safeApprove(uniswapRouterV2, remainingRewardBalance);
+
+      // we can accept 1 as minimum because this is called only by a trusted role
+      uint256 amountOutMin = 1;
+
+      IUniswapV2Router02(uniswapRouterV2).swapExactTokensForTokens(
+        remainingRewardBalance,
+        amountOutMin,
+        liquidationPath,
+        address(this),
+        block.timestamp
+      );
     }
-
-    _notifyProfitInRewardToken(rewardBalance);
-    uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-
-    if (remainingRewardBalance == 0) {
-      return;
-    }
-
-    // allow Uniswap to sell our reward
-    IERC20(rewardToken()).safeApprove(uniswapRouterV2, 0);
-    IERC20(rewardToken()).safeApprove(uniswapRouterV2, remainingRewardBalance);
-
-    // we can accept 1 as minimum because this is called only by a trusted role
-    uint256 amountOutMin = 1;
-
-    IUniswapV2Router02(uniswapRouterV2).swapExactTokensForTokens(
-      remainingRewardBalance,
-      amountOutMin,
-      liquidationPath,
-      address(this),
-      block.timestamp
-    );
   }
 
   function _usdcToUnderlying() internal {

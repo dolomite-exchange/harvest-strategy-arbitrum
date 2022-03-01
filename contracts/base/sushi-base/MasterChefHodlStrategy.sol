@@ -43,7 +43,7 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
         address _underlying,
         address _vault,
         address _rewardPool,
-        address _rewardToken,
+        address[] memory _rewardTokens,
         uint256 _poolId,
         address _hodlVault,
         address _potPool
@@ -55,7 +55,7 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
             _underlying,
             _vault,
             _rewardPool,
-            _rewardToken
+            _rewardTokens
         );
 
         address _lpt;
@@ -90,7 +90,7 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
     }
 
     function isUnsalvageableToken(address token) public view returns (bool) {
-        return (token == rewardToken() || token == underlying());
+        return (isRewardToken(token) || token == underlying());
     }
 
     function enterRewardPool() internal {
@@ -100,44 +100,45 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
         IMasterChef(rewardPool()).deposit(poolId(), entireBalance);
     }
 
-    /*
-    *   In case there are some issues discovered about the pool or underlying asset
-    *   Governance can exit the pool properly
-    *   The function is only used for emergency to exit the pool
-    */
+    /**
+     * In case there are some issues discovered about the pool or underlying asset. Governance can exit the pool
+     * properly The function is only used for emergency to exit the pool.
+     */
     function emergencyExit() public onlyGovernance {
         emergencyExitRewardPool();
         _setPausedInvesting(true);
     }
 
-    /*
-    *   Resumes the ability to invest into the underlying reward pools
-    */
-
+    /**
+     * Resumes the ability to invest into the underlying reward pools
+     */
     function continueInvesting() public onlyGovernance {
         _setPausedInvesting(false);
     }
 
     // We Hodl all the rewards
     function _hodlAndNotify() internal {
-        uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-        if (rewardBalance > 0) {
-            uint256 fee = 0;
-            uint256 remainingReward = rewardBalance;
-            if (feeHolder() != address(0)) {
-                fee = rewardBalance.mul(feeRatio()).div(feeBase);
-                remainingReward = rewardBalance.sub(fee);
-                if (fee > 0) {
-                    IERC20(rewardToken()).safeTransfer(feeHolder(), fee);
+        address[] memory rewardTokens = rewardTokens();
+        for (uint i = 0; i < rewardTokens.length; i++) {
+            uint256 rewardBalance = IERC20(rewardTokens[i]).balanceOf(address(this));
+            if (rewardBalance > 0) {
+                uint256 fee = 0;
+                uint256 remainingReward = rewardBalance;
+                if (feeHolder() != address(0)) {
+                    fee = rewardBalance.mul(feeRatio()).div(feeBase);
+                    remainingReward = rewardBalance.sub(fee);
+                    if (fee > 0) {
+                        IERC20(rewardTokens[i]).safeTransfer(feeHolder(), fee);
+                    }
                 }
-            }
 
-            IERC20(rewardToken()).safeApprove(hodlVault(), 0);
-            IERC20(rewardToken()).safeApprove(hodlVault(), remainingReward);
-            IVault(hodlVault()).deposit(remainingReward);
-            uint256 fRewardBalance = IERC20(hodlVault()).balanceOf(address(this));
-            IERC20(hodlVault()).safeTransfer(potPool(), fRewardBalance);
-            PotPool(potPool()).notifyTargetRewardAmount(hodlVault(), fRewardBalance);
+                IERC20(rewardTokens[i]).safeApprove(hodlVault(), 0);
+                IERC20(rewardTokens[i]).safeApprove(hodlVault(), remainingReward);
+                IVault(hodlVault()).deposit(remainingReward);
+                uint256 fRewardBalance = IERC20(hodlVault()).balanceOf(address(this));
+                IERC20(hodlVault()).safeTransfer(potPool(), fRewardBalance);
+                PotPool(potPool()).notifyTargetRewardAmount(hodlVault(), fRewardBalance);
+            }
         }
     }
 

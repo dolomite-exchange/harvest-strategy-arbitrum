@@ -10,9 +10,10 @@ import "./interfaces/IStrategy.sol";
 import "./interfaces/IVault.sol";
 import "./PotPool.sol";
 
-/*
-  Simply invests underlying into another vault (the investment vault)
-*/
+
+/**
+ * @dev Simply invests underlying into another vault (the investment vault)
+ */
 contract InvestmentVaultStrategy is IStrategy, Controllable {
 
   using SafeERC20 for IERC20;
