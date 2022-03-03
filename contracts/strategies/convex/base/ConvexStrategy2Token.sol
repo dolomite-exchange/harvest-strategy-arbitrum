@@ -24,14 +24,14 @@ contract ConvexStrategy2Token is IStrategy, BaseUpgradeableStrategy {
     address public constant weth = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     // additional storage slots (on top of BaseUpgradeableStrategy ones) are defined here
-    bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
+    bytes32 internal constant _POOL_ID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
     bytes32 internal constant _DEPOSIT_TOKEN_SLOT = 0x219270253dbc530471c88a9e7c321b36afda219583431e7b6c386d2d46e70c86;
     bytes32 internal constant _DEPOSIT_RECEIPT_SLOT = 0x414478d5ad7f54ead8a3dd018bba4f8d686ba5ab5975cd376e0c98f98fb713c5;
     bytes32 internal constant _DEPOSIT_ARRAY_POSITION_SLOT = 0xb7c50ef998211fff3420379d0bf5b8dfb0cee909d1b7d9e517f311c104675b09;
     bytes32 internal constant _CURVE_DEPOSIT_SLOT = 0xb306bb7adebd5a22f5e4cdf1efa00bc5f62d4f5554ef9d62c1b16327cd3ab5f9;
 
     constructor() public BaseUpgradeableStrategy() {
-        assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
+        assert(_POOL_ID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
         assert(_DEPOSIT_TOKEN_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositToken")) - 1));
         assert(_DEPOSIT_RECEIPT_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositReceipt")) - 1));
         assert(_DEPOSIT_ARRAY_POSITION_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositArrayPosition")) - 1));
@@ -245,13 +245,12 @@ contract ConvexStrategy2Token is IStrategy, BaseUpgradeableStrategy {
         _setSellFloor(floor);
     }
 
-    // masterchef rewards pool ID
     function _setPoolId(uint256 _value) internal {
-        setUint256(_POOLID_SLOT, _value);
+        setUint256(_POOL_ID_SLOT, _value);
     }
 
     function poolId() public view returns (uint256) {
-        return getUint256(_POOLID_SLOT);
+        return getUint256(_POOL_ID_SLOT);
     }
 
     function _setDepositToken(address _address) internal {
