@@ -17,7 +17,8 @@ import "./upgradability/BaseUpgradeableStrategyStorage.sol";
 
 /**
  * @dev This contract can be redeployed many times, as new routers are added into `Constants.sol` since fields are added
- *      via slots.
+ *      via slots. This contract is responsible for liquidating tokens and is intended to be called by the
+ *      `RewardForwarder` when `doHardWork` is initiated
  */
 contract UniversalLiquidator is Initializable, BaseUpgradeableStrategyStorage, Constants, IUniversalLiquidator {
     using SafeMath for uint256;

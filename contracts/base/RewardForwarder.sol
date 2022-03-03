@@ -14,6 +14,10 @@ import "./inheritance/Controllable.sol";
 import "./inheritance/Constants.sol";
 
 
+/**
+ * @dev This contract receives rewards from strategies and is responsible for routing the reward's liquidation into
+ *      specific buyback tokens and profit tokens for the DAO.
+ */
 contract RewardForwarder is IRewardForwarder, Controllable, Constants {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -66,6 +70,8 @@ contract RewardForwarder is IRewardForwarder, Controllable, Constants {
         address liquidator = IController(controller()).universalLiquidator();
         uint amountOutMin = 1;
 
+        // TODO if performance fees are added, get the strategy's reward recipient and send the appropriate amount to
+        // TODO there and send the remaining amount to the profitSharingPool
         IUniversalLiquidator(liquidator).swapTokens(
             _feeAmount,
             amountOutMin,

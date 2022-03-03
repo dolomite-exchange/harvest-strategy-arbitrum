@@ -11,7 +11,7 @@ import "./interfaces/IController.sol";
 import "./interfaces/IStrategy.sol";
 import "./interfaces/IVault.sol";
 
-import "./FeeRewardForwarder.sol";
+import "./RewardForwarder.sol";
 import "./HardRewards.sol";
 
 contract Controller is IController, Governable {
