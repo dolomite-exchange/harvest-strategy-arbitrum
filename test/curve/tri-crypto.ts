@@ -17,8 +17,12 @@ const IGaugeArtifact = artifacts.require('IGauge');
 const StrategyArtifact = artifacts.require('TriCryptoStrategyMainnet');
 
 
-// This test was developed at blockNumber 12690800
+// TODO deploy storage, controller, etc. if preset address is 0x00...00 - this will allow me to develop without wasting
+//  ETH deploying them. Eventually, when we're live, I can replace them w/ their real addresses
 
+/**
+ * This test was developed at blockNumber XYZ
+ */
 describe('Mainnet TriCrypto', function () {
   let accounts: string[];
 
