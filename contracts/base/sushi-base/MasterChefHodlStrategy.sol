@@ -44,6 +44,7 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
         address _vault,
         address _rewardPool,
         address[] memory _rewardTokens,
+        address _strategist,
         uint256 _poolId,
         address _hodlVault,
         address _potPool
@@ -55,7 +56,8 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
             _underlying,
             _vault,
             _rewardPool,
-            _rewardTokens
+            _rewardTokens,
+            _strategist
         );
 
         address _lpt;

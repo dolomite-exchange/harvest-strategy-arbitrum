@@ -50,10 +50,10 @@ interface IUniversalLiquidator {
     function getSwapRouter(address inputToken, address outputToken) external view returns (address);
 
     function swapTokens(
-        uint256 _amountIn,
-        uint256 _amountOutMin,
         address _tokenIn,
         address _tokenOut,
+        uint256 _amountIn,
+        uint256 _amountOutMin,
         address _recipient
     ) external returns (uint _amountOut);
 }

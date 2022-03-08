@@ -12,7 +12,7 @@ import "./interfaces/IStrategy.sol";
 import "./interfaces/IVault.sol";
 
 import "./RewardForwarder.sol";
-import "./HardRewards.sol";
+
 
 contract Controller is IController, Governable {
     using SafeERC20 for IERC20;
@@ -26,12 +26,21 @@ contract Controller is IController, Governable {
 
     uint256 public nextImplementationDelay;
 
-    uint256 public profitSharingNumerator = 2500;
-
+    uint256 public profitSharingNumerator = 1500;
     uint256 public nextProfitSharingNumerator = 0;
     uint256 public nextProfitSharingNumeratorTimestamp = 0;
 
-    uint256 public profitSharingDenominator = 10000;
+    uint256 public strategistFeeNumerator = 500;
+    uint256 public nextStrategistFeeNumerator = 0;
+    uint256 public nextStrategistFeeNumeratorTimestamp = 0;
+
+    uint256 public platformFeeNumerator = 500;
+    uint256 public nextPlatformFeeNumerator = 0;
+    uint256 public nextPlatformFeeNumeratorTimestamp = 0;
+
+    uint256 public constant PROFIT_SHARING_DENOMINATOR = 10000;
+    uint256 public constant STRATEGIST_FEE_DENOMINATOR = 10000;
+    uint256 public constant PLATFORM_FEE_DENOMINATOR = 10000;
 
     // [Grey list]
     // An EOA can safely interact with the system no matter what.
@@ -53,10 +62,8 @@ contract Controller is IController, Governable {
     // All strategies that we have
     mapping (address => bool) public strategies;
 
+    // All eligible hardWorkers that we have
     mapping (address => bool) public hardWorkers;
-
-    // Rewards for hard work. Nullable.
-    HardRewards public hardRewards;
 
     event SharePriceChangeLog(
         address indexed vault,
@@ -68,6 +75,12 @@ contract Controller is IController, Governable {
 
     event QueueProfitSharingNumeratorChange(uint profitSharingNumerator, uint validAtTimestamp);
     event ConfirmProfitSharingNumeratorChange(uint profitSharingNumerator);
+
+    event QueueStrategistFeeNumeratorChange(uint strategistFeeNumerator, uint validAtTimestamp);
+    event ConfirmStrategistFeeNumeratorChange(uint strategistFeeNumerator);
+
+    event QueuePlatformFeeNumeratorChange(uint platformFeeNumerator, uint validAtTimestamp);
+    event ConfirmPlatformFeeNumeratorChange(uint platformFeeNumerator);
 
     event AddedStakingContract(address indexed stakingContract);
     event RemovedStakingContract(address indexed stakingContract);
@@ -207,10 +220,6 @@ contract Controller is IController, Governable {
     confirmSharePrice(_vault, _hint, _deviationNumerator, _deviationDenominator) {
         uint256 oldSharePrice = IVault(_vault).getPricePerFullShare();
         IVault(_vault).doHardWork();
-        if (address(hardRewards) != address(0)) {
-            // rewards are an option now
-            hardRewards.rewardMe(msg.sender, _vault);
-        }
         emit SharePriceChangeLog(
             _vault,
             IVault(_vault).strategy(),
@@ -247,10 +256,6 @@ contract Controller is IController, Governable {
         IVault(_vault).setStrategy(_strategy);
     }
 
-    function setHardRewards(address _hardRewards) external onlyGovernance {
-        hardRewards = HardRewards(_hardRewards);
-    }
-
     // transfers token in the controller contract to the governance
     function salvage(address _token, uint256 _amount) external onlyGovernance {
         IERC20(_token).safeTransfer(governance(), _amount);
@@ -263,23 +268,46 @@ contract Controller is IController, Governable {
         IStrategy(_strategy).salvageToken(governance(), _token, _amount);
     }
 
-    function notifyFee(address _underlying, uint256 _fee) external {
-        if (_fee > 0) {
-            IERC20(_underlying).safeTransferFrom(msg.sender, address(this), _fee);
+    function notifyFee(
+        address _underlying,
+        uint256 _profitSharingFee,
+        uint256 _strategistFee,
+        uint256 _platformFee
+    ) external {
+        uint totalFee = _profitSharingFee.add(_strategistFee).add(_platformFee);
+        if (totalFee > 0) {
+            IERC20(_underlying).safeTransferFrom(msg.sender, address(this), totalFee);
             IERC20(_underlying).safeApprove(rewardForwarder, 0);
-            IERC20(_underlying).safeApprove(rewardForwarder, _fee);
+            IERC20(_underlying).safeApprove(rewardForwarder, totalFee);
             IRewardForwarder(rewardForwarder).notifyFeeAndBuybackAmounts(
                 _underlying,
-                _fee,
+                _profitSharingFee,
+                _strategistFee,
+                _platformFee,
                 new address[](0),
                 new uint[](0)
             );
         }
     }
 
+    function profitSharingDenominator() public view returns (uint) {
+        // keep the interface for this function as a `view` for now, in case it changes in the future
+        return PROFIT_SHARING_DENOMINATOR;
+    }
+
+    function strategistFeeDenominator() public view returns (uint) {
+        // keep the interface for this function as a `view` for now, in case it changes in the future
+        return STRATEGIST_FEE_DENOMINATOR;
+    }
+
+    function platformFeeDenominator() public view returns (uint) {
+        // keep the interface for this function as a `view` for now, in case it changes in the future
+        return PLATFORM_FEE_DENOMINATOR;
+    }
+
     function setProfitSharingNumerator(uint _profitSharingNumerator) public onlyGovernance {
         require(
-            _profitSharingNumerator < profitSharingDenominator,
+            _profitSharingNumerator < PROFIT_SHARING_DENOMINATOR,
             "invalid profit sharing numerator"
         );
 
@@ -299,6 +327,54 @@ contract Controller is IController, Governable {
         nextProfitSharingNumerator = 0;
         nextProfitSharingNumeratorTimestamp = 0;
         emit ConfirmProfitSharingNumeratorChange(profitSharingNumerator);
+    }
+
+    function setStrategistFeeNumerator(uint _strategistFeeNumerator) public onlyGovernance {
+        require(
+            _strategistFeeNumerator < STRATEGIST_FEE_DENOMINATOR,
+            "invalid strategist fee numerator"
+        );
+
+        nextStrategistFeeNumerator = _strategistFeeNumerator;
+        nextStrategistFeeNumeratorTimestamp = block.timestamp + nextImplementationDelay;
+        emit QueueStrategistFeeNumeratorChange(nextStrategistFeeNumerator, nextStrategistFeeNumeratorTimestamp);
+    }
+
+    function confirmSetStrategistFeeNumerator() public onlyGovernance {
+        require(
+            nextStrategistFeeNumerator != 0
+            && nextStrategistFeeNumeratorTimestamp != 0
+            && block.timestamp >= nextStrategistFeeNumeratorTimestamp,
+            "invalid timestamp or no new strategist fee numerator confirmed"
+        );
+        profitSharingNumerator = nextStrategistFeeNumerator;
+        nextStrategistFeeNumerator = 0;
+        nextStrategistFeeNumeratorTimestamp = 0;
+        emit ConfirmStrategistFeeNumeratorChange(profitSharingNumerator);
+    }
+
+    function setPlatformFeeNumerator(uint _platformFeeNumerator) public onlyGovernance {
+        require(
+            _platformFeeNumerator < PLATFORM_FEE_DENOMINATOR,
+            "invalid platform fee numerator"
+        );
+
+        nextPlatformFeeNumerator = _platformFeeNumerator;
+        nextPlatformFeeNumeratorTimestamp = block.timestamp + nextImplementationDelay;
+        emit QueuePlatformFeeNumeratorChange(nextPlatformFeeNumerator, nextPlatformFeeNumeratorTimestamp);
+    }
+
+    function confirmSetPlatformFeeNumerator() public onlyGovernance {
+        require(
+            nextPlatformFeeNumerator != 0
+            && nextPlatformFeeNumeratorTimestamp != 0
+            && block.timestamp >= nextPlatformFeeNumeratorTimestamp,
+            "invalid timestamp or no new platform fee numerator confirmed"
+        );
+        profitSharingNumerator = nextPlatformFeeNumerator;
+        nextPlatformFeeNumerator = 0;
+        nextPlatformFeeNumeratorTimestamp = 0;
+        emit ConfirmPlatformFeeNumeratorChange(profitSharingNumerator);
     }
 
     function _addVaultAndStrategy(address _vault, address _strategy) internal {

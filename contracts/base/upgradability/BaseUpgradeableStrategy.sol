@@ -42,13 +42,15 @@ contract BaseUpgradeableStrategy
         address _underlying,
         address _vault,
         address _rewardPool,
-        address[] memory _rewardTokens
+        address[] memory _rewardTokens,
+        address _strategist
     ) public initializer {
         ControllableInit.initialize(_storage);
         _setUnderlying(_underlying);
         _setVault(_vault);
         _setRewardPool(_rewardPool);
         _setRewardTokens(_rewardTokens);
+        _setStrategist(_strategist);
         _setSell(true);
         _setSellFloor(0);
         _setPausedInvesting(false);

@@ -31,6 +31,7 @@ contract XSushiStrategyUpgradeable is IStrategy, AaveInteractorInit, BaseUpgrade
     address _storage,
     address _underlying,
     address _vault,
+    address _strategist,
     address _xsushi,
     address _lendingPoolProvider,
     address _protocolDataProvider,
@@ -41,7 +42,8 @@ contract XSushiStrategyUpgradeable is IStrategy, AaveInteractorInit, BaseUpgrade
       _underlying,
       _vault,
       address(0), // unused
-      new address[](0) // unused
+      new address[](0), // unused
+      _strategist
     );
     AaveInteractorInit.initialize(
       _xsushi, _lendingPoolProvider, _protocolDataProvider

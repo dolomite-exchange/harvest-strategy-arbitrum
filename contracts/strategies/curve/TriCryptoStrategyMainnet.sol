@@ -8,7 +8,8 @@ contract TriCryptoStrategyMainnet is TriCryptoStrategy, IMainnetStrategy {
 
     function initializeStrategy(
         address _storage,
-        address _vault
+        address _vault,
+        address _strategist
     ) public initializer {
         address[] memory rewardTokens = new address[](1);
         rewardTokens[0] = CRV;
@@ -19,6 +20,7 @@ contract TriCryptoStrategyMainnet is TriCryptoStrategy, IMainnetStrategy {
             _vault,
             CRV_TRI_CRYPTO_GAUGE,
             rewardTokens,
+            _strategist,
             CRV_TRI_CRYPTO_POOL,
             WETH,
             /* depositArrayPosition = */ 2

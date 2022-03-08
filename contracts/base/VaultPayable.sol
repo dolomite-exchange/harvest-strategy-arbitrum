@@ -7,7 +7,11 @@ import "./Vault.sol";
 contract VaultPayable is Vault {
     using Address for address payable;
 
-    uint private _shouldWithdrawToETH = 1;
+    bytes32 internal constant _SHOULD_WITHDRAW_TO_ETH_SLOT = 0xe921e128e6bbbc3334588b78cb5f3f10af6c1e18396e789a648bf7ef84c7b600;
+
+    constructor() public {
+        assert(_SHOULD_WITHDRAW_TO_ETH_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.shouldWithdrawToETH")) - 1));
+    }
 
     function() external payable {
         require(msg.sender == underlying(), "invalid sender for default payable");
@@ -22,17 +26,17 @@ contract VaultPayable is Vault {
     }
 
     function withdraw(uint256 numberOfShares) external defense {
-        _shouldWithdrawToETH = 1;
+        setUint256(_SHOULD_WITHDRAW_TO_ETH_SLOT, 1);
         _withdraw(numberOfShares);
     }
 
     function withdrawETH(uint256 numberOfShares) external defense {
-        _shouldWithdrawToETH = 2;
+        setUint256(_SHOULD_WITHDRAW_TO_ETH_SLOT, 2);
         _withdraw(numberOfShares);
     }
 
     function _transferUnderlyingOut(uint amount) internal {
-        if (_shouldWithdrawToETH == 2) {
+        if (getUint256(_SHOULD_WITHDRAW_TO_ETH_SLOT) == 2) {
             WETH9(underlying()).withdraw(amount);
             msg.sender.sendValue(amount);
         } else {

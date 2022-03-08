@@ -21,6 +21,20 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
     event ProfitsNotCollected(address indexed rewardToken, bool sell, bool floor);
     event ProfitLogInReward(address indexed rewardToken, uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
     event ProfitAndBuybackLog(address indexed rewardToken, uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
+    event PlatformFeeLogInReward(
+        address indexed treasury,
+        address indexed rewardToken,
+        uint256 profitAmount,
+        uint256 feeAmount,
+        uint256 timestamp
+    );
+    event StrategistFeeLogInReward(
+        address indexed strategist,
+        address indexed rewardToken,
+        uint256 profitAmount,
+        uint256 feeAmount,
+        uint256 timestamp
+    );
 
     // ==================== Internal Constants ====================
 
@@ -41,6 +55,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
     bytes32 internal constant _NEXT_IMPLEMENTATION_DELAY_SLOT = 0x82b330ca72bcd6db11a26f10ce47ebcfe574a9c646bccbc6f1cd4478eae16b31;
 
     bytes32 internal constant _REWARD_CLAIMABLE_SLOT = 0xbc7c0d42a71b75c3129b337a259c346200f901408f273707402da4b51db3b8e7;
+    bytes32 internal constant _STRATEGIST_SLOT = 0x6a7b588c950d46e2de3db2f157e5e0e4f29054c8d60f17bf0c30352e223a458d;
 
     constructor() public {
         assert(_UNDERLYING_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.underlying")) - 1));
@@ -59,6 +74,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         assert(_NEXT_IMPLEMENTATION_DELAY_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.nextImplementationDelay")) - 1));
 
         assert(_REWARD_CLAIMABLE_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.rewardClaimable")) - 1));
+        assert(_STRATEGIST_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.strategist")) - 1));
     }
 
     // ==================== Internal Functions ====================
@@ -105,6 +121,14 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         return getAddress(_VAULT_SLOT);
     }
 
+    function _setStrategist(address _address) internal {
+        setAddress(_STRATEGIST_SLOT, _address);
+    }
+
+    function strategist() public view returns (address) {
+        return getAddress(_STRATEGIST_SLOT);
+    }
+
     /**
      * @dev a flag for disabling selling for simplified emergency exit
      */
@@ -140,6 +164,22 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         return IController(controller()).profitSharingDenominator();
     }
 
+    function strategistFeeNumerator() public view returns (uint256) {
+        return IController(controller()).strategistFeeNumerator();
+    }
+
+    function strategistFeeDenominator() public view returns (uint256) {
+        return IController(controller()).strategistFeeDenominator();
+    }
+
+    function platformFeeNumerator() public view returns (uint256) {
+        return IController(controller()).platformFeeNumerator();
+    }
+
+    function platformFeeDenominator() public view returns (uint256) {
+        return IController(controller()).platformFeeDenominator();
+    }
+
     function allowedRewardClaimable() public view returns (bool) {
         return getBoolean(_REWARD_CLAIMABLE_SLOT);
     }
@@ -155,14 +195,40 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         uint256 _rewardBalance
     ) internal {
         if (_rewardBalance > 0) {
-            uint256 feeAmount = _rewardBalance.mul(profitSharingNumerator()).div(profitSharingDenominator());
-            emit ProfitLogInReward(_rewardToken, _rewardBalance, feeAmount, block.timestamp);
-            IERC20(_rewardToken).safeApprove(controller(), 0);
-            IERC20(_rewardToken).safeApprove(controller(), feeAmount);
+            uint256 profitSharingFee = _rewardBalance.mul(profitSharingNumerator()).div(profitSharingDenominator());
+            uint256 strategistFee = _rewardBalance.mul(strategistFeeNumerator()).div(strategistFeeDenominator());
+            uint256 platformFee = _rewardBalance.mul(platformFeeNumerator()).div(platformFeeDenominator());
 
-            IController(controller()).notifyFee(_rewardToken, feeAmount);
+            address strategyFeeRecipient = strategist();
+            address platformFeeRecipient = IController(controller()).governance();
+
+            emit ProfitLogInReward(_rewardToken, _rewardBalance, profitSharingFee, block.timestamp);
+            emit PlatformFeeLogInReward(
+                platformFeeRecipient,
+                _rewardToken,
+                _rewardBalance,
+                platformFee,
+                block.timestamp
+            );
+            emit StrategistFeeLogInReward(
+                strategyFeeRecipient,
+                _rewardToken,
+                _rewardBalance,
+                strategistFee,
+                block.timestamp
+            );
+
+            IERC20(_rewardToken).safeApprove(controller(), 0);
+            IERC20(_rewardToken).safeApprove(controller(), profitSharingFee);
+
+            // Distribute/send the fees
+            IController(controller()).notifyFee(_rewardToken, profitSharingFee, strategistFee, platformFee);
+            IERC20(_rewardToken).safeTransfer(strategyFeeRecipient, strategistFee);
+            IERC20(_rewardToken).safeTransfer(platformFeeRecipient, platformFee);
         } else {
             emit ProfitLogInReward(_rewardToken, 0, 0, block.timestamp);
+            emit PlatformFeeLogInReward(IController(controller()).governance(), _rewardToken, 0, 0, block.timestamp);
+            emit StrategistFeeLogInReward(strategist(), _rewardToken, 0, 0, block.timestamp);
         }
     }
 
@@ -196,37 +262,63 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         uint[] memory _weights
     ) internal returns (uint[] memory) {
         if (_rewardBalance > 0 && _buybackTokens.length > 0) {
-            uint256 feeAmount = _rewardBalance.mul(profitSharingNumerator()).div(profitSharingDenominator());
-            uint256 buybackAmount = _rewardBalance.sub(feeAmount);
+            uint256 profitSharingFee = _rewardBalance.mul(profitSharingNumerator()).div(profitSharingDenominator());
+            uint256 strategistFee = _rewardBalance.mul(strategistFeeNumerator()).div(strategistFeeDenominator());
+            uint256 platformFee = _rewardBalance.mul(platformFeeNumerator()).div(platformFeeDenominator());
+            uint256 buybackAmount = _rewardBalance.sub(profitSharingFee).sub(strategistFee).sub(platformFee);
 
-            uint totalWeight = 0;
-            for (uint i = 0; i < _weights.length; i++) {
-                totalWeight += _weights[i];
-            }
-            require(
-                totalWeight > 0,
-                "totalWeight must be greater than zero"
-            );
+            emit ProfitAndBuybackLog(_rewardToken, _rewardBalance, profitSharingFee, block.timestamp);
 
             uint[] memory buybackAmounts = new uint[](_buybackTokens.length);
-            for (uint i = 0; i < buybackAmounts.length; i++) {
-                buybackAmounts[i] = buybackAmount.mul(_weights[i]).div(totalWeight);
+            {
+                uint totalWeight = 0;
+                for (uint i = 0; i < _weights.length; i++) {
+                    totalWeight += _weights[i];
+                }
+                require(
+                    totalWeight > 0,
+                    "totalWeight must be greater than zero"
+                );
+                for (uint i = 0; i < buybackAmounts.length; i++) {
+                    buybackAmounts[i] = buybackAmount.mul(_weights[i]).div(totalWeight);
+                }
             }
 
-            emit ProfitAndBuybackLog(_rewardToken, _rewardBalance, feeAmount, block.timestamp);
+            emit ProfitAndBuybackLog(_rewardToken, _rewardBalance, profitSharingFee, block.timestamp);
+            emit PlatformFeeLogInReward(
+                IController(controller()).governance(),
+                _rewardToken,
+                _rewardBalance,
+                platformFee,
+                block.timestamp
+            );
+            emit StrategistFeeLogInReward(
+                strategist(),
+                _rewardToken,
+                _rewardBalance,
+                strategistFee,
+                block.timestamp
+            );
 
             address forwarder = IController(controller()).feeRewardForwarder();
             IERC20(_rewardToken).safeApprove(forwarder, 0);
             IERC20(_rewardToken).safeApprove(forwarder, _rewardBalance);
 
+            // Send and distribute the fees
+            IERC20(_rewardToken).safeTransfer(strategist(), strategistFee);
+            IERC20(_rewardToken).safeTransfer(IController(controller()).governance(), platformFee);
             return IRewardForwarder(forwarder).notifyFeeAndBuybackAmounts(
                 _rewardToken,
-                feeAmount,
+                profitSharingFee,
+                strategistFee,
+                platformFee,
                 _buybackTokens,
                 buybackAmounts
             );
         } else {
             emit ProfitAndBuybackLog(_rewardToken, 0, 0, block.timestamp);
+            emit PlatformFeeLogInReward(IController(controller()).governance(), _rewardToken, 0, 0, block.timestamp);
+            emit StrategistFeeLogInReward(strategist(), _rewardToken, 0, 0, block.timestamp);
             return new uint[](_buybackTokens.length);
         }
     }

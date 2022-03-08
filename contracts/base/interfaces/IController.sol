@@ -41,7 +41,12 @@ interface IController {
 
     function salvageStrategy(address _strategy, address _token, uint256 amount) external;
 
-    function notifyFee(address _underlying, uint256 fee) external;
+    function notifyFee(
+        address _underlying,
+        uint256 _profitSharingFee,
+        uint256 _strategistFee,
+        uint256 _platformFee
+    ) external;
 
     function feeRewardForwarder() external view returns (address);
 
@@ -59,5 +64,25 @@ interface IController {
 
     function profitSharingNumerator() external view returns (uint256);
 
+    function strategistFeeNumerator() external view returns (uint256);
+
+    function platformFeeNumerator() external view returns (uint256);
+
     function profitSharingDenominator() external view returns (uint256);
+
+    function strategistFeeDenominator() external view returns (uint256);
+
+    function platformFeeDenominator() external view returns (uint256);
+
+    function setProfitSharingNumerator(uint _profitSharingNumerator) external;
+
+    function confirmSetProfitSharingNumerator() external;
+
+    function setStrategistFeeNumerator(uint _strategistFeeNumerator) external;
+
+    function confirmSetStrategistFeeNumerator() external;
+
+    function setPlatformFeeNumerator(uint _platformFeeNumerator) external;
+
+    function confirmSetPlatformFeeNumerator() external;
 }

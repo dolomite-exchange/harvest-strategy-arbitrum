@@ -30,6 +30,7 @@ contract MasterChefStrategyWithBuyback is IStrategy, BaseUpgradeableStrategy {
         address _vault,
         address _rewardPool,
         address[] memory _rewardTokens,
+        address _strategist,
         uint256 _poolID
     ) public initializer {
         BaseUpgradeableStrategy.initialize(
@@ -37,7 +38,8 @@ contract MasterChefStrategyWithBuyback is IStrategy, BaseUpgradeableStrategy {
             _underlying,
             _vault,
             _rewardPool,
-            _rewardTokens
+            _rewardTokens,
+            _strategist
         );
 
         address _lpt;

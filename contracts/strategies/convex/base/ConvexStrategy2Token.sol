@@ -43,6 +43,7 @@ contract ConvexStrategy2Token is IStrategy, BaseUpgradeableStrategy {
         address _underlying,
         address _vault,
         address _rewardPool,
+        address _strategist,
         uint256 _poolID,
         address _depositToken,
         uint256 _depositArrayPosition,
@@ -56,7 +57,8 @@ contract ConvexStrategy2Token is IStrategy, BaseUpgradeableStrategy {
             _underlying,
             _vault,
             _rewardPool,
-            rewardTokens
+            rewardTokens,
+            _strategist
         );
 
         address _lpt;

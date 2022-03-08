@@ -40,6 +40,7 @@ contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
         address _vault,
         address _rewardPool,
         address [] memory _rewardTokens,
+        address _strategist,
         address _bVault,
         bytes32 _poolID,
         uint[] memory _weights
@@ -49,7 +50,8 @@ contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
             _underlying,
             _vault,
             _rewardPool,
-            _rewardTokens
+            _rewardTokens,
+            _strategist
         );
 
         (address _lpt,) = IBVault(_bVault).getPool(_poolID);

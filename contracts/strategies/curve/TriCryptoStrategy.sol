@@ -32,6 +32,7 @@ contract TriCryptoStrategy is IStrategy, BaseUpgradeableStrategy {
         address _vault,
         address _rewardPool,
         address[] memory _rewardTokens,
+        address _strategist,
         address _crvDepositPool,
         address _crvDepositToken,
         uint256 _depositArrayPosition
@@ -41,7 +42,8 @@ contract TriCryptoStrategy is IStrategy, BaseUpgradeableStrategy {
             _underlying,
             _vault,
             _rewardPool,
-            _rewardTokens
+            _rewardTokens,
+            _strategist
         );
 
         require(

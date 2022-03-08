@@ -15,7 +15,7 @@ import "./inheritance/ControllableInit.sol";
 import "./VaultStorage.sol";
 
 
-contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultStorage {
+contract Vault is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultStorage {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -189,11 +189,22 @@ contract Vault is ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultS
     }
 
     function setStrategy(address _strategy) public onlyControllerOrGovernance {
-        require(canUpdateStrategy(_strategy),
-            "The strategy exists and switch timelock did not elapse yet");
-        require(_strategy != address(0), "new _strategy cannot be empty");
-        require(IStrategy(_strategy).underlying() == address(underlying()), "Vault underlying must match Strategy underlying");
-        require(IStrategy(_strategy).vault() == address(this), "the strategy does not belong to this vault");
+        require(
+            canUpdateStrategy(_strategy),
+            "The strategy exists and switch timelock did not elapse yet"
+        );
+        require(
+            _strategy != address(0),
+            "new _strategy cannot be empty"
+        );
+        require(
+            IStrategy(_strategy).underlying() == address(underlying()),
+            "Vault underlying must match Strategy underlying"
+        );
+        require(
+            IStrategy(_strategy).vault() == address(this),
+            "the strategy does not belong to this vault"
+        );
 
         emit StrategyChanged(_strategy, strategy());
         if (address(_strategy) != address(strategy())) {

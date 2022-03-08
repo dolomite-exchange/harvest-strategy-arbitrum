@@ -53,6 +53,7 @@ contract ComplifiDerivStrategy is IStrategy, BaseUpgradeableStrategy {
     address _vault,
     address _rewardPool,
     address[] memory _rewardTokens,
+    address _strategist,
     address _usdcVault,
     address _proxy
   ) public initializer {
@@ -62,7 +63,8 @@ contract ComplifiDerivStrategy is IStrategy, BaseUpgradeableStrategy {
       _underlying,
       _vault,
       _rewardPool,
-      _rewardTokens
+      _rewardTokens,
+      _strategist
     );
 
     address _lpt;

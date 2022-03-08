@@ -27,4 +27,6 @@ contract IStrategy {
     function doHardWork() external;
 
     function depositArbCheck() external view returns (bool);
+
+    function strategist() external view returns (address);
 }

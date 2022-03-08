@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./inheritance/Governable.sol";
 import "./interfaces/IRewardForwarder.sol";
 import "./interfaces/IPotPool.sol";
+import "./interfaces/IStrategy.sol";
 import "./interfaces/IUniversalLiquidator.sol";
 import "./interfaces/uniswap/IUniswapV2Router02.sol";
 import "./inheritance/Controllable.sol";
@@ -52,7 +53,9 @@ contract RewardForwarder is IRewardForwarder, Controllable, Constants {
 
     function notifyFeeAndBuybackAmounts(
         address _token,
-        uint256 _feeAmount,
+        uint256 _profitSharingFee,
+        uint256 _strategistFee,
+        uint256 _platformFee,
         address[] calldata _buybackTokens,
         uint256[] calldata _buybackAmounts
     ) external returns (uint[] memory) {
@@ -61,11 +64,13 @@ contract RewardForwarder is IRewardForwarder, Controllable, Constants {
             "sender must be a strategy"
         );
 
-        uint totalTransferAmount = _feeAmount;
-        for (uint i = 0; i < _buybackAmounts.length; i++) {
-            totalTransferAmount = totalTransferAmount.add(_buybackAmounts[i]);
+        {
+            uint totalTransferAmount = _profitSharingFee.add(_strategistFee).add(_platformFee);
+            for (uint i = 0; i < _buybackAmounts.length; i++) {
+                totalTransferAmount = totalTransferAmount.add(_buybackAmounts[i]);
+            }
+            IERC20(_token).safeTransferFrom(msg.sender, address(this), totalTransferAmount);
         }
-        IERC20(_token).safeTransferFrom(msg.sender, address(this), totalTransferAmount);
 
         address liquidator = IController(controller()).universalLiquidator();
         uint amountOutMin = 1;
@@ -73,20 +78,34 @@ contract RewardForwarder is IRewardForwarder, Controllable, Constants {
         // TODO if performance fees are added, get the strategy's reward recipient and send the appropriate amount to
         // TODO there and send the remaining amount to the profitSharingPool
         IUniversalLiquidator(liquidator).swapTokens(
-            _feeAmount,
-            amountOutMin,
             _token,
             targetToken,
+            _profitSharingFee,
+            amountOutMin,
             profitSharingPool
+        );
+        IUniversalLiquidator(liquidator).swapTokens(
+            _token,
+            targetToken,
+            _strategistFee,
+            amountOutMin,
+            IStrategy(msg.sender).strategist()
+        );
+        IUniversalLiquidator(liquidator).swapTokens(
+            _token,
+            targetToken,
+            _platformFee,
+            amountOutMin,
+            IController(controller()).governance()
         );
 
         uint[] memory amounts = new uint[](_buybackTokens.length);
         for (uint i = 0; i < amounts.length; i++) {
             amounts[i] = IUniversalLiquidator(liquidator).swapTokens(
-                _buybackAmounts[i],
-                amountOutMin,
                 _token,
                 _buybackTokens[i],
+                _buybackAmounts[i],
+                amountOutMin,
                 msg.sender
             );
         }
