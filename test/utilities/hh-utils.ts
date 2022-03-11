@@ -27,7 +27,18 @@ export async function impersonates(targetAccounts: string[]) {
   }
 }
 
-export async function setupCoreProtocol(config: any) {
+export interface CoreProtocolConfig {
+  existingVaultAddress: string
+  feeRewardForwarder: string
+  governance
+  upgradeStrategy
+  strategyArtifact
+  strategyArtifactIsUpgradable
+  underlying
+  vaultImplementationOverride
+}
+
+export async function setupCoreProtocol(config: CoreProtocolConfig) {
   // Set vault (or Deploy new vault), underlying, underlying Whale,
   // amount the underlying whale should send to farmers
   let vault: any & IVault;
@@ -44,28 +55,6 @@ export async function setupCoreProtocol(config: any) {
   }
 
   let controller = await IControllerArtifact.at(addresses.Controller) as IController;
-
-  if (config.feeRewardForwarder) {/*
-    const FeeRewardForwarder = artifacts.require("FeeRewardForwarder");
-    const feeRewardForwarder = await FeeRewardForwarder.new(
-      addresses.Storage,
-      addresses.FARM,
-      addresses.IFARM,
-      addresses.UniversalLiquidatorRegistry
-    );
-
-    config.feeRewardForwarder = feeRewardForwarder.address;*/
-    console.log('Setting up a custom fee reward forwarder...');
-    await controller.setFeeRewardForwarder(
-      config.feeRewardForwarder,
-      { from: config.governance },
-    );
-
-    const farmRewardPool = await IPotPoolArtifact.at('0x8f5adC58b32D4e5Ca02EAC0E293D35855999436C');
-    await farmRewardPool.setRewardDistribution(config.feeRewardForwarder, { from: config.governance });
-
-    console.log('Done setting up reward forwarder!');
-  }
 
   let rewardPool = null;
 

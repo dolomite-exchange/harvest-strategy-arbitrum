@@ -71,12 +71,12 @@ describe('Mainnet TriCrypto', function () {
 
     await setupExternalContracts();
     [controller, vault, strategy] = await setupCoreProtocol({
-      'existingVaultAddress': '0x71B9eC42bB3CB40F017D8AD8011BE8e384a95fa5',
-      'strategyArtifact': StrategyArtifact,
-      'strategyArtifactIsUpgradable': true,
-      'upgradeStrategy': true,
-      'underlying': underlying,
-      'governance': governance,
+      existingVaultAddress: '0x71B9eC42bB3CB40F017D8AD8011BE8e384a95fa5',
+      strategyArtifact: StrategyArtifact,
+      strategyArtifactIsUpgradable: true,
+      upgradeStrategy: true,
+      underlying: underlying,
+      governance: governance,
     });
 
     await strategy.setSellFloor(0, { from: governance });
