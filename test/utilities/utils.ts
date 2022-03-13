@@ -1,11 +1,8 @@
 // noinspection JSUnusedGlobalSymbols
 
-import BigNumber from 'bignumber.js';
 import { assert } from 'chai';
-
-const BN = require('bn.js');
-const { time } = require('@openzeppelin/test-helpers');
-BigNumber.config({ DECIMAL_PLACES: 0 });
+import { BigNumber, BigNumberish } from 'ethers';
+import { ethers, network } from 'hardhat';
 
 let gasLogger: any = {};
 let gasLoggerNum: any = {};
@@ -28,68 +25,80 @@ export async function printGasLog() {
 }
 
 export async function advanceNBlock(n: number) {
-  let startingBlock: typeof BN = await time.latestBlock();
-  await time.increase(15 * Math.round(n));
-  let endBlock = startingBlock.addn(n);
-  await time.advanceBlockTo(endBlock);
+  const secondsPerBlock = 13;
+  await ethers.provider.send('hardhat_mine', [`0x${n.toString(16)}`, `0x${secondsPerBlock.toString(16)}`]);
+}
+
+export async function waitDays(n: number) {
+  await _waitTime((n * 3600 * 24) + 1);
 }
 
 export async function waitHours(n: number) {
-  await time.increase(n * 3600 + 1);
-  let startingBlock = await time.latestBlock();
-  await time.advanceBlockTo(startingBlock.addn(1));
+  await _waitTime(n * 3600 + 1);
 }
 
 export async function waitTime(n: number) {
-  await time.increase(n);
-  let startingBlock = await time.latestBlock();
-  await time.advanceBlockTo(startingBlock.addn(1));
+  await _waitTime(n);
+}
+
+export async function sendEther(from: string, to: string, value: BigNumberish): Promise<any> {
+  await network.provider.request({
+    method: 'hardhat_impersonateAccount',
+    params: [from],
+  });
+
+  const signer = await ethers.getSigner(from);
+  return signer.sendTransaction({
+    from,
+    to,
+    value,
+  });
 }
 
 export function assertBNEq(a: BigNumber, b: BigNumber) {
-  let _a = new BigNumber(a);
-  let _b = new BigNumber(b);
-  let msg = _a.toFixed() + ' != ' + _b.toFixed();
-  assert.equal(_a.eq(_b), true, msg);
+  let msg = a.toString() + ' != ' + b.toString();
+  assert.equal(a.eq(b), true, msg);
 }
 
 export function assertApproxBNEq(a: BigNumber, b: BigNumber, c: BigNumber) {
-  let _a = new BigNumber(a).div(c);
-  let _b = new BigNumber(b).div(c);
-  let msg = _a.toFixed() + ' != ' + _b.toFixed();
+  let _a = a.div(c);
+  let _b = b.div(c);
+  let msg = _a.toString() + ' != ' + _b.toString();
   assert.equal(_a.eq(_b), true, msg);
 }
 
 export function assertBNGt(a: BigNumber, b: BigNumber) {
-  let _a = new BigNumber(a);
-  let _b = new BigNumber(b);
-  let msg = _a.toFixed() + ' is not greater than ' + _b.toFixed();
-  assert.equal(_a.gt(_b), true, msg);
+  let msg = a.toString() + ' is not greater than ' + b.toString();
+  assert.equal(a.gt(b), true, msg);
 }
 
 export function assertBNGte(a: BigNumber, b: BigNumber) {
-  let _a = new BigNumber(a);
-  let _b = new BigNumber(b);
-  let msg = _a.toFixed() + ' is not greater than ' + _b.toFixed();
-  assert.equal(_a.gte(_b), true, msg);
+  let msg = a.toString() + ' is not greater than ' + b.toString();
+  assert.equal(a.gte(b), true, msg);
 }
 
 export function assertNEqBN(a: BigNumber, b: BigNumber) {
-  let _a = new BigNumber(a);
-  let _b = new BigNumber(b);
-  assert.equal(_a.eq(_b), false);
+  assert.equal(a.eq(b), false);
 }
 
 export async function inBNfixed(a: BigNumber) {
-  return await (new BigNumber(a)).toFixed();
+  return a.toString();
 }
 
 export function calculateApr(newValue: BigNumber, oldValue: BigNumber) {
   const blocksPerHour = 4800;
-  return newValue.div(oldValue).minus(1).times((24 / (blocksPerHour / 272))).times(365);
+  return newValue.div(oldValue).sub(1).mul((24 / (blocksPerHour / 272))).mul(365);
 }
 
 export function calculateApy(newValue: BigNumber, oldValue: BigNumber) {
   const blocksPerHour = 4800;
-  return (newValue.div(oldValue).minus(1).times((24 / (blocksPerHour / 272))).plus(1));
+  return (newValue.div(oldValue).sub(1).mul((24 / (blocksPerHour / 272))).add(1));
+}
+
+// ========================= Private Functions =========================
+
+async function _waitTime(timeToAddSeconds: number) {
+  const currentTimestamp = await ethers.provider.getBlock('latest');
+  await ethers.provider.send('evm_setNextBlockTimestamp', [currentTimestamp.timestamp + timeToAddSeconds]);
+  await ethers.provider.send('evm_mine', []);
 }

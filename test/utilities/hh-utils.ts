@@ -1,15 +1,15 @@
-import BigNumber from 'bignumber.js';
+import { BigNumber } from 'ethers';
 import { artifacts, network } from 'hardhat';
-import { IController, StrategyProxy, IVault, IMainnetStrategy, IERC20 } from '../../src/types';
-import makeVault from './make-vault';
-import * as utils from './utils';
+import { IController, IERC20, IMainnetStrategy, IPotPool, IVault, PotPool } from '../../src/types';
 
 import * as addresses from '../test-config';
+import makeVault from './make-vault';
+import * as utils from './utils';
 
 const IControllerArtifact = artifacts.require('IController');
 
 const IUniversalLiquidatorArtifact = artifacts.require('IUniversalLiquidator');
-const IPotPoolArtifact = artifacts.require('IPotPool');
+const PotPoolArtifact = artifacts.require('PotPool');
 const IUpgradeableStrategyArtifact = artifacts.require('IUpgradeableStrategy');
 
 const IVaultArtifact = artifacts.require('IVault');
@@ -28,35 +28,39 @@ export async function impersonates(targetAccounts: string[]) {
 }
 
 export interface CoreProtocolConfig {
-  existingVaultAddress: string
-  feeRewardForwarder: string
-  governance
-  upgradeStrategy
-  strategyArtifact
-  strategyArtifactIsUpgradable
-  underlying
-  vaultImplementationOverride
+  shouldAnnounceStrategy: boolean;
+  existingRewardPoolAddress: string | null;
+  existingVaultAddress: string;
+  feeRewardForwarder: string;
+  governance: string;
+  rewardPool: PotPool;
+  rewardPoolConfig: Record<string, any>;
+  strategyArgs: any[];
+  strategyArtifact: any;
+  strategyArtifactIsUpgradable: boolean;
+  underlying: IERC20;
+  upgradeStrategy: string;
+  vaultImplementationOverrideAddress: string;
 }
 
 export async function setupCoreProtocol(config: CoreProtocolConfig) {
   // Set vault (or Deploy new vault), underlying, underlying Whale,
   // amount the underlying whale should send to farmers
-  let vault: any & IVault;
+  let vault: IVault;
   if (config.existingVaultAddress != null) {
     vault = await IVaultArtifact.at(config.existingVaultAddress);
-    // console.log('Fetching Vault at: ', vault.address);
     console.log('Fetching Vault at: ', vault.address);
   } else {
-    const implAddress = config.vaultImplementationOverride || addresses.VaultImplementationV1;
+    const implAddress = config.vaultImplementationOverrideAddress || addresses.VaultImplementationV1;
     vault = await makeVault(implAddress, addresses.Storage, config.underlying.address, 100, 100, {
       from: config.governance,
     });
     console.log('New Vault Deployed: ', vault.address);
   }
 
-  let controller = await IControllerArtifact.at(addresses.Controller) as IController;
+  let controller: IController = await IControllerArtifact.at(addresses.Controller);
 
-  let rewardPool = null;
+  let rewardPool: IPotPool | null = null;
 
   if (!config.rewardPoolConfig) {
     config.rewardPoolConfig = {};
@@ -70,39 +74,23 @@ export async function setupCoreProtocol(config: CoreProtocolConfig) {
     }
 
     if (config.rewardPoolConfig.type === 'PotPool') {
-      const PotPool = artifacts.require('PotPool');
       console.log('reward pool needs to be deployed');
-      rewardPool = await PotPool.new(
+      rewardPool = await PotPoolArtifact.new(
         rewardTokens,
         vault.address,
         64800,
         rewardDistributions,
         addresses.Storage,
-        'fPool',
+        'fPool Token',
         'fPool',
         18,
         { from: config.governance },
       );
-      console.log('New PotPool deployed: ', rewardPool.address);
-    } else {
-      const NoMintRewardPool = artifacts.require('NoMintRewardPool');
-      console.log('reward pool needs to be deployed');
-      rewardPool = await NoMintRewardPool.new(
-        rewardTokens[0],
-        vault.address,
-        64800,
-        rewardDistributions[0],
-        addresses.Storage,
-        '0x0000000000000000000000000000000000000000',
-        '0x0000000000000000000000000000000000000000',
-        { from: config.governance },
-      );
-      console.log('New NoMintRewardPool deployed: ', rewardPool.address);
+      console.log('New PotPool deployed: ', rewardPool?.address);
     }
-  } else if (config.existingRewardPoolAddress != null) {
-    const NoMintRewardPool = artifacts.require('NoMintRewardPool');
-    rewardPool = await NoMintRewardPool.at(config.existingRewardPoolAddress);
-    console.log('Fetching Reward Pool deployed: ', rewardPool.address);
+  } else if (config.existingRewardPoolAddress) {
+    rewardPool = await PotPoolArtifact.at(config.existingRewardPoolAddress);
+    console.log('Fetching Reward Pool deployed: ', rewardPool?.address);
   }
 
   let universalLiquidatorRegistry = await IUniversalLiquidatorArtifact.at(addresses.UniversalLiquidatorRegistry);
@@ -125,7 +113,7 @@ export async function setupCoreProtocol(config: CoreProtocolConfig) {
 
   let strategyImpl = null;
 
-  let strategy: any & IMainnetStrategy;
+  let strategy: IMainnetStrategy;
   if (!config.strategyArtifactIsUpgradable) {
     strategy = await config.strategyArtifact.new(
       ...config.strategyArgs,
@@ -136,7 +124,7 @@ export async function setupCoreProtocol(config: CoreProtocolConfig) {
     const StrategyProxy = artifacts.require('StrategyProxy');
 
     const strategyProxy = await StrategyProxy.new(strategyImpl.address);
-    strategy = (await config.strategyArtifact.at(strategyProxy.address)) as IMainnetStrategy;
+    strategy = await config.strategyArtifact.at(strategyProxy.address);
     await strategy.initializeStrategy(
       config.strategyArgs[0],
       config.strategyArgs[1],
@@ -146,7 +134,7 @@ export async function setupCoreProtocol(config: CoreProtocolConfig) {
 
   console.log('Strategy Deployed: ', strategy.address);
 
-  if (config.announceStrategy === true) {
+  if (config.shouldAnnounceStrategy) {
     // Announce switch, time pass, switch to strategy
     await vault.announceStrategyUpdate(strategy.address, { from: config.governance });
     console.log('Strategy switch announced. Waiting...');
@@ -177,6 +165,6 @@ export async function setupCoreProtocol(config: CoreProtocolConfig) {
 }
 
 export async function depositVault(_farmer: string, _underlying: IERC20, _vault: IVault, _amount: BigNumber) {
-  await _underlying.approve((_vault as any).address, _amount, { from: _farmer });
+  await _underlying.approve(_vault.address, _amount, { from: _farmer });
   await _vault.deposit(_amount, { from: _farmer });
 }

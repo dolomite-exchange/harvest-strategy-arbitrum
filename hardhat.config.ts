@@ -4,11 +4,16 @@ import '@nomiclabs/hardhat-truffle5';
 import '@nomiclabs/hardhat-waffle';
 import '@typechain/hardhat';
 import 'hardhat-gas-reporter';
+import { BigNumber } from 'ethers';
 import { HardhatUserConfig } from 'hardhat/config';
 
+const chai = require('chai');
 const keys = require('./dev-keys.json');
 
-const config: HardhatUserConfig = {
+chai.use(require('chai-bignumber')())
+chai.use(require('chai-bignumber')(BigNumber))
+
+export const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
