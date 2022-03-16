@@ -35,7 +35,12 @@ interface IController {
 
     function addVaultsAndStrategies(address[] calldata _vaults, address[] calldata _strategies) external;
 
-    function doHardWork(address _vault) external;
+    function doHardWork(
+        address _vault,
+        uint256 _hint,
+        uint256 _deviationNumerator,
+        uint256 _deviationDenominator
+    ) external;
 
     function salvage(address _token, uint256 amount) external;
 
@@ -48,9 +53,11 @@ interface IController {
         uint256 _platformFee
     ) external;
 
-    function feeRewardForwarder() external view returns (address);
+    function rewardForwarder() external view returns (address);
 
-    function setFeeRewardForwarder(address _value) external;
+    function setRewardForwarder(address _rewardForwarder) external;
+
+    function setUniversalLiquidator(address _universalLiquidator) external;
 
     function addHardWorker(address _worker) external;
 

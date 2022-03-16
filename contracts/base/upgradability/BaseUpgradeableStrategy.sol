@@ -88,6 +88,12 @@ contract BaseUpgradeableStrategy
         IERC20(token).safeTransfer(recipient, amount);
     }
 
+    function setStrategist(address _strategist) external {
+        require(msg.sender == strategist(), "invalid sender");
+        require(_strategist != address(0) && _strategist != address(this), "invalid strategist");
+        _setStrategist(_strategist);
+    }
+
     function _finalizeUpgrade() internal {
         _setNextImplementation(address(0));
         _setNextImplementationTimestamp(0);

@@ -1,17 +1,16 @@
 import '@nomiclabs/hardhat-etherscan';
 import '@nomiclabs/hardhat-truffle5';
-
 import '@nomiclabs/hardhat-waffle';
 import '@typechain/hardhat';
 import 'hardhat-gas-reporter';
-import { BigNumber } from 'ethers';
+
+import chai from 'chai';
+import { solidity } from 'ethereum-waffle';
 import { HardhatUserConfig } from 'hardhat/config';
 
-const chai = require('chai');
 const keys = require('./dev-keys.json');
 
-chai.use(require('chai-bignumber')())
-chai.use(require('chai-bignumber')(BigNumber))
+chai.use(solidity);
 
 export const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
@@ -19,7 +18,7 @@ export const config: HardhatUserConfig = {
     hardhat: {
       allowUnlimitedContractSize: true,
       forking: {
-        url: 'https://arbitrum-mainnet.infura.io/v3/' + keys.infuraKey,
+        url: `https://arbitrum-mainnet.infura.io/v3/${keys.infuraKey}`,
         blockNumber: 7642717,
       },
     },

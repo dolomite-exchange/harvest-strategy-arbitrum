@@ -41,6 +41,11 @@ export async function waitTime(n: number) {
   await _waitTime(n);
 }
 
+export async function getLatestTimestamp(): Promise<number> {
+  const block = await ethers.provider.getBlock('latest');
+  return block.timestamp
+}
+
 export async function sendEther(from: string, to: string, value: BigNumberish): Promise<any> {
   await network.provider.request({
     method: 'hardhat_impersonateAccount',

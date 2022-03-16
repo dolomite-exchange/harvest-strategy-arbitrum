@@ -61,7 +61,7 @@ contract RewardForwarder is IRewardForwarder, Controllable, Constants {
     ) external returns (uint[] memory) {
         require(
             IController(controller()).hasStrategy(msg.sender),
-            "sender must be a strategy"
+            "msg.sender must be a strategy"
         );
 
         {

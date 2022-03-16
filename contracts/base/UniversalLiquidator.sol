@@ -20,7 +20,7 @@ import "./upgradability/BaseUpgradeableStrategyStorage.sol";
  *      via slots. This contract is responsible for liquidating tokens and is intended to be called by the
  *      `RewardForwarder` when `doHardWork` is initiated
  */
-contract UniversalLiquidator is Initializable, BaseUpgradeableStrategyStorage, Constants, IUniversalLiquidator {
+contract UniversalLiquidator is ControllableInit, BaseUpgradeableStrategyStorage, Constants, IUniversalLiquidator {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -53,9 +53,6 @@ contract UniversalLiquidator is Initializable, BaseUpgradeableStrategyStorage, C
     ) public initializer {
         ControllableInit.initialize(_storage);
 
-        // FARM output token
-        _configureSwap(_address2ToMemory([WETH, FARM]), SUSHI_ROUTER);
-
         // WETH output token
         _configureSwap(_address2ToMemory([CRV, WETH]), UNISWAP_V3_ROUTER);
         _configureSwap(_address2ToMemory([DAI, WETH]), UNISWAP_V3_ROUTER);
@@ -72,8 +69,12 @@ contract UniversalLiquidator is Initializable, BaseUpgradeableStrategyStorage, C
         return (nextImplementation() != address(0), nextImplementation());
     }
 
-    function finalizeUpgrade() public {
-        // do nothing
+    function scheduleUpgrade(address _nextImplementation) external onlyGovernance {
+        _setNextImplementation(_nextImplementation);
+    }
+
+    function finalizeUpgrade() public onlyGovernance {
+        _setNextImplementation(address(0));
     }
 
     function configureSwap(
@@ -102,32 +103,32 @@ contract UniversalLiquidator is Initializable, BaseUpgradeableStrategyStorage, C
     }
 
     function swapTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address tokenIn,
-        address tokenOut,
-        address recipient
+        address _tokenIn,
+        address _tokenOut,
+        uint256 _amountIn,
+        uint256 _amountOutMin,
+        address _recipient
     ) external returns (uint) {
         require(
-            msg.sender == IController(controller()).feeRewardForwarder(),
+            msg.sender == IController(controller()).rewardForwarder(),
             "only callable from fee reward forwarder"
         );
 
-        IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+        IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amountIn);
 
-        if (tokenIn == tokenOut) {
+        if (_tokenIn == _tokenOut) {
             // if the input and output tokens are the same, return amountIn
-            uint amountOut = amountIn;
-            IERC20(tokenIn).safeTransfer(recipient, amountOut);
+            uint amountOut = _amountIn;
+            IERC20(_tokenIn).safeTransfer(_recipient, amountOut);
             return amountOut;
         }
 
-        address[] memory path = new address[](tokenOut != WETH ? 3 : 2);
-        path[0] = tokenIn;
-        if (tokenOut != WETH) {
+        address[] memory path = new address[](_tokenOut != WETH ? 3 : 2);
+        path[0] = _tokenIn;
+        if (_tokenOut != WETH) {
             path[1] = WETH;
         }
-        path[path.length - 1] = tokenOut;
+        path[path.length - 1] = _tokenOut;
 
         for (uint i = 0; i < path.length - 1; i++) {
             address router = getAddress(_getSlotForRouter(path[i], path[i + 1]));
@@ -135,28 +136,28 @@ contract UniversalLiquidator is Initializable, BaseUpgradeableStrategyStorage, C
                 router != address(0),
                 "invalid router for path"
             );
-            if (IERC20(path[i]).allowance(address(this), router) < amountIn) {
+            if (IERC20(path[i]).allowance(address(this), router) < _amountIn) {
                 IERC20(path[i]).safeApprove(router, 0);
-                IERC20(path[i]).safeApprove(router, amountIn);
+                IERC20(path[i]).safeApprove(router, _amountIn);
             }
 
-            amountIn = _performSwap(
+            _amountIn = _performSwap(
                 router,
                 path[i],
                 path[i + 1],
-                amountIn,
-                1,
-                recipient
+                _amountIn,
+                i == path.length - 2 ? _amountOutMin : 1,
+                _recipient
             );
         }
 
         // we re-assign amountIn to be eq to amountOut
         require(
-            amountIn >= amountOutMin,
+            _amountIn >= _amountOutMin,
             "insufficient amount out"
         );
 
-        return amountIn;
+        return _amountIn;
     }
 
     function _address2ToMemory(address[2] memory tokens) internal pure returns (address[] memory) {

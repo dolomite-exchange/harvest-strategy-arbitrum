@@ -202,7 +202,12 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
             address strategyFeeRecipient = strategist();
             address platformFeeRecipient = IController(controller()).governance();
 
-            emit ProfitLogInReward(_rewardToken, _rewardBalance, profitSharingFee, block.timestamp);
+            emit ProfitLogInReward(
+                _rewardToken,
+                _rewardBalance,
+                profitSharingFee,
+                block.timestamp
+            );
             emit PlatformFeeLogInReward(
                 platformFeeRecipient,
                 _rewardToken,
@@ -284,7 +289,12 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
                 }
             }
 
-            emit ProfitAndBuybackLog(_rewardToken, _rewardBalance, profitSharingFee, block.timestamp);
+            emit ProfitAndBuybackLog(
+                _rewardToken,
+                _rewardBalance,
+                profitSharingFee,
+                block.timestamp
+            );
             emit PlatformFeeLogInReward(
                 IController(controller()).governance(),
                 _rewardToken,
@@ -300,14 +310,14 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
                 block.timestamp
             );
 
-            address forwarder = IController(controller()).feeRewardForwarder();
-            IERC20(_rewardToken).safeApprove(forwarder, 0);
-            IERC20(_rewardToken).safeApprove(forwarder, _rewardBalance);
+            address rewardForwarder = IController(controller()).rewardForwarder();
+            IERC20(_rewardToken).safeApprove(rewardForwarder, 0);
+            IERC20(_rewardToken).safeApprove(rewardForwarder, _rewardBalance);
 
             // Send and distribute the fees
             IERC20(_rewardToken).safeTransfer(strategist(), strategistFee);
             IERC20(_rewardToken).safeTransfer(IController(controller()).governance(), platformFee);
-            return IRewardForwarder(forwarder).notifyFeeAndBuybackAmounts(
+            return IRewardForwarder(rewardForwarder).notifyFeeAndBuybackAmounts(
                 _rewardToken,
                 profitSharingFee,
                 strategistFee,

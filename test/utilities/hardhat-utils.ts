@@ -14,8 +14,45 @@ const IUpgradeableStrategyArtifact = artifacts.require('IUpgradeableStrategy');
 
 const IVaultArtifact = artifacts.require('IVault');
 
+const keys = require('../../dev-keys.json');
+
+export async function resetFork(blockNumber: number = 7642717) {
+  await network.provider.request({
+    method: 'hardhat_reset',
+    params: [
+      {
+        forking: {
+          jsonRpcUrl: `https://arbitrum-mainnet.infura.io/v3/${keys.infuraKey}`,
+          blockNumber: blockNumber,
+        },
+      },
+    ],
+  });
+}
+
+export async function snapshot(): Promise<string> {
+  const result = await network.provider.request({
+    method: 'evm_snapshot',
+    params: [],
+  });
+  return result as string;
+}
+
+export async function revertToSnapshot(snapshotId: string): Promise<string> {
+  const id = await snapshot();
+
+  if (id !== snapshotId) {
+    await network.provider.request({
+      method: 'evm_revert',
+      params: [snapshotId],
+    });
+    return snapshot();
+  } else {
+    return id;
+  }
+}
+
 export async function impersonates(targetAccounts: string[]) {
-  console.log('Impersonating...');
   for (let i = 0; i < targetAccounts.length; i++) {
     console.log(targetAccounts[i]);
     await network.provider.request({

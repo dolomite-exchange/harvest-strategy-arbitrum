@@ -3,7 +3,7 @@ import { BigNumber } from 'ethers';
 import { artifacts, ethers, web3 } from 'hardhat';
 import { IController, IERC20, IGauge, IVault, TriCryptoStrategyMainnet } from '../../src/types';
 
-import { depositVault, impersonates, setupCoreProtocol } from '../utilities/hh-utils';
+import { depositVault, impersonates, setupCoreProtocol } from '../utilities/hardhat-utils';
 
 import * as utils from '../utilities/utils';
 

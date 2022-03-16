@@ -21,7 +21,7 @@ contract Controller is IController, Governable {
 
     // external parties
     address public rewardForwarder;
-
+    address public universalLiquidator;
     address public dolomiteYieldFarmingRouter;
 
     uint256 public nextImplementationDelay;
@@ -121,12 +121,14 @@ contract Controller is IController, Governable {
     constructor(
         address _storage,
         address _rewardForwarder,
+        address _universalLiquidator,
         uint _nextImplementationDelay
     )
     Governable(_storage)
     public {
         require(_rewardForwarder != address(0), "feeRewardForwarder should not be empty");
         rewardForwarder = _rewardForwarder;
+        universalLiquidator = _universalLiquidator;
         nextImplementationDelay = _nextImplementationDelay;
     }
 
@@ -177,9 +179,14 @@ contract Controller is IController, Governable {
         emit RemovedStakingContract(_target);
     }
 
-    function setFeeRewardForwarder(address _feeRewardForwarder) public onlyGovernance {
-        require(_feeRewardForwarder != address(0), "new reward forwarder should not be empty");
-        rewardForwarder = _feeRewardForwarder;
+    function setRewardForwarder(address _rewardForwarder) public onlyGovernance {
+        require(_rewardForwarder != address(0), "new reward forwarder should not be empty");
+        rewardForwarder = _rewardForwarder;
+    }
+
+    function setUniversalLiquidator(address _universalLiquidator) public onlyGovernance {
+        require(_universalLiquidator != address(0), "new universal liquidator should not be empty");
+        universalLiquidator = _universalLiquidator;
     }
 
     function setDolomiteYieldFarmingRouter(address _dolomiteYieldFarmingRouter) public onlyGovernance {
@@ -274,6 +281,11 @@ contract Controller is IController, Governable {
         uint256 _strategistFee,
         uint256 _platformFee
     ) external {
+        require(
+            strategies[msg.sender],
+            "msg.sender must be a strategy"
+        );
+
         uint totalFee = _profitSharingFee.add(_strategistFee).add(_platformFee);
         if (totalFee > 0) {
             IERC20(_underlying).safeTransferFrom(msg.sender, address(this), totalFee);
@@ -321,7 +333,7 @@ contract Controller is IController, Governable {
             nextProfitSharingNumerator != 0
             && nextProfitSharingNumeratorTimestamp != 0
             && block.timestamp >= nextProfitSharingNumeratorTimestamp,
-            "invalid timestamp or no new profit sharing number confirmed"
+            "invalid timestamp or no new profit sharing numerator confirmed"
         );
         profitSharingNumerator = nextProfitSharingNumerator;
         nextProfitSharingNumerator = 0;
@@ -347,10 +359,10 @@ contract Controller is IController, Governable {
             && block.timestamp >= nextStrategistFeeNumeratorTimestamp,
             "invalid timestamp or no new strategist fee numerator confirmed"
         );
-        profitSharingNumerator = nextStrategistFeeNumerator;
+        strategistFeeNumerator = nextStrategistFeeNumerator;
         nextStrategistFeeNumerator = 0;
         nextStrategistFeeNumeratorTimestamp = 0;
-        emit ConfirmStrategistFeeNumeratorChange(profitSharingNumerator);
+        emit ConfirmStrategistFeeNumeratorChange(strategistFeeNumerator);
     }
 
     function setPlatformFeeNumerator(uint _platformFeeNumerator) public onlyGovernance {
@@ -371,10 +383,10 @@ contract Controller is IController, Governable {
             && block.timestamp >= nextPlatformFeeNumeratorTimestamp,
             "invalid timestamp or no new platform fee numerator confirmed"
         );
-        profitSharingNumerator = nextPlatformFeeNumerator;
+        platformFeeNumerator = nextPlatformFeeNumerator;
         nextPlatformFeeNumerator = 0;
         nextPlatformFeeNumeratorTimestamp = 0;
-        emit ConfirmPlatformFeeNumeratorChange(profitSharingNumerator);
+        emit ConfirmPlatformFeeNumeratorChange(platformFeeNumerator);
     }
 
     function _addVaultAndStrategy(address _vault, address _strategy) internal {
