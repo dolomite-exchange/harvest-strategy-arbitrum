@@ -10,7 +10,7 @@ contract TriCryptoStrategyMainnet is TriCryptoStrategy, IMainnetStrategy {
         address _storage,
         address _vault,
         address _strategist
-    ) public initializer {
+    ) external initializer {
         address[] memory rewardTokens = new address[](1);
         rewardTokens[0] = CRV;
 

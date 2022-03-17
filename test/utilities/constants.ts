@@ -10,6 +10,8 @@ import { IUniswapV2Router02 } from '../../src/types/IUniswapV2Router02';
 import { IUniswapV3Router } from '../../src/types/IUniswapV3Router';
 import { IWETH } from '../../src/types/IWETH';
 
+// ************************* External Contract Addresses *************************
+
 export const CRV = new BaseContract(
   '0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978',
   IERC20__factory.createInterface(),
@@ -74,3 +76,15 @@ export const WETH = new BaseContract(
   '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
   IWETH__factory.createInterface(),
 ) as IWETH
+
+// ************************* Harvest Contract Addresses *************************
+
+export const ControllerAddress = '';
+export const RewardForwarderAddress = '';
+export const StorageAddress = '';
+export const UniversalLiquidatorAddress = '';
+export const VaultImplementationV1 = '';
+
+// ************************* Harvest Params *************************
+
+export const DefaultImplementationDelay = 60 * 60 * 12; // 12 hours

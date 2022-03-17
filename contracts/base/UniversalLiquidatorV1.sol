@@ -20,7 +20,7 @@ import "./upgradability/BaseUpgradeableStrategyStorage.sol";
  *      via slots. This contract is responsible for liquidating tokens and is intended to be called by the
  *      `RewardForwarder` when `doHardWork` is initiated
  */
-contract UniversalLiquidator is ControllableInit, BaseUpgradeableStrategyStorage, Constants, IUniversalLiquidator {
+contract UniversalLiquidatorV1 is IUniversalLiquidator, ControllableInit, BaseUpgradeableStrategyStorage, Constants {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -48,7 +48,7 @@ contract UniversalLiquidator is ControllableInit, BaseUpgradeableStrategyStorage
 
     // ==================== Functions ====================
 
-    function initialize(
+    function initializeUniversalLiquidator(
         address _storage
     ) public initializer {
         ControllableInit.initialize(_storage);
@@ -71,6 +71,7 @@ contract UniversalLiquidator is ControllableInit, BaseUpgradeableStrategyStorage
 
     function scheduleUpgrade(address _nextImplementation) external onlyGovernance {
         _setNextImplementation(_nextImplementation);
+        emit UpgradeScheduled(_nextImplementation, block.timestamp);
     }
 
     function finalizeUpgrade() public onlyGovernance {

@@ -9,4 +9,6 @@ interface IWETH {
     function transfer(address to, uint value) external returns (bool);
 
     function withdraw(uint) external;
+
+    function balanceOf(address user) external view returns (uint);
 }

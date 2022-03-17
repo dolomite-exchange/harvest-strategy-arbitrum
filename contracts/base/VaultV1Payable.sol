@@ -1,10 +1,10 @@
 pragma solidity ^0.5.16;
 
 import "./interfaces/weth/Weth9.sol";
-import "./Vault.sol";
+import "./VaultV1.sol";
 
 
-contract VaultPayable is Vault {
+contract VaultV1Payable is VaultV1 {
     using Address for address payable;
 
     bytes32 internal constant _SHOULD_WITHDRAW_TO_ETH_SLOT = 0xe921e128e6bbbc3334588b78cb5f3f10af6c1e18396e789a648bf7ef84c7b600;

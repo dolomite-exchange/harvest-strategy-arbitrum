@@ -26,28 +26,46 @@ interface IUniversalLiquidator {
 
     // ==================== Functions ====================
 
+    function governance() external view returns (address);
+
+    function controller() external view returns (address);
+
+    function nextImplementation() external view returns (address);
+
+    function scheduleUpgrade(address _nextImplementation) external;
+
     /**
-     * @param path      The path that is used for selling token at path[0] into path[path.length - 1].
-     * @param router    The router to use for this path.
+     * Constructor replacement because this contract is meant to be upgradable
+     */
+    function initializeUniversalLiquidator(
+        address _storage
+    ) external;
+
+    /**
+     * @param _path     The path that is used for selling token at path[0] into path[path.length - 1].
+     * @param _router   The router to use for this path.
      */
     function configureSwap(
-        address[] calldata path,
-        address router
+        address[] calldata _path,
+        address _router
     ) external;
 
     /**
-     * @param paths     The paths that are used for selling token at path[i][0] into path[i][path[i].length - 1].
-     * @param routers   The routers to use for each index, `i`.
+     * @param _paths    The paths that are used for selling token at path[i][0] into path[i][path[i].length - 1].
+     * @param _routers  The routers to use for each index, `i`.
      */
     function configureSwaps(
-        address[][] calldata paths,
-        address[] calldata routers
+        address[][] calldata _paths,
+        address[] calldata _routers
     ) external;
 
     /**
-     * @return The router used to execute the swap from `inputToken` to `outputToken`
+     * @return The router used to execute the swap from `_inputToken` to `_outputToken`
      */
-    function getSwapRouter(address inputToken, address outputToken) external view returns (address);
+    function getSwapRouter(
+        address _inputToken,
+        address _outputToken
+    ) external view returns (address);
 
     function swapTokens(
         address _tokenIn,

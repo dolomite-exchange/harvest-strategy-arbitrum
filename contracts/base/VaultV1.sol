@@ -15,7 +15,7 @@ import "./inheritance/ControllableInit.sol";
 import "./VaultStorage.sol";
 
 
-contract Vault is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultStorage {
+contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableInit, VaultStorage {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;

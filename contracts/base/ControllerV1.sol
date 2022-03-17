@@ -11,10 +11,10 @@ import "./interfaces/IController.sol";
 import "./interfaces/IStrategy.sol";
 import "./interfaces/IVault.sol";
 
-import "./RewardForwarder.sol";
+import "./RewardForwarderV1.sol";
 
 
-contract Controller is IController, Governable {
+contract ControllerV1 is IController, Governable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -26,14 +26,17 @@ contract Controller is IController, Governable {
 
     uint256 public nextImplementationDelay;
 
+    /// 15% of fees captured go to iFARM stakers
     uint256 public profitSharingNumerator = 1500;
     uint256 public nextProfitSharingNumerator = 0;
     uint256 public nextProfitSharingNumeratorTimestamp = 0;
 
+    /// 5% of fees captured go to strategists
     uint256 public strategistFeeNumerator = 500;
     uint256 public nextStrategistFeeNumerator = 0;
     uint256 public nextStrategistFeeNumeratorTimestamp = 0;
 
+    /// 5% of fees captured go to the devs of the platform
     uint256 public platformFeeNumerator = 500;
     uint256 public nextPlatformFeeNumerator = 0;
     uint256 public nextPlatformFeeNumeratorTimestamp = 0;

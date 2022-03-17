@@ -22,7 +22,7 @@ contract IStrategy {
 
     function withdrawToVault(uint256 _amount) external;
 
-    function investedUnderlyingBalance() external view returns (uint256); // itsNotMuch()
+    function investedUnderlyingBalance() external view returns (uint256);
 
     function doHardWork() external;
 

@@ -25,6 +25,8 @@ interface IController {
 
     function stakingWhiteList(address _target) external view returns (bool);
 
+    function store() external view returns (address);
+
     function governance() external view returns (address);
 
     function hasVault(address _vault) external view returns (bool);
@@ -92,4 +94,16 @@ interface IController {
     function setPlatformFeeNumerator(uint _platformFeeNumerator) external;
 
     function confirmSetPlatformFeeNumerator() external;
+
+    function nextProfitSharingNumerator() external view returns (uint256);
+
+    function nextProfitSharingNumeratorTimestamp() external view returns (uint256);
+
+    function nextStrategistFeeNumerator() external view returns (uint256);
+
+    function nextStrategistFeeNumeratorTimestamp() external view returns (uint256);
+
+    function nextPlatformFeeNumerator() external view returns (uint256);
+
+    function nextPlatformFeeNumeratorTimestamp() external view returns (uint256);
 }

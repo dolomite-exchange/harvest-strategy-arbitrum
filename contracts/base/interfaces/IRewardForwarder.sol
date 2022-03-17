@@ -7,6 +7,12 @@ pragma solidity ^0.5.16;
  */
 interface IRewardForwarder {
 
+    function store() external view returns (address);
+
+    function governance() external view returns (address);
+
+    function targetToken() external view returns (address);
+
     /**
      * @dev This function sends converted `_buybackTokens` to `msg.sender`. The returned amounts will match the
      *      `amounts` return value

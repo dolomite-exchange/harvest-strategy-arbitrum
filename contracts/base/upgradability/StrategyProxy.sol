@@ -20,11 +20,9 @@ contract StrategyProxy is BaseUpgradeabilityProxy {
 
     // the finalization needs to be executed on itself to update the storage of this proxy
     // it also needs to be invoked by the governance, not by address(this), so delegatecall is needed
-    (bool success,) = address(this).delegatecall(
-      abi.encodeWithSignature("finalizeUpgrade()")
-    );
+    (bool success,) = address(this).delegatecall(abi.encodeWithSignature("finalizeUpgrade()"));
 
-    require(success, "Issue when finalizing the upgrade");
+    require(success, "Could not finalize the upgrade");
   }
 
   function implementation() external view returns (address) {

@@ -113,8 +113,8 @@ contract ConvexStrategy2Token is IStrategy, BaseUpgradeableStrategy {
         }
     }
 
-    function isUnsalvageableToken(address token) public view returns (bool) {
-        return (isRewardToken(token) || token == underlying() || token == depositReceipt());
+    function isUnsalvageableToken(address _token) public view returns (bool) {
+        return super.isUnsalvageableToken(_token) || _token == depositReceipt();
     }
 
     function enterRewardPool() internal {
@@ -230,21 +230,6 @@ contract ConvexStrategy2Token is IStrategy, BaseUpgradeableStrategy {
         IBaseRewardPool(rewardPool()).getReward();
         _liquidateReward();
         investAllUnderlying();
-    }
-
-    /**
-     * Can completely disable claiming UNI rewards and selling. Good for emergency withdraw in the
-     * simplest possible way.
-     */
-    function setSell(bool s) public onlyGovernance {
-        _setSell(s);
-    }
-
-    /**
-     * Sets the minimum amount of reward token needed to trigger a sale.
-     */
-    function setSellFloor(uint256 floor) public onlyGovernance {
-        _setSellFloor(floor);
     }
 
     function _setPoolId(uint256 _value) internal {

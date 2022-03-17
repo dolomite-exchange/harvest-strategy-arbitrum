@@ -19,7 +19,7 @@ import "./inheritance/Constants.sol";
  * @dev This contract receives rewards from strategies and is responsible for routing the reward's liquidation into
  *      specific buyback tokens and profit tokens for the DAO.
  */
-contract RewardForwarder is IRewardForwarder, Controllable, Constants {
+contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 

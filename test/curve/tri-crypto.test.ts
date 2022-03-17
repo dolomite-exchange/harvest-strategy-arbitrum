@@ -1,143 +1,74 @@
 // Utilities
-import { BigNumber } from 'ethers';
-import { artifacts, ethers, web3 } from 'hardhat';
-import { IController, IERC20, IGauge, IVault, TriCryptoStrategyMainnet } from '../../src/types';
-
-import { depositVault, impersonates, setupCoreProtocol } from '../utilities/hardhat-utils';
-
-import * as utils from '../utilities/utils';
-
-const IERC20Artifact = artifacts.require('@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20');
-const IGaugeArtifact = artifacts.require('IGauge');
-const StrategyArtifact = artifacts.require('TriCryptoStrategyMainnet');
-
-
-// TODO deploy storage, controller, etc. if preset address is 0x00...00 - this will allow me to develop without wasting
-//  ETH deploying them. Eventually, when we're live, I can replace them w/ their real addresses
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { expect } from 'chai';
+import { BaseContract } from 'ethers';
+import { ethers } from 'hardhat';
+import {
+  Controller, IProfitSharingReceiver,
+  RewardForwarder,
+  Storage,
+  UniversalLiquidator,
+  UniversalLiquidator__factory,
+  UniversalLiquidatorProxy,
+} from '../../src/types';
+import { CRV, DAI, SUSHI, SUSHI_ROUTER, UNISWAP_V3_ROUTER, USDC, USDT, WBTC, WETH } from '../utilities/constants';
+import { resetFork, revertToSnapshot, setupCoreProtocol, snapshot } from '../utilities/harvest-utils';
+import { getLatestTimestamp, revertToSnapshotAndCapture, waitTime } from '../utilities/utils';
 
 /**
- * This test was developed at blockNumber XYZ
+ * Tests deployment of `Storage`, `Controller`, `RewardForwarder`, `UniversalLiquidator(Proxy)`
  */
-describe('Mainnet TriCrypto', () => {
-  let accounts: string[];
+describe('BaseSystem', () => {
 
-  // external contracts
-  let underlying: IERC20;
+  let governance: SignerWithAddress;
+  let hhUser1: SignerWithAddress;
+  let storage: Storage;
+  let profitSharingReceiver: IProfitSharingReceiver;
+  let universalLiquidatorProxy: UniversalLiquidatorProxy;
+  let universalLiquidator: UniversalLiquidator;
+  let rewardForwarder: RewardForwarder;
+  let controller: Controller;
 
-  // external setup
-  let underlyingWhale = '0x89515406c15a277F8906090553366219B3639834';
-  let hodlVault = '0xF49440C1F012d041802b25A73e5B0B9166a75c02';
-
-  // parties in the protocol
-  let governance: string;
-  let farmer1: string;
-
-  // numbers used in tests
-  let farmerBalance: BigNumber;
-
-  // Core protocol contracts
-  let controller: IController;
-  let vault: IVault;
-  let strategy: TriCryptoStrategyMainnet;
-  let gauge: IGauge;
-
-  async function setupExternalContracts() {
-    underlying = await IERC20Artifact.at('0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490');
-    console.log('Fetching Underlying at: ', underlying.address);
-  }
-
-  async function setupBalance() {
-    let etherGiver = accounts[9];
-    // Give whale some ether to make sure the following actions are good
-    await utils.sendEther(etherGiver, underlyingWhale, ethers.constants.One.mul(ethers.constants.WeiPerEther));
-
-    farmerBalance = await underlying.balanceOf(underlyingWhale);
-    await underlying.transfer(farmer1, farmerBalance, { from: underlyingWhale });
-  }
+  let snapshotId: string;
 
   before(async () => {
-    governance = '0xf00dD244228F51547f0563e60bCa65a30FBF5f7f';
-    accounts = await web3.eth.getAccounts();
-
-    farmer1 = accounts[1];
-
-    // impersonate accounts
-    await impersonates([governance, underlyingWhale]);
-
-    await setupExternalContracts();
-    [controller, vault, strategy] = await setupCoreProtocol({
-      shouldAnnounceStrategy: false,
-      existingRewardPoolAddress: ethers.constants.AddressZero,
-      existingVaultAddress: ethers.constants.AddressZero,
-      feeRewardForwarder: ethers.constants.AddressZero,
-      governance: governance,
-      rewardPool: ethers.constants.AddressZero,
-      rewardPoolConfig: {},
-      strategyArgs: [],
-      strategyArtifact: StrategyArtifact,
-      strategyArtifactIsUpgradable: true,
-      underlying: underlying,
-      upgradeStrategy: true,
-      vaultImplementationOverrideAddress: ethers.constants.AddressZero,
+    const coreProtocol = await setupCoreProtocol({
+      blockNumber: 7642717,
     });
+    governance = coreProtocol.governance;
+    hhUser1 = coreProtocol.hhUser1;
+    storage = coreProtocol.storage;
+    profitSharingReceiver = coreProtocol.profitSharingReceiver;
+    universalLiquidatorProxy = coreProtocol.universalLiquidatorProxy;
+    universalLiquidator = coreProtocol.universalLiquidator;
+    rewardForwarder = coreProtocol.rewardForwarder;
+    controller = coreProtocol.controller;
 
-    await strategy.setSellFloor(0, { from: governance });
+    snapshotId = await snapshot();
+  })
 
-    gauge = await IGaugeArtifact.at('0xF403C135812408BFbE8713b5A23a04b3D48AAE31');
-
-    // whale send underlying to farmers
-    await setupBalance();
+  beforeEach(async () => {
+    snapshotId = await revertToSnapshotAndCapture(snapshotId);
   });
 
-  describe('Happy path', function () {
-    it('Farmer should earn money', async function () {
-      let farmerOldBalance = await underlying.balanceOf(farmer1);
-      await depositVault(farmer1, underlying, vault, farmerBalance);
-      let fTokenBalance = await vault.balanceOf(farmer1);
-      let cvx = await IERC20Artifact.at('0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B');
 
-      // Using half days is to simulate how we doHardwork in the real world
-      let hours = 10;
-      let blocksPerHour = 4800;
-      let oldSharePrice: BigNumber;
-      let newSharePrice: BigNumber;
-      let hodlOldBalance: BigNumber = await cvx.balanceOf(hodlVault);
-      for (let i = 0; i < hours; i++) {
-        console.log('loop ', i);
+  describe('#deployment', () => {
+    it('should work properly', async () => {
+      expect(await storage.governance()).to.eq(governance.address);
+      expect(await storage.controller()).to.eq(controller.address);
 
-        oldSharePrice = await vault.getPricePerFullShare();
-        await controller.doHardWork(vault.address, { from: governance });
-        newSharePrice = await vault.getPricePerFullShare();
+      expect(await universalLiquidator.governance()).to.eq(governance.address);
+      expect(await universalLiquidator.controller()).to.eq(controller.address);
 
-        console.log('old share price: ', oldSharePrice.toString());
-        console.log('new share price: ', newSharePrice.toString());
-        console.log('growth: ', newSharePrice.div(oldSharePrice).toString());
+      expect(await rewardForwarder.store()).to.eq(storage.address);
+      expect(await rewardForwarder.governance()).to.eq(governance.address);
+      expect(await rewardForwarder.targetToken()).to.eq(USDC.address);
+      expect(await rewardForwarder.profitSharingPool()).to.eq(profitSharingReceiver.address);
 
-        const apr = utils.calculateApr(newSharePrice, oldSharePrice);
-        const apy = utils.calculateApy(newSharePrice, oldSharePrice);
-
-        console.log('instant APR:', apr.mul(100).toString(), '%');
-        console.log('instant APY:', apy.sub(1).mul(100).toString(), '%');
-
-        await utils.advanceNBlock(blocksPerHour);
-      }
-      await vault.withdraw(fTokenBalance, { from: farmer1 });
-      let farmerNewBalance = await underlying.balanceOf(farmer1);
-      utils.assertBNGt(farmerNewBalance, farmerOldBalance);
-
-      let hodlNewBalance = await cvx.balanceOf(hodlVault);
-      console.log('CVX before', hodlOldBalance.toString());
-      console.log('CVX after ', hodlNewBalance.toString());
-      utils.assertBNGt(hodlNewBalance, hodlOldBalance);
-
-      const apr = utils.calculateApr(farmerNewBalance, farmerOldBalance);
-      const apy = utils.calculateApy(farmerNewBalance, farmerOldBalance);
-
-      console.log('earned!');
-      console.log('overall APR:', apr.mul(100).toString(), '%');
-      console.log('overall APY:', apy.sub(1).mul(100).toString(), '%');
-
-      await strategy.withdrawAllToVault({ from: governance }); // making sure can withdraw all for a next switch
+      expect(await controller.governance()).to.eq(governance.address);
+      expect(await controller.store()).to.eq(storage.address);
+      expect(await controller.rewardForwarder()).to.eq(rewardForwarder.address);
+      expect(await controller.nextImplementationDelay()).to.eq(implementationDelaySeconds);
     });
   });
 });

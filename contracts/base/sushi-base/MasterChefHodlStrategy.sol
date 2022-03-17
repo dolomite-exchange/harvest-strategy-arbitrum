@@ -91,10 +91,6 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
         }
     }
 
-    function isUnsalvageableToken(address token) public view returns (bool) {
-        return (isRewardToken(token) || token == underlying());
-    }
-
     function enterRewardPool() internal {
         uint256 entireBalance = IERC20(underlying()).balanceOf(address(this));
         IERC20(underlying()).safeApprove(rewardPool(), 0);

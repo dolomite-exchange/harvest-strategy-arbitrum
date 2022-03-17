@@ -96,10 +96,6 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
       }
   }
 
-  function isUnsalvageableToken(address token) public view returns (bool) {
-    return (isRewardToken(token) || token == underlying());
-  }
-
   function enterRewardPool() internal {
     uint256 entireBalance = IERC20(underlying()).balanceOf(address(this));
     IERC20(underlying()).safeApprove(rewardPool(), 0);
@@ -314,22 +310,6 @@ contract ComplifiStrategyClaim is IStrategy, BaseUpgradeableStrategy {
     }
   }
 
-  /**
-  * Can completely disable claiming UNI rewards and selling. Good for emergency withdraw in the
-  * simplest possible way.
-  */
-  function setSell(bool s) public onlyGovernance {
-    _setSell(s);
-  }
-
-  /**
-  * Sets the minimum amount of CRV needed to trigger a sale.
-  */
-  function setSellFloor(uint256 floor) public onlyGovernance {
-    _setSellFloor(floor);
-  }
-
-  // masterchef rewards pool ID
   function _setPoolId(uint256 _value) internal {
     setUint256(_POOLID_SLOT, _value);
   }

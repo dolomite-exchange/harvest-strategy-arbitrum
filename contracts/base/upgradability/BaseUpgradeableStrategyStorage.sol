@@ -18,9 +18,23 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
 
     // ==================== Events ====================
 
-    event ProfitsNotCollected(address indexed rewardToken, bool sell, bool floor);
-    event ProfitLogInReward(address indexed rewardToken, uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
-    event ProfitAndBuybackLog(address indexed rewardToken, uint256 profitAmount, uint256 feeAmount, uint256 timestamp);
+    event ProfitsNotCollected(
+        address indexed rewardToken,
+        bool sell,
+        bool floor
+    );
+    event ProfitLogInReward(
+        address indexed rewardToken,
+        uint256 profitAmount,
+        uint256 feeAmount,
+        uint256 timestamp
+    );
+    event ProfitAndBuybackLog(
+        address indexed rewardToken,
+        uint256 profitAmount,
+        uint256 feeAmount,
+        uint256 timestamp
+    );
     event PlatformFeeLogInReward(
         address indexed treasury,
         address indexed rewardToken,
@@ -35,6 +49,16 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         uint256 feeAmount,
         uint256 timestamp
     );
+
+    event UnderlyingSet(address underlying);
+    event RewardPoolSet(address rewardPool);
+    event RewardTokensSet(address[] rewardTokens);
+    event VaultSet(address vault);
+    event StrategistSet(address strategist);
+    event SellSet(bool shouldSell);
+    event PausedInvestingSet(bool isInvestingPaused);
+    event SellFloorSet(uint sellFloor);
+    event UpgradeScheduled(address newImplementation, uint readyAtTimestamp);
 
     // ==================== Internal Constants ====================
 
@@ -54,7 +78,6 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
     bytes32 internal constant _NEXT_IMPLEMENTATION_TIMESTAMP_SLOT = 0x414c5263b05428f1be1bfa98e25407cc78dd031d0d3cd2a2e3d63b488804f22e;
     bytes32 internal constant _NEXT_IMPLEMENTATION_DELAY_SLOT = 0x82b330ca72bcd6db11a26f10ce47ebcfe574a9c646bccbc6f1cd4478eae16b31;
 
-    bytes32 internal constant _REWARD_CLAIMABLE_SLOT = 0xbc7c0d42a71b75c3129b337a259c346200f901408f273707402da4b51db3b8e7;
     bytes32 internal constant _STRATEGIST_SLOT = 0x6a7b588c950d46e2de3db2f157e5e0e4f29054c8d60f17bf0c30352e223a458d;
 
     constructor() public {
@@ -73,56 +96,63 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         assert(_NEXT_IMPLEMENTATION_TIMESTAMP_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.nextImplementationTimestamp")) - 1));
         assert(_NEXT_IMPLEMENTATION_DELAY_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.nextImplementationDelay")) - 1));
 
-        assert(_REWARD_CLAIMABLE_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.rewardClaimable")) - 1));
         assert(_STRATEGIST_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.strategist")) - 1));
     }
 
     // ==================== Internal Functions ====================
 
-    function _setUnderlying(address _address) internal {
-        setAddress(_UNDERLYING_SLOT, _address);
+    function _setUnderlying(address _underlying) internal {
+        setAddress(_UNDERLYING_SLOT, _underlying);
+        emit UnderlyingSet(_underlying);
     }
 
     function underlying() public view returns (address) {
         return getAddress(_UNDERLYING_SLOT);
     }
 
-    function _setRewardPool(address _address) internal {
-        setAddress(_REWARD_POOL_SLOT, _address);
+    function _setRewardPool(address _rewardPool) internal {
+        setAddress(_REWARD_POOL_SLOT, _rewardPool);
+        emit RewardPoolSet(_rewardPool);
     }
 
     function rewardPool() public view returns (address) {
         return getAddress(_REWARD_POOL_SLOT);
     }
 
-    function _setRewardTokens(address[] memory _addresses) internal {
-        setAddressArray(_REWARD_TOKENS_SLOT, _addresses);
+    function _setRewardTokens(address[] memory _rewardTokens) internal {
+        setAddressArray(_REWARD_TOKENS_SLOT, _rewardTokens);
+        emit RewardTokensSet(_rewardTokens);
     }
 
     function isRewardToken(address _token) public view returns (bool) {
-        address[] memory tokens = rewardTokens();
-        for (uint i = 0; i < tokens.length; i++) {
-            if (tokens[i] == _token) {
-                return true;
-            }
-        }
-        return false;
+        return _isAddressInList(_token, rewardTokens());
     }
 
     function rewardTokens() public view returns (address[] memory) {
         return getAddressArray(_REWARD_TOKENS_SLOT);
     }
 
-    function _setVault(address _address) internal {
-        setAddress(_VAULT_SLOT, _address);
+    function _isAddressInList(address _searchValue, address[] memory _list) internal pure returns (bool) {
+        for (uint i = 0; i < _list.length; i++) {
+            if (_list[i] == _searchValue) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function _setVault(address _vault) internal {
+        setAddress(_VAULT_SLOT, _vault);
+        emit VaultSet(_vault);
     }
 
     function vault() public view returns (address) {
         return getAddress(_VAULT_SLOT);
     }
 
-    function _setStrategist(address _address) internal {
-        setAddress(_STRATEGIST_SLOT, _address);
+    function _setStrategist(address _strategist) internal {
+        setAddress(_STRATEGIST_SLOT, _strategist);
+        emit StrategistSet(_strategist);
     }
 
     function strategist() public view returns (address) {
@@ -132,16 +162,18 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
     /**
      * @dev a flag for disabling selling for simplified emergency exit
      */
-    function _setSell(bool _value) internal {
-        setBoolean(_SELL_SLOT, _value);
+    function _setSell(bool _shouldSell) internal {
+        setBoolean(_SELL_SLOT, _shouldSell);
+        emit SellSet(_shouldSell);
     }
 
     function sell() public view returns (bool) {
         return getBoolean(_SELL_SLOT);
     }
 
-    function _setPausedInvesting(bool _value) internal {
-        setBoolean(_PAUSED_INVESTING_SLOT, _value);
+    function _setPausedInvesting(bool _isInvestingPaused) internal {
+        setBoolean(_PAUSED_INVESTING_SLOT, _isInvestingPaused);
+        emit PausedInvestingSet(_isInvestingPaused);
     }
 
     function pausedInvesting() public view returns (bool) {
@@ -150,6 +182,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
 
     function _setSellFloor(uint256 _value) internal {
         setUint256(_SELL_FLOOR_SLOT, _value);
+        emit SellFloorSet(_value);
     }
 
     function sellFloor() public view returns (uint256) {
@@ -178,14 +211,6 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
 
     function platformFeeDenominator() public view returns (uint256) {
         return IController(controller()).platformFeeDenominator();
-    }
-
-    function allowedRewardClaimable() public view returns (bool) {
-        return getBoolean(_REWARD_CLAIMABLE_SLOT);
-    }
-
-    function _setRewardClaimable(bool _value) internal {
-        setBoolean(_REWARD_CLAIMABLE_SLOT, _value);
     }
 
     // ==================== Functionality ====================
@@ -333,9 +358,10 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         }
     }
 
-    // upgradeability
+    // ========================= Internal Functions for Handling Upgrades =========================
 
     function _setNextImplementation(address _address) internal {
+        // event is emitted in caller in subclass
         setAddress(_NEXT_IMPLEMENTATION_SLOT, _address);
     }
 
@@ -344,6 +370,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
     }
 
     function _setNextImplementationTimestamp(uint256 _value) internal {
+        // event is emitted in caller in subclass
         setUint256(_NEXT_IMPLEMENTATION_TIMESTAMP_SLOT, _value);
     }
 
@@ -354,6 +381,8 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
     function nextImplementationDelay() public view returns (uint256) {
         return IController(controller()).nextImplementationDelay();
     }
+
+    // ========================= Internal Functions for Primitives =========================
 
     function setBoolean(bytes32 slot, bool _value) internal {
         setUint256(slot, _value ? 1 : 0);
