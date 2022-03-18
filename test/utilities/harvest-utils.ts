@@ -23,7 +23,7 @@ import {
   UniversalLiquidatorProxy__factory,
   UniversalLiquidatorV1, VaultProxy, VaultV1, VaultV1__factory, VaultV2, VaultV2__factory,
 } from '../../src/types';
-import { DefaultImplementationDelay, USDC } from './constants';
+import { DefaultImplementationDelay, USDC, WETH } from './constants';
 import { impersonateAll, resetFork, setEtherBalance } from './utils';
 
 export interface ExistingCoreAddresses {
@@ -174,7 +174,7 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
     const RewardForwarderV1Factory = await ethers.getContractFactory('RewardForwarderV1');
     rewardForwarder = await RewardForwarderV1Factory.connect(governance).deploy(
       storage.address,
-      USDC.address,
+      WETH.address,
       profitSharingReceiver.address,
     ) as IRewardForwarder;
 
@@ -201,7 +201,7 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
 
   expect(await rewardForwarder.store()).to.eq(storage.address);
   expect(await rewardForwarder.governance()).to.eq(governance.address);
-  expect(await rewardForwarder.targetToken()).to.eq(USDC.address);
+  expect(await rewardForwarder.targetToken()).to.eq(WETH.address);
   expect(await rewardForwarder.profitSharingPool()).to.eq(profitSharingReceiver.address);
 
   expect(await controller.governance()).to.eq(governance.address);

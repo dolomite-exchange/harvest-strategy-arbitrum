@@ -289,7 +289,7 @@ describe('BaseUpgradableStrategy', () => {
       expect(await core.controller.hasStrategy(strategy.address)).to.eq(true);
 
       // make a deposit in the form of underlying
-      const depositAmount = '1000000000000000000';
+      const depositAmount = ethers.BigNumber.from('1000000000000000000');
       await WETH.connect(core.hhUser1).deposit({ value: depositAmount });
       await WETH.connect(core.hhUser1).approve(vaultProxy.address, depositAmount);
       await vaultV1.connect(core.hhUser1).deposit(depositAmount);
@@ -312,14 +312,26 @@ describe('BaseUpgradableStrategy', () => {
       console.log('\tnewPriceFullShare', newPriceFullShare.toString());
       expect(newPriceFullShare).to.not.eq(oldPriceFullShare);
       expect(newPriceFullShare.gt(oldPriceFullShare)).to.eq(true);
+
       await expect(result2).to.emit(core.controller, 'SharePriceChangeLog')
         .withArgs(vaultProxy.address, strategy.address, oldPriceFullShare, newPriceFullShare, latestTimestamp);
+
+      const strategist = await strategy.strategist();
       await expect(result2).to.emit(strategy, 'ProfitAndBuybackLog')
         .withArgs(USDC.address, rewardBalance, '15000000', latestTimestamp);
       await expect(result2).to.emit(strategy, 'PlatformFeeLogInReward')
         .withArgs(core.governance.address, USDC.address, rewardBalance, '5000000', latestTimestamp);
       await expect(result2).to.emit(strategy, 'StrategistFeeLogInReward')
-        .withArgs(await strategy.strategist(), USDC.address, rewardBalance, '5000000', latestTimestamp);
+        .withArgs(strategist, USDC.address, rewardBalance, '5000000', latestTimestamp);
+
+      // price is about $2775. Compounding gets $75 --> >1.027 ETH
+      expect(await vaultV1.underlyingBalanceWithInvestment()).to.be.gt(depositAmount.add('27000000000000000'));
+      // price is about $2775. Profit Sharing gets $15 --> >0.0054 ETH
+      expect(await WETH.connect(core.hhUser1).balanceOf(core.profitSharingReceiver.address)).to.be.gt('5400000000000000');
+      // price is about $2775. Platform gets $5 --> >0.0017 ETH
+      expect(await WETH.connect(core.hhUser1).balanceOf(core.governance.address)).to.be.gt('1700000000000000');
+      // price is about $2775. Strategist gets $5 --> >0.0017 ETH
+      expect(await WETH.connect(core.hhUser1).balanceOf(strategist)).to.be.gt('1700000000000000');
     });
 
     it('should fail when investing is paused', async () => {

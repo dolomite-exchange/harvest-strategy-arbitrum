@@ -61,7 +61,7 @@ describe('BaseSystem', () => {
 
       expect(await rewardForwarder.store()).to.eq(storage.address);
       expect(await rewardForwarder.governance()).to.eq(governance.address);
-      expect(await rewardForwarder.targetToken()).to.eq(USDC.address);
+      expect(await rewardForwarder.targetToken()).to.eq(WETH.address);
       expect(await rewardForwarder.profitSharingPool()).to.eq(profitSharingReceiver.address);
 
       expect(await controller.governance()).to.eq(governance.address);
@@ -313,14 +313,42 @@ describe('BaseSystem', () => {
 
   describe('UniversalLiquidator#getSwapRouter', () => {
     it('should work after deployment', async () => {
-      expect(await universalLiquidator.getSwapRouter(CRV.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address)
-      expect(await universalLiquidator.getSwapRouter(DAI.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address)
-      expect(await universalLiquidator.getSwapRouter(SUSHI.address, WETH.address)).to.eq(SUSHI_ROUTER.address)
-      expect(await universalLiquidator.getSwapRouter(USDC.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address)
-      expect(await universalLiquidator.getSwapRouter(USDT.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address)
-      expect(await universalLiquidator.getSwapRouter(WBTC.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address)
+      expect(await universalLiquidator.getSwapRouter(CRV.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address);
+      expect(await universalLiquidator.getSwapRouter(DAI.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address);
+      expect(await universalLiquidator.getSwapRouter(SUSHI.address, WETH.address)).to.eq(SUSHI_ROUTER.address);
+      expect(await universalLiquidator.getSwapRouter(USDC.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address);
+      expect(await universalLiquidator.getSwapRouter(USDT.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address);
+      expect(await universalLiquidator.getSwapRouter(WBTC.address, WETH.address)).to.eq(UNISWAP_V3_ROUTER.address);
 
-      expect(await universalLiquidator.getSwapRouter(WETH.address, USDC.address)).to.eq(UNISWAP_V3_ROUTER.address)
+      expect(await universalLiquidator.getSwapRouter(WETH.address, USDC.address)).to.eq(UNISWAP_V3_ROUTER.address);
+    });
+
+    describe('ProfitSharingReceiverV1#withdrawTokens', () => {
+      it('should work when called by governance', async () => {
+        const amount = ethers.BigNumber.from('1000000000000000000')
+        await WETH.connect(hhUser1).deposit({ value: amount });
+        await WETH.connect(hhUser1).transfer(profitSharingReceiver.address, amount);
+
+        expect(await WETH.connect(hhUser1).balanceOf(profitSharingReceiver.address)).to.eq(amount);
+
+        const result = await profitSharingReceiver.connect(governance).withdrawTokens([WETH.address]);
+        await expect(result).to.emit(profitSharingReceiver, 'WithdrawToken')
+          .withArgs(WETH.address, governance.address, amount);
+
+        expect(await WETH.connect(hhUser1).balanceOf(profitSharingReceiver.address)).to.eq(0);
+        expect(await WETH.connect(hhUser1).balanceOf(governance.address)).to.eq(amount);
+      });
+
+      it('should failed when not called by governance', async () => {
+        const amount = ethers.BigNumber.from('1000000000000000000')
+        await WETH.connect(hhUser1).deposit({ value: amount });
+        await WETH.connect(hhUser1).transfer(profitSharingReceiver.address, amount);
+
+        expect(await WETH.connect(hhUser1).balanceOf(profitSharingReceiver.address)).to.eq(amount);
+
+        await expect(profitSharingReceiver.connect(hhUser1).withdrawTokens([WETH.address]))
+          .to.revertedWith('Not governance');
+      });
     });
   })
 });

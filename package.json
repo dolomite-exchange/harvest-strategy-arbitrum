@@ -9,7 +9,7 @@
   "scripts": {
     "build": "hardhat compile",
     "lint": "solhint 'contracts/**/*.sol'",
-    "test": "echo \"Error: please run tests individually\" && exit 1",
+    "test": "hardhat test",
     "typechain": "hardhat typechain"
   },
   "repository": {

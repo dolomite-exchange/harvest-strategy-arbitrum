@@ -28,8 +28,10 @@ contract ProfitSharingReceiverV1 is IProfitSharingReceiver, Governable {
         address _governance = governance();
         for (uint i = 0; i < _tokens.length; ++i) {
             uint amount = IERC20(_tokens[i]).balanceOf(address(this));
-            IERC20(_tokens[i]).safeTransfer(_governance, amount);
-            emit WithdrawToken(_tokens[i], _governance, amount);
+            if (amount > 0) {
+                IERC20(_tokens[i]).safeTransfer(_governance, amount);
+                emit WithdrawToken(_tokens[i], _governance, amount);
+            }
         }
     }
 
