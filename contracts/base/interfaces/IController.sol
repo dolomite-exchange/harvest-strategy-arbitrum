@@ -48,13 +48,6 @@ interface IController {
 
     function salvageStrategy(address _strategy, address _token, uint256 amount) external;
 
-    function notifyFee(
-        address _underlying,
-        uint256 _profitSharingFee,
-        uint256 _strategistFee,
-        uint256 _platformFee
-    ) external;
-
     function rewardForwarder() external view returns (address);
 
     function setRewardForwarder(address _rewardForwarder) external;

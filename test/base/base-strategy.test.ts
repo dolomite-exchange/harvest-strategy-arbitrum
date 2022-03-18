@@ -6,6 +6,7 @@ import { StrategyProxy } from '../../src/types/StrategyProxy';
 import { TestRewardPool } from '../../src/types/TestRewardPool';
 import { TestStrategy } from '../../src/types/TestStrategy';
 import { VaultProxy } from '../../src/types/VaultProxy';
+import { VaultV1 } from '../../src/types/VaultV1';
 import { IVault } from '../../types/ethers-contracts';
 import { CRV, USDC, WETH } from '../utilities/constants';
 import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../utilities/harvest-utils';
@@ -15,7 +16,7 @@ describe('BaseUpgradableStrategy', () => {
 
   let core: CoreProtocol;
   let vaultProxy: VaultProxy;
-  let vault: IVault;
+  let vaultV1: VaultV1;
   let rewardPool: TestRewardPool;
   let strategyProxy: StrategyProxy;
   let strategy: TestStrategy;
@@ -33,11 +34,11 @@ describe('BaseUpgradableStrategy', () => {
     const TestStrategyFactory = await ethers.getContractFactory('TestStrategy');
     const testStrategyImplementation = await TestStrategyFactory.deploy() as TestStrategy;
 
-    const VaultV1Factory = await ethers.getContractFactory('VaultV1');
-    const testVaultImplementation = await VaultV1Factory.deploy() as IVault;
+    const VaultV2Factory = await ethers.getContractFactory('VaultV2');
+    const testVaultImplementation = await VaultV2Factory.deploy() as IVault;
 
-    [vaultProxy, vault] = await createVault(testVaultImplementation);
-    await vault.initializeVault(
+    [vaultProxy, vaultV1] = await createVault(testVaultImplementation);
+    await vaultV1.initializeVault(
       core.storage.address,
       WETH.address,
       995,
@@ -52,7 +53,7 @@ describe('BaseUpgradableStrategy', () => {
     await strategy.initializeBaseStrategy(
       core.storage.address,
       WETH.address,
-      vault.address,
+      vaultV1.address,
       rewardPool.address,
       [USDC.address],
       strategist.address,
@@ -86,7 +87,7 @@ describe('BaseUpgradableStrategy', () => {
       expect(await strategy.governance()).to.eq(core.governance.address);
       expect(await strategy.controller()).to.eq(core.controller.address);
       expect(await strategy.underlying()).to.eq(WETH.address);
-      expect(await strategy.vault()).to.eq(vault.address);
+      expect(await strategy.vault()).to.eq(vaultV1.address);
       expect(await strategy.rewardPool()).to.eq(rewardPool.address);
       expect(await strategy.rewardTokens()).to.eql([USDC.address]);
       expect(await strategy.strategist()).to.eq(core.hhUser1.address);
@@ -262,6 +263,15 @@ describe('BaseUpgradableStrategy', () => {
   });
 
   describe('#continueInvesting', () => {
+    it('should work when investing is paused', async () => {
+      await strategy.connect(core.governance).emergencyExit();
+      expect(await strategy.pausedInvesting()).to.eq(true);
+
+      const result = await strategy.connect(core.governance).continueInvesting();
+      await expect(result).to.emit(strategy, 'PausedInvestingSet').withArgs(false);
+      expect(await strategy.pausedInvesting()).to.eq(false);
+    });
+
     it('should fail when not called by controller, governance, or vault', async () => {
       await expect(strategy.connect(core.hhUser1).continueInvesting())
         .to.revertedWith('Not governance');
@@ -269,6 +279,57 @@ describe('BaseUpgradableStrategy', () => {
   });
 
   describe('#doHardWork', () => {
+    it('should work under normal conditions', async () => {
+      const result1 = await core.controller.connect(core.governance).addVaultAndStrategy(
+        vaultProxy.address,
+        strategy.address,
+      );
+      await expect(result1).to.emit(vaultV1, 'StrategyChanged')
+        .withArgs(strategy.address, ethers.constants.AddressZero);
+      expect(await core.controller.hasStrategy(strategy.address)).to.eq(true);
+
+      // make a deposit in the form of underlying
+      const depositAmount = '1000000000000000000';
+      await WETH.connect(core.hhUser1).deposit({ value: depositAmount });
+      await WETH.connect(core.hhUser1).approve(vaultProxy.address, depositAmount);
+      await vaultV1.connect(core.hhUser1).deposit(depositAmount);
+
+      // reward USDC to the strategy for harvesting
+      const rewardBalance = '100000000';
+      const minter = await impersonate('0x489ee077994B6658eAfA855C308275EAd8097C4A', true);
+      await USDC.connect(minter).transfer(rewardPool.address, rewardBalance);
+
+      const oldPriceFullShare = await vaultV1.getPricePerFullShare();
+
+      const result2 = await core.controller.connect(core.governance).doHardWork(
+        vaultProxy.address,
+        '1000000000000000000',
+        '105',
+        '100',
+      );
+      const latestTimestamp = await getLatestTimestamp();
+      const newPriceFullShare = await vaultV1.getPricePerFullShare();
+      console.log('\tnewPriceFullShare', newPriceFullShare.toString());
+      expect(newPriceFullShare).to.not.eq(oldPriceFullShare);
+      expect(newPriceFullShare.gt(oldPriceFullShare)).to.eq(true);
+      await expect(result2).to.emit(core.controller, 'SharePriceChangeLog')
+        .withArgs(vaultProxy.address, strategy.address, oldPriceFullShare, newPriceFullShare, latestTimestamp);
+      await expect(result2).to.emit(strategy, 'ProfitAndBuybackLog')
+        .withArgs(USDC.address, rewardBalance, '15000000', latestTimestamp);
+      await expect(result2).to.emit(strategy, 'PlatformFeeLogInReward')
+        .withArgs(core.governance.address, USDC.address, rewardBalance, '5000000', latestTimestamp);
+      await expect(result2).to.emit(strategy, 'StrategistFeeLogInReward')
+        .withArgs(await strategy.strategist(), USDC.address, rewardBalance, '5000000', latestTimestamp);
+    });
+
+    it('should fail when investing is paused', async () => {
+      await strategy.connect(core.governance).emergencyExit();
+      expect(await strategy.pausedInvesting()).to.eq(true);
+
+      await expect(strategy.connect(core.governance).doHardWork())
+        .to.revertedWith('Action blocked as the strategy is in emergency state');
+    });
+
     it('should fail when not called by controller, governance, or vault', async () => {
       await expect(strategy.connect(core.hhUser1).doHardWork())
         .to.revertedWith('The sender has to be the controller, governance, or vault');

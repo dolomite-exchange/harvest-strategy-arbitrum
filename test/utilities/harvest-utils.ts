@@ -6,7 +6,7 @@ import {
   ControllerV1,
   IController,
   IController__factory,
-  IERC20,
+  IERC20, IERC4626, IERC4626__factory,
   IProfitSharingReceiver,
   IProfitSharingReceiver__factory,
   IRewardForwarder,
@@ -21,7 +21,7 @@ import {
   Storage__factory, StrategyProxy,
   UniversalLiquidatorProxy,
   UniversalLiquidatorProxy__factory,
-  UniversalLiquidatorV1, VaultProxy,
+  UniversalLiquidatorV1, VaultProxy, VaultV1, VaultV1__factory, VaultV2, VaultV2__factory,
 } from '../../src/types';
 import { DefaultImplementationDelay, USDC } from './constants';
 import { impersonateAll, resetFork, setEtherBalance } from './utils';
@@ -367,15 +367,20 @@ export async function createStrategy<T extends BaseContract>(implementation: T):
  * @param implementation  The implementation contract
  * @return  The deployed strategy proxy and the implementation contract at the proxy's address
  */
-export async function createVault(implementation: IVault): Promise<[VaultProxy, IVault]> {
+export async function createVault(implementation: IVault): Promise<[VaultProxy, VaultV1, VaultV2]> {
   const VaultProxyFactory = await ethers.getContractFactory('VaultProxy');
   const vaultProxy = await VaultProxyFactory.deploy(implementation.address) as VaultProxy;
-  const vaultImpl = new BaseContract(
+  const vaultImplV1 = new BaseContract(
     vaultProxy.address,
-    implementation.interface,
+    VaultV1__factory.createInterface(),
     implementation.signer,
-  ) as IVault;
-  return [vaultProxy, vaultImpl]
+  ) as VaultV1;
+  const vaultImplV2 = new BaseContract(
+    vaultProxy.address,
+    VaultV2__factory.createInterface(),
+    implementation.signer,
+  ) as VaultV2;
+  return [vaultProxy, vaultImplV1, vaultImplV2]
 }
 
 export async function depositVault(_farmer: string, _underlying: IERC20, _vault: IVault, _amount: BigNumber) {

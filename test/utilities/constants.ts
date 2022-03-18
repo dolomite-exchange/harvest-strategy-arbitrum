@@ -77,6 +77,10 @@ export const WETH = new BaseContract(
   IWETH__factory.createInterface(),
 ) as IWETH
 
+// ************************* Network Addresses Addresses *************************
+
+
+
 // ************************* Harvest Contract Addresses *************************
 
 export const ControllerAddress = '';

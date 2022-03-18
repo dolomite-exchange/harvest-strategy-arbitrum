@@ -76,7 +76,11 @@ contract TestStrategy is BaseUpgradeableStrategy {
             address[] memory buybackTokens = new address[](1);
             buybackTokens[0] = underlying();
 
-            _notifyProfitAndBuybackInRewardToken(_rewardTokens[i], rewardBalance, buybackTokens);
+            _notifyProfitAndBuybackInRewardToken(
+                _rewardTokens[i],
+                rewardBalance,
+                buybackTokens
+            );
 
             uint256 tokenBalance = IERC20(buybackTokens[0]).balanceOf(address(this));
             if (tokenBalance > 0) {

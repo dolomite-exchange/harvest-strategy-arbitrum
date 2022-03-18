@@ -41,9 +41,7 @@ contract ControllerV1 is IController, Governable {
     uint256 public nextPlatformFeeNumerator = 0;
     uint256 public nextPlatformFeeNumeratorTimestamp = 0;
 
-    uint256 public constant PROFIT_SHARING_DENOMINATOR = 10000;
-    uint256 public constant STRATEGIST_FEE_DENOMINATOR = 10000;
-    uint256 public constant PLATFORM_FEE_DENOMINATOR = 10000;
+    uint256 public constant FEE_DENOMINATOR = 10000;
 
     // [Grey list]
     // An EOA can safely interact with the system no matter what.
@@ -67,14 +65,6 @@ contract ControllerV1 is IController, Governable {
 
     // All eligible hardWorkers that we have
     mapping (address => bool) public hardWorkers;
-
-    event SharePriceChangeLog(
-        address indexed vault,
-        address indexed strategy,
-        uint256 oldSharePrice,
-        uint256 newSharePrice,
-        uint256 timestamp
-    );
 
     event QueueProfitSharingNumeratorChange(uint profitSharingNumerator, uint validAtTimestamp);
     event ConfirmProfitSharingNumeratorChange(uint profitSharingNumerator);
@@ -278,52 +268,25 @@ contract ControllerV1 is IController, Governable {
         IStrategy(_strategy).salvageToken(governance(), _token, _amount);
     }
 
-    function notifyFee(
-        address _underlying,
-        uint256 _profitSharingFee,
-        uint256 _strategistFee,
-        uint256 _platformFee
-    ) external {
-        require(
-            strategies[msg.sender],
-            "msg.sender must be a strategy"
-        );
-
-        uint totalFee = _profitSharingFee.add(_strategistFee).add(_platformFee);
-        if (totalFee > 0) {
-            IERC20(_underlying).safeTransferFrom(msg.sender, address(this), totalFee);
-            IERC20(_underlying).safeApprove(rewardForwarder, 0);
-            IERC20(_underlying).safeApprove(rewardForwarder, totalFee);
-            IRewardForwarder(rewardForwarder).notifyFeeAndBuybackAmounts(
-                _underlying,
-                _profitSharingFee,
-                _strategistFee,
-                _platformFee,
-                new address[](0),
-                new uint[](0)
-            );
-        }
-    }
-
     function profitSharingDenominator() public view returns (uint) {
         // keep the interface for this function as a `view` for now, in case it changes in the future
-        return PROFIT_SHARING_DENOMINATOR;
+        return FEE_DENOMINATOR;
     }
 
     function strategistFeeDenominator() public view returns (uint) {
         // keep the interface for this function as a `view` for now, in case it changes in the future
-        return STRATEGIST_FEE_DENOMINATOR;
+        return FEE_DENOMINATOR;
     }
 
     function platformFeeDenominator() public view returns (uint) {
         // keep the interface for this function as a `view` for now, in case it changes in the future
-        return PLATFORM_FEE_DENOMINATOR;
+        return FEE_DENOMINATOR;
     }
 
     function setProfitSharingNumerator(uint _profitSharingNumerator) public onlyGovernance {
         require(
-            _profitSharingNumerator < PROFIT_SHARING_DENOMINATOR,
-            "invalid profit sharing numerator"
+            _profitSharingNumerator + strategistFeeNumerator + platformFeeNumerator < FEE_DENOMINATOR,
+            "invalid profit sharing fee numerator"
         );
 
         nextProfitSharingNumerator = _profitSharingNumerator;
@@ -346,7 +309,7 @@ contract ControllerV1 is IController, Governable {
 
     function setStrategistFeeNumerator(uint _strategistFeeNumerator) public onlyGovernance {
         require(
-            _strategistFeeNumerator < STRATEGIST_FEE_DENOMINATOR,
+            _strategistFeeNumerator + platformFeeNumerator + profitSharingNumerator < FEE_DENOMINATOR,
             "invalid strategist fee numerator"
         );
 
@@ -370,7 +333,7 @@ contract ControllerV1 is IController, Governable {
 
     function setPlatformFeeNumerator(uint _platformFeeNumerator) public onlyGovernance {
         require(
-            _platformFeeNumerator < PLATFORM_FEE_DENOMINATOR,
+            _platformFeeNumerator + strategistFeeNumerator + profitSharingNumerator < FEE_DENOMINATOR,
             "invalid platform fee numerator"
         );
 

@@ -59,11 +59,14 @@ export async function revertToSnapshotAndCapture(snapshotId: string): Promise<st
   }
 }
 
-export async function impersonate(targetAccount: string): Promise<SignerWithAddress> {
+export async function impersonate(targetAccount: string, giveEther: boolean = false): Promise<SignerWithAddress> {
   await network.provider.request({
     method: 'hardhat_impersonateAccount',
     params: [targetAccount],
   });
+  if (giveEther) {
+    await setEtherBalance(targetAccount);
+  }
   return ethers.getSigner(targetAccount);
 }
 

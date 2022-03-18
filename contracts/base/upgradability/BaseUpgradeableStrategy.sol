@@ -184,7 +184,170 @@ contract BaseUpgradeableStrategy is
         _finalizeUpgrade();
     }
 
-    // ========================= Private Functions =========================
+    // ========================= Internal & Private Functions =========================
+
+    // ==================== Functionality ====================
+
+    /**
+     * Same as `_notifyProfitAndBuybackInRewardToken` but does not perform a compounding buyback. Just takes fees
+     * instead.
+     */
+    function _notifyProfitInRewardToken(
+        address _rewardToken,
+        uint256 _rewardBalance
+    ) internal {
+        uint denominator = profitSharingNumerator().add(strategistFeeNumerator()).add(platformFeeNumerator());
+        if (_rewardBalance > 0 && denominator > 0) {
+            require(
+                profitSharingDenominator() == strategistFeeDenominator(),
+                "profit sharing denominator must match strategist fee denominator"
+            );
+            require(
+                strategistFeeDenominator() == platformFeeDenominator(),
+                "strategist fee denominator must match platform fee denominator"
+            );
+
+            uint256 strategistFee = _rewardBalance.mul(strategistFeeNumerator()).div(denominator);
+            uint256 platformFee = _rewardBalance.mul(platformFeeNumerator()).div(denominator);
+            // profitSharingFee gets what's left, so there's no dust left in the contract from truncation
+            uint256 profitSharingFee = _rewardBalance.sub(strategistFee).sub(platformFee);
+
+            address strategyFeeRecipient = strategist();
+            address platformFeeRecipient = IController(controller()).governance();
+
+            emit ProfitLogInReward(
+                _rewardToken,
+                _rewardBalance,
+                profitSharingFee,
+                block.timestamp
+            );
+            emit PlatformFeeLogInReward(
+                platformFeeRecipient,
+                _rewardToken,
+                _rewardBalance,
+                platformFee,
+                block.timestamp
+            );
+            emit StrategistFeeLogInReward(
+                strategyFeeRecipient,
+                _rewardToken,
+                _rewardBalance,
+                strategistFee,
+                block.timestamp
+            );
+
+            address rewardForwarder = IController(controller()).rewardForwarder();
+            IERC20(_rewardToken).safeApprove(rewardForwarder, 0);
+            IERC20(_rewardToken).safeApprove(rewardForwarder, _rewardBalance);
+
+            // Distribute/send the fees
+            IRewardForwarder(rewardForwarder).notifyFee(
+                _rewardToken,
+                profitSharingFee,
+                strategistFee,
+                platformFee
+            );
+        } else {
+            emit ProfitLogInReward(_rewardToken, 0, 0, block.timestamp);
+            emit PlatformFeeLogInReward(IController(controller()).governance(), _rewardToken, 0, 0, block.timestamp);
+            emit StrategistFeeLogInReward(strategist(), _rewardToken, 0, 0, block.timestamp);
+        }
+    }
+
+    /**
+     * @return the amounts bought back of each buybackToken
+     */
+    function _notifyProfitAndBuybackInRewardToken(
+        address _rewardToken,
+        uint256 _rewardBalance,
+        address[] memory _buybackTokens
+    ) internal returns (uint[] memory) {
+        uint[] memory weights = new uint[](_buybackTokens.length);
+        for (uint i = 0; i < _buybackTokens.length; i++) {
+            weights[i] = 1;
+        }
+
+        return _notifyProfitAndBuybackInRewardTokenWithWeights(_rewardToken, _rewardBalance, _buybackTokens, weights);
+    }
+
+    /**
+     * @param _rewardToken      The reward token to be sold for FARM and _buybackTokens
+     * @param _rewardBalance    The amount of `_rewardToken` to be sold for FARM and _buybackTokens
+     * @param _buybackTokens    The tokens to be bought for reinvestment
+     * @param _weights          the weights to be applied for each buybackToken. For example [100, 300] applies 25% to
+     *                          buybackTokens[0] and 75% to buybackTokens[1]
+     */
+    function _notifyProfitAndBuybackInRewardTokenWithWeights(
+        address _rewardToken,
+        uint256 _rewardBalance,
+        address[] memory _buybackTokens,
+        uint[] memory _weights
+    ) internal returns (uint[] memory) {
+        address governance = IController(controller()).governance();
+
+        if (_rewardBalance > 0 && _buybackTokens.length > 0) {
+            uint256 profitSharingFee = _rewardBalance.mul(profitSharingNumerator()).div(profitSharingDenominator());
+            uint256 strategistFee = _rewardBalance.mul(strategistFeeNumerator()).div(strategistFeeDenominator());
+            uint256 platformFee = _rewardBalance.mul(platformFeeNumerator()).div(platformFeeDenominator());
+            // buybackAmount is set to what's left, which results in leaving no dust in this contract
+            uint256 buybackAmount = _rewardBalance.sub(profitSharingFee).sub(strategistFee).sub(platformFee);
+
+            uint[] memory buybackAmounts = new uint[](_buybackTokens.length);
+            {
+                uint totalWeight = 0;
+                for (uint i = 0; i < _weights.length; i++) {
+                    totalWeight += _weights[i];
+                }
+                require(
+                    totalWeight > 0,
+                    "totalWeight must be greater than zero"
+                );
+                for (uint i = 0; i < buybackAmounts.length; i++) {
+                    buybackAmounts[i] = buybackAmount.mul(_weights[i]).div(totalWeight);
+                }
+            }
+
+            emit ProfitAndBuybackLog(
+                _rewardToken,
+                _rewardBalance,
+                profitSharingFee,
+                block.timestamp
+            );
+            emit PlatformFeeLogInReward(
+                governance,
+                _rewardToken,
+                _rewardBalance,
+                platformFee,
+                block.timestamp
+            );
+            emit StrategistFeeLogInReward(
+                strategist(),
+                _rewardToken,
+                _rewardBalance,
+                strategistFee,
+                block.timestamp
+            );
+
+            address rewardForwarder = IController(controller()).rewardForwarder();
+            IERC20(_rewardToken).safeApprove(rewardForwarder, 0);
+            IERC20(_rewardToken).safeApprove(rewardForwarder, _rewardBalance);
+
+            // Send and distribute the fees
+            return IRewardForwarder(rewardForwarder).notifyFeeAndBuybackAmounts(
+                _rewardToken,
+                profitSharingFee,
+                strategistFee,
+                platformFee,
+                _buybackTokens,
+                buybackAmounts
+            );
+        } else {
+            emit ProfitAndBuybackLog(_rewardToken, 0, 0, block.timestamp);
+            emit PlatformFeeLogInReward(governance, _rewardToken, 0, 0, block.timestamp);
+            emit StrategistFeeLogInReward(strategist(), _rewardToken, 0, 0, block.timestamp);
+            return new uint[](_buybackTokens.length);
+        }
+    }
 
     function _finalizeUpgradePrivate() private {
         _setNextImplementation(address(0));

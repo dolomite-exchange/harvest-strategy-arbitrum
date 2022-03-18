@@ -20,8 +20,20 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     using Address for address;
     using SafeMath for uint256;
 
-    event Withdraw(address indexed beneficiary, uint256 amount);
-    event Deposit(address indexed beneficiary, uint256 amount);
+    /**
+     * Caller has exchanged assets for shares, and transferred those shares to owner.
+     *
+     * MUST be emitted when tokens are deposited into the Vault via the mint and deposit methods.
+     */
+    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
+
+    /**
+     * Caller has exchanged shares, owned by owner, for assets, and transferred those assets to receiver.
+     *
+     * MUST be emitted when shares are withdrawn from the Vault in ERC4626.redeem or ERC4626.withdraw methods.
+     */
+    event Withdraw(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
+
     event Invest(uint256 amount);
     event StrategyAnnounced(address newStrategy, uint256 time);
     event StrategyChanged(address newStrategy, address oldStrategy);
@@ -31,7 +43,6 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         _;
     }
 
-    // Only smart contracts will be affected by this modifier
     modifier defense() {
         require(
             (msg.sender == tx.origin) || // If it is a normal user and not smart contract,
@@ -45,7 +56,9 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     constructor() public {
     }
 
-    // the function is name differently to not cause inheritance clash in truffle and allows tests
+    /**
+     * The function is name differently to not cause inheritance clash in truffle and allows tests
+     */
     function initializeVault(
         address _storage,
         address _underlying,
@@ -104,26 +117,27 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     }
 
     /**
-    * Chooses the best strategy and re-invests. If the strategy did not change, it just calls
-    * doHardWork on the current strategy. Call this through controller to claim hard rewards.
-    */
+     * Chooses the best strategy and re-invests. If the strategy did not change, it just calls doHardWork on the current
+     * strategy. Call this through controller to claim hard rewards.
+     */
     function doHardWork() whenStrategyDefined onlyControllerOrGovernance external {
         // ensure that new funds are invested too
-        invest();
+        _invest();
         IStrategy(strategy()).doHardWork();
     }
 
-    /*
-    * Returns the cash balance across all users in this contract.
-    */
-    function underlyingBalanceInVault() view public returns (uint256) {
+    /**
+     * @return The balance across all users in this contract.
+     */
+    function underlyingBalanceInVault() public view returns (uint256) {
         return IERC20(underlying()).balanceOf(address(this));
     }
 
-    /* Returns the current underlying (e.g., DAI's) balance together with
-     * the invested amount (if DAI is invested elsewhere by the strategy).
-    */
-    function underlyingBalanceWithInvestment() view public returns (uint256) {
+    /**
+     * @return  The current underlying (e.g., DAI's) balance together with the invested amount (if DAI is invested
+     *          elsewhere by the strategy).
+     */
+    function underlyingBalanceWithInvestment() public view returns (uint256) {
         if (address(strategy()) == address(0)) {
             // initial state, when not set
             return underlyingBalanceInVault();
@@ -138,14 +152,14 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     }
 
     /**
-     * Get the user's share (in underlying)
+     * @return The user's total balance in underlying
      */
-    function underlyingBalanceWithInvestmentForHolder(address holder) view external returns (uint256) {
+    function underlyingBalanceWithInvestmentForHolder(address _holder) view external returns (uint256) {
         if (totalSupply() == 0) {
             return 0;
         }
         return underlyingBalanceWithInvestment()
-        .mul(balanceOf(holder))
+        .mul(balanceOf(_holder))
         .div(totalSupply());
     }
 
@@ -162,16 +176,14 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     }
 
     function canUpdateStrategy(address _strategy) public view returns (bool) {
-        return strategy() == address(0) // no strategy was set yet
-        || (_strategy == futureStrategy()
-        && block.timestamp > strategyUpdateTime()
-        && strategyUpdateTime() > 0);
-        // or the timelock has passed
+        bool isStrategyNotSetYet = strategy() == address(0);
+        bool hasTimelockPassed = block.timestamp > strategyUpdateTime() && strategyUpdateTime() > 0;
+        return isStrategyNotSetYet || (_strategy == futureStrategy() && hasTimelockPassed);
     }
 
     /**
-    * Indicates that the strategy update will happen in the future
-    */
+     * Indicates that the strategy update will happen in the future
+     */
     function announceStrategyUpdate(address _strategy) public onlyControllerOrGovernance {
         // records a new timestamp
         uint256 when = block.timestamp.add(strategyTimeLock());
@@ -181,8 +193,8 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     }
 
     /**
-    * Finalizes (or cancels) the strategy update by resetting the data
-    */
+     * Finalizes (or cancels) the strategy update by resetting the data
+     */
     function finalizeStrategyUpdate() public onlyControllerOrGovernance {
         _setStrategyUpdateTime(0);
         _setFutureStrategy(address(0));
@@ -208,27 +220,28 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
 
         emit StrategyChanged(_strategy, strategy());
         if (address(_strategy) != address(strategy())) {
-            if (address(strategy()) != address(0)) {// if the original strategy (no underscore) is defined
+            if (address(strategy()) != address(0)) {
+                // if the original strategy (no underscore) is defined, remove the token approval and withdraw all
                 IERC20(underlying()).safeApprove(address(strategy()), 0);
                 IStrategy(strategy()).withdrawAllToVault();
             }
             _setStrategy(_strategy);
             IERC20(underlying()).safeApprove(address(strategy()), 0);
-            IERC20(underlying()).safeApprove(address(strategy()), uint256(~0));
+            IERC20(underlying()).safeApprove(address(strategy()), uint256(-1));
         }
         finalizeStrategyUpdate();
     }
 
-    function setVaultFractionToInvest(uint256 numerator, uint256 denominator) external onlyGovernance {
-        require(denominator > 0, "denominator must be greater than 0");
-        require(numerator <= denominator, "denominator must be greater than or equal to the numerator");
-        _setVaultFractionToInvestNumerator(numerator);
-        _setVaultFractionToInvestDenominator(denominator);
+    function setVaultFractionToInvest(uint256 _numerator, uint256 _denominator) external onlyGovernance {
+        require(_denominator > 0, "denominator must be greater than 0");
+        require(_numerator <= _denominator, "denominator must be greater than or equal to the numerator");
+        _setVaultFractionToInvestNumerator(_numerator);
+        _setVaultFractionToInvestDenominator(_denominator);
     }
 
     function rebalance() external onlyControllerOrGovernance {
         withdrawAll();
-        invest();
+        _invest();
     }
 
     function availableToInvestOut() public view returns (uint256) {
@@ -247,100 +260,32 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         }
     }
 
-    function invest() internal whenStrategyDefined {
-        uint256 availableAmount = availableToInvestOut();
-        if (availableAmount > 0) {
-            IERC20(underlying()).safeTransfer(address(strategy()), availableAmount);
-            emit Invest(availableAmount);
-        }
+    /**
+     * Allows for depositing the underlying asset in exchange for shares. Approval is assumed.
+     */
+    function deposit(uint256 _assets) external nonReentrant defense {
+        _deposit(_assets, msg.sender, msg.sender);
     }
 
-    /*
-    * Allows for depositing the underlying asset in exchange for shares.
-    * Approval is assumed.
-    */
-    function deposit(uint256 amount) external defense {
-        _deposit(amount, msg.sender, msg.sender);
+    /**
+     * Allows for depositing the underlying asset in exchange for shares assigned to the holder. This facilitates
+     * depositing for someone else (using DepositHelper)
+     */
+    function depositFor(uint256 _assets, address _receiver) external nonReentrant defense {
+        _deposit(_assets, msg.sender, _receiver);
     }
 
-    /*
-    * Allows for depositing the underlying asset in exchange for shares
-    * assigned to the holder.
-    * This facilitates depositing for someone else (using DepositHelper)
-    */
-    function depositFor(uint256 amount, address holder) public defense {
-        _deposit(amount, msg.sender, holder);
+    function withdraw(uint256 _shares) external nonReentrant defense {
+        _withdraw(_shares, msg.sender, msg.sender);
     }
 
     function withdrawAll() public onlyControllerOrGovernance whenStrategyDefined {
         IStrategy(strategy()).withdrawAllToVault();
     }
 
-    function withdraw(uint256 numberOfShares) external {
-        _withdraw(numberOfShares);
-    }
-
-    function _deposit(uint256 amount, address sender, address beneficiary) internal {
-        require(amount > 0, "Cannot deposit 0");
-        require(beneficiary != address(0), "holder must be defined");
-
-        if (address(strategy()) != address(0)) {
-            require(IStrategy(strategy()).depositArbCheck(), "Too much arb");
-        }
-
-        uint256 toMint = totalSupply() == 0
-        ? amount
-        : amount.mul(totalSupply()).div(underlyingBalanceWithInvestment());
-        _mint(beneficiary, toMint);
-
-        IERC20(underlying()).safeTransferFrom(sender, address(this), amount);
-
-        // update the contribution amount for the beneficiary
-        emit Deposit(beneficiary, amount);
-    }
-
-    function _withdraw(uint256 numberOfShares) internal {
-        require(totalSupply() > 0, "Vault has no shares");
-        require(numberOfShares > 0, "numberOfShares must be greater than 0");
-        uint256 totalShareSupply = totalSupply();
-        uint256 calculatedSharePrice = getPricePerFullShare();
-        // !!! IMPORTANT: burning shares needs to happen after the last use of getPricePerFullShare()
-        _burn(msg.sender, numberOfShares);
-
-        uint256 underlyingAmountToWithdraw = numberOfShares
-        .mul(calculatedSharePrice)
-        .div(underlyingUnit());
-
-        if (underlyingAmountToWithdraw > underlyingBalanceInVault()) {
-            // withdraw everything from the strategy to accurately check the share value
-            if (numberOfShares == totalShareSupply) {
-                IStrategy(strategy()).withdrawAllToVault();
-                underlyingAmountToWithdraw = underlyingBalanceInVault();
-            } else {
-                uint256 missing = underlyingAmountToWithdraw.sub(underlyingBalanceInVault());
-                IStrategy(strategy()).withdrawToVault(missing);
-            }
-
-            // recalculate to improve accuracy
-            underlyingAmountToWithdraw = Math.min(
-                underlyingBalanceWithInvestment().mul(numberOfShares).div(totalSupply()),
-                underlyingBalanceInVault()
-            );
-        }
-
-        _transferUnderlyingOut(underlyingAmountToWithdraw);
-
-        // update the withdrawal amount for the holder
-        emit Withdraw(msg.sender, underlyingAmountToWithdraw);
-    }
-
-    function _transferUnderlyingOut(uint underlyingAmountToWithdraw) internal {
-        IERC20(underlying()).safeTransfer(msg.sender, underlyingAmountToWithdraw);
-    }
-
     /**
-    * Schedules an upgrade for this vault's proxy.
-    */
+     * Schedules an upgrade for this vault's proxy.
+     */
     function scheduleUpgrade(address impl) public onlyGovernance {
         _setNextImplementation(impl);
         _setNextImplementationTimestamp(block.timestamp.add(nextImplementationDelay()));
@@ -358,5 +303,96 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     function finalizeUpgrade() external onlyGovernance {
         _setNextImplementation(address(0));
         _setNextImplementationTimestamp(0);
+    }
+
+    // ========================= Internal Functions =========================
+
+    function _invest() internal whenStrategyDefined {
+        uint256 availableAmount = availableToInvestOut();
+        if (availableAmount > 0) {
+            IERC20(underlying()).safeTransfer(address(strategy()), availableAmount);
+            emit Invest(availableAmount);
+        }
+    }
+
+    function _deposit(
+        uint256 _assets,
+        address _sender,
+        address _receiver
+    ) internal returns (uint256, uint256) {
+        require(_assets > 0, "Cannot deposit 0");
+        require(_receiver != address(0), "receiver must be defined");
+
+        if (address(strategy()) != address(0)) {
+            require(IStrategy(strategy()).depositArbCheck(), "Too much arb");
+        }
+
+        uint256 shares = totalSupply() == 0
+            ? _assets
+            : _assets.mul(totalSupply()).div(underlyingBalanceWithInvestment());
+
+        _mint(_receiver, shares);
+
+        _transferUnderlyingIn(_sender, _assets);
+
+        // update the contribution amount for the beneficiary
+        emit Deposit(_sender, _receiver, _assets, shares);
+
+        return (_assets, shares);
+    }
+
+    function _withdraw(
+        uint256 _shares,
+        address _receiver,
+        address _owner
+    ) internal returns (uint256 assets) {
+        require(totalSupply() > 0, "Vault has no shares");
+        require(_shares > 0, "numberOfShares must be greater than 0");
+        uint256 totalShareSupply = totalSupply();
+        uint256 calculatedSharePrice = getPricePerFullShare();
+
+        address sender = msg.sender;
+        if (sender != _owner) {
+            uint256 currentAllowance = allowance(_owner, sender);
+            if (currentAllowance != uint(-1)) {
+                require(currentAllowance >= _shares, "ERC20: transfer amount exceeds allowance");
+                _approve(_owner, sender, currentAllowance - _shares);
+            }
+        }
+
+        // !!! IMPORTANT: burning shares needs to happen after the last use of getPricePerFullShare()
+        _burn(_owner, _shares);
+
+        assets = _shares.mul(calculatedSharePrice).div(underlyingUnit());
+
+        if (assets > underlyingBalanceInVault()) {
+            // withdraw everything from the strategy to accurately check the share value
+            if (_shares == totalShareSupply) {
+                IStrategy(strategy()).withdrawAllToVault();
+                assets = underlyingBalanceInVault();
+            } else {
+                uint256 missing = assets.sub(underlyingBalanceInVault());
+                IStrategy(strategy()).withdrawToVault(missing);
+            }
+
+            // recalculate to improve accuracy
+            assets = Math.min(
+                underlyingBalanceWithInvestment().mul(_shares).div(totalSupply()),
+                underlyingBalanceInVault()
+            );
+        }
+
+        _transferUnderlyingOut(_receiver, assets);
+
+        // update the withdrawal amount for the holder
+        emit Withdraw(msg.sender, _receiver, assets, _shares);
+    }
+
+    function _transferUnderlyingIn(address _sender, uint _amount) internal {
+        IERC20(underlying()).safeTransferFrom(_sender, address(this), _amount);
+    }
+
+    function _transferUnderlyingOut(address _receiver, uint _amount) internal {
+        IERC20(underlying()).safeTransfer(_receiver, _amount);
     }
 }
