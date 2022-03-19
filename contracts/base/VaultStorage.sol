@@ -12,10 +12,8 @@ contract VaultStorage is Initializable {
     bytes32 internal constant _VAULT_FRACTION_TO_INVEST_DENOMINATOR_SLOT = 0x469a3bad2fab7b936c45eecd1f5da52af89cead3e2ed7f732b6f3fc92ed32308;
     bytes32 internal constant _NEXT_IMPLEMENTATION_SLOT = 0xb1acf527cd7cd1668b30e5a9a1c0d845714604de29ce560150922c9d8c0937df;
     bytes32 internal constant _NEXT_IMPLEMENTATION_TIMESTAMP_SLOT = 0x3bc747f4b148b37be485de3223c90b4468252967d2ea7f9fcbd8b6e653f434c9;
-    bytes32 internal constant _NEXT_IMPLEMENTATION_DELAY_SLOT = 0x82ddc3be3f0c1a6870327f78f4979a0b37b21b16736ef5be6a7a7a35e530bcf0;
-    bytes32 internal constant _STRATEGY_TIME_LOCK_SLOT = 0x6d02338b2e4c913c0f7d380e2798409838a48a2c4d57d52742a808c82d713d8b;
-    bytes32 internal constant _FUTURE_STRATEGY_SLOT = 0xb441b53a4e42c2ca9182bc7ede99bedba7a5d9360d9dfbd31fa8ee2dc8590610;
-    bytes32 internal constant _STRATEGY_UPDATE_TIME_SLOT = 0x56e7c0e75875c6497f0de657009613a32558904b5c10771a825cc330feff7e72;
+    bytes32 internal constant _NEXT_STRATEGY_SLOT = 0xcd7bd9250b0e02f3b13eccf8c73ef5543cb618e0004628f9ca53b65fbdbde2d0;
+    bytes32 internal constant _NEXT_STRATEGY_TIMESTAMP_SLOT = 0x5d2b24811886ad126f78c499d71a932a5435795e4f2f6552f0900f12d663cdcf;
     bytes32 internal constant _ALLOW_SHARE_PRICE_DECREASE_SLOT = 0x22f7033891e85fc76735ebd320e0d3f546da431c4729c2f6d2613b11923aaaed;
     bytes32 internal constant _WITHDRAW_BEFORE_REINVESTING_SLOT = 0x4215fbb95dc0890d3e1660fb9089350f2d3f350c0a756934874cae6febf42a79;
     bytes32 internal constant _PAUSED_SLOT = 0xf1cf856d03630b74791fc293cfafd739932a5a075b02d357fb7a726a38777930;
@@ -28,10 +26,8 @@ contract VaultStorage is Initializable {
         assert(_VAULT_FRACTION_TO_INVEST_DENOMINATOR_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.vaultFractionToInvestDenominator")) - 1));
         assert(_NEXT_IMPLEMENTATION_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.nextImplementation")) - 1));
         assert(_NEXT_IMPLEMENTATION_TIMESTAMP_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.nextImplementationTimestamp")) - 1));
-        assert(_NEXT_IMPLEMENTATION_DELAY_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.nextImplementationDelay")) - 1));
-        assert(_STRATEGY_TIME_LOCK_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.strategyTimeLock")) - 1));
-        assert(_FUTURE_STRATEGY_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.futureStrategy")) - 1));
-        assert(_STRATEGY_UPDATE_TIME_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.strategyUpdateTime")) - 1));
+        assert(_NEXT_STRATEGY_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.nextStrategy")) - 1));
+        assert(_NEXT_STRATEGY_TIMESTAMP_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.nextStrategyTimestamp")) - 1));
         assert(_ALLOW_SHARE_PRICE_DECREASE_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.allowSharePriceDecrease")) - 1));
         assert(_WITHDRAW_BEFORE_REINVESTING_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.withdrawBeforeReinvesting")) - 1));
         assert(_PAUSED_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.paused")) - 1));
@@ -47,8 +43,8 @@ contract VaultStorage is Initializable {
         _setVaultFractionToInvestNumerator(_toInvestNumerator);
         _setVaultFractionToInvestDenominator(_toInvestDenominator);
         _setUnderlyingUnit(_underlyingUnit);
-        _setStrategyUpdateTime(0);
-        _setFutureStrategy(address(0));
+        _setNextStrategyTimestamp(0);
+        _setNextStrategy(address(0));
         _setAllowSharePriceDecrease(false);
         _setWithdrawBeforeReinvesting(false);
     }
@@ -125,28 +121,20 @@ contract VaultStorage is Initializable {
         return getUint256(_NEXT_IMPLEMENTATION_TIMESTAMP_SLOT);
     }
 
-    function _setStrategyTimeLock(uint256 _value) internal {
-        setUint256(_STRATEGY_TIME_LOCK_SLOT, _value);
+    function _setNextStrategy(address _value) internal {
+        setAddress(_NEXT_STRATEGY_SLOT, _value);
     }
 
-    function _strategyTimeLock() internal view returns (uint256) {
-        return getUint256(_STRATEGY_TIME_LOCK_SLOT);
+    function _nextStrategy() internal view returns (address) {
+        return getAddress(_NEXT_STRATEGY_SLOT);
     }
 
-    function _setFutureStrategy(address _value) internal {
-        setAddress(_FUTURE_STRATEGY_SLOT, _value);
+    function _setNextStrategyTimestamp(uint256 _value) internal {
+        setUint256(_NEXT_STRATEGY_TIMESTAMP_SLOT, _value);
     }
 
-    function _futureStrategy() internal view returns (address) {
-        return getAddress(_FUTURE_STRATEGY_SLOT);
-    }
-
-    function _setStrategyUpdateTime(uint256 _value) internal {
-        setUint256(_STRATEGY_UPDATE_TIME_SLOT, _value);
-    }
-
-    function _strategyUpdateTime() internal view returns (uint256) {
-        return getUint256(_STRATEGY_UPDATE_TIME_SLOT);
+    function _nextStrategyTimestamp() internal view returns (uint256) {
+        return getUint256(_NEXT_STRATEGY_TIMESTAMP_SLOT);
     }
 
     function _paused() internal view returns (bool) {

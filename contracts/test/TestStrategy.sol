@@ -13,9 +13,6 @@ import "./TestRewardPool.sol";
 contract TestStrategy is BaseUpgradeableStrategy {
     using SafeERC20 for IERC20;
 
-    address private constant _UNDERLYING_TOKEN = WETH;
-    address private constant _REWARD_TOKEN = USDC;
-
     function initializeBaseStrategy(
         address _storage,
         address _underlying,
@@ -25,24 +22,16 @@ contract TestStrategy is BaseUpgradeableStrategy {
         address _strategist
     ) public initializer {
         require(
-            _underlying == _UNDERLYING_TOKEN,
-            "_underlying must equal _UNDERLYING_TOKEN"
-        );
-        require(
             _rewardTokens.length == 1,
             "_rewardTokens must have length of 1"
         );
         require(
-            _rewardTokens[0] == _REWARD_TOKEN,
-            "_rewardTokens must only contain _REWARD_TOKEN"
+            TestRewardPool(_rewardPool).depositToken() == _underlying,
+            "_rewardPool::depositToken must eq _underlying"
         );
         require(
-            TestRewardPool(_rewardPool).depositToken() == _UNDERLYING_TOKEN,
-            "_rewardPool::depositToken must eq _UNDERLYING_TOKEN"
-        );
-        require(
-            TestRewardPool(_rewardPool).rewardToken() == _REWARD_TOKEN,
-            "_rewardPool::rewardToken must eq _REWARD_TOKEN"
+            TestRewardPool(_rewardPool).rewardToken() == _rewardTokens[0],
+            "_rewardPool::rewardToken must eq _rewardTokens[0]"
         );
 
         BaseUpgradeableStrategy.initialize(

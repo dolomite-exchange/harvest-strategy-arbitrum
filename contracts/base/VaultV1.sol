@@ -158,27 +158,21 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         if (totalSupply() == 0) {
             return 0;
         }
-        return underlyingBalanceWithInvestment()
-        .mul(balanceOf(_holder))
-        .div(totalSupply());
+        return underlyingBalanceWithInvestment().mul(balanceOf(_holder)).div(totalSupply());
     }
 
-    function futureStrategy() public view returns (address) {
-        return _futureStrategy();
+    function nextStrategy() public view returns (address) {
+        return _nextStrategy();
     }
 
-    function strategyUpdateTime() public view returns (uint256) {
-        return _strategyUpdateTime();
-    }
-
-    function strategyTimeLock() public view returns (uint256) {
-        return _strategyTimeLock();
+    function nextStrategyTimestamp() public view returns (uint256) {
+        return _nextStrategyTimestamp();
     }
 
     function canUpdateStrategy(address _strategy) public view returns (bool) {
         bool isStrategyNotSetYet = strategy() == address(0);
-        bool hasTimelockPassed = block.timestamp > strategyUpdateTime() && strategyUpdateTime() > 0;
-        return isStrategyNotSetYet || (_strategy == futureStrategy() && hasTimelockPassed);
+        bool hasTimelockPassed = block.timestamp > nextStrategyTimestamp() && nextStrategyTimestamp() != 0;
+        return isStrategyNotSetYet || (_strategy == nextStrategy() && hasTimelockPassed);
     }
 
     /**
@@ -186,9 +180,9 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
      */
     function announceStrategyUpdate(address _strategy) public onlyControllerOrGovernance {
         // records a new timestamp
-        uint256 when = block.timestamp.add(strategyTimeLock());
-        _setStrategyUpdateTime(when);
-        _setFutureStrategy(_strategy);
+        uint256 when = block.timestamp.add(IController(controller()).nextImplementationDelay());
+        _setNextStrategyTimestamp(when);
+        _setNextStrategy(_strategy);
         emit StrategyAnnounced(_strategy, when);
     }
 
@@ -196,18 +190,18 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
      * Finalizes (or cancels) the strategy update by resetting the data
      */
     function finalizeStrategyUpdate() public onlyControllerOrGovernance {
-        _setStrategyUpdateTime(0);
-        _setFutureStrategy(address(0));
+        _setNextStrategyTimestamp(0);
+        _setNextStrategy(address(0));
     }
 
     function setStrategy(address _strategy) public onlyControllerOrGovernance {
         require(
             canUpdateStrategy(_strategy),
-            "The strategy exists and switch timelock did not elapse yet"
+            "The strategy exists or the time lock did not elapse yet"
         );
         require(
             _strategy != address(0),
-            "new _strategy cannot be empty"
+            "New strategy cannot be empty"
         );
         require(
             IStrategy(_strategy).underlying() == address(underlying()),
@@ -215,7 +209,7 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         );
         require(
             IStrategy(_strategy).vault() == address(this),
-            "the strategy does not belong to this vault"
+            "The strategy does not belong to this vault"
         );
 
         emit StrategyChanged(_strategy, strategy());
@@ -246,17 +240,14 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
 
     function availableToInvestOut() public view returns (uint256) {
         uint256 wantInvestInTotal = underlyingBalanceWithInvestment()
-        .mul(vaultFractionToInvestNumerator())
-        .div(vaultFractionToInvestDenominator());
+            .mul(vaultFractionToInvestNumerator())
+            .div(vaultFractionToInvestDenominator());
         uint256 alreadyInvested = IStrategy(strategy()).investedUnderlyingBalance();
         if (alreadyInvested >= wantInvestInTotal) {
             return 0;
         } else {
             uint256 remainingToInvest = wantInvestInTotal.sub(alreadyInvested);
-            return remainingToInvest <= underlyingBalanceInVault()
-            // TODO: we think that the "else" branch of the ternary operation is not
-            // going to get hit
-            ? remainingToInvest : underlyingBalanceInVault();
+            return remainingToInvest <= underlyingBalanceInVault() ? remainingToInvest : underlyingBalanceInVault();
         }
     }
 
