@@ -18,6 +18,13 @@ contract VaultStorage is Initializable {
     bytes32 internal constant _WITHDRAW_BEFORE_REINVESTING_SLOT = 0x4215fbb95dc0890d3e1660fb9089350f2d3f350c0a756934874cae6febf42a79;
     bytes32 internal constant _PAUSED_SLOT = 0xf1cf856d03630b74791fc293cfafd739932a5a075b02d357fb7a726a38777930;
 
+    /**
+     * @dev Storage slot with the address of the current implementation.
+     * This is the keccak-256 hash of "eip1967.proxy.implementation" subtracted by 1, and is
+     * validated in the constructor.
+     */
+    bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
     constructor() public {
         assert(_STRATEGY_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.strategy")) - 1));
         assert(_UNDERLYING_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.underlying")) - 1));
@@ -135,6 +142,10 @@ contract VaultStorage is Initializable {
 
     function _nextStrategyTimestamp() internal view returns (uint256) {
         return getUint256(_NEXT_STRATEGY_TIMESTAMP_SLOT);
+    }
+
+    function _implementation() internal view returns (address) {
+        return getAddress(_IMPLEMENTATION_SLOT);
     }
 
     function _paused() internal view returns (bool) {

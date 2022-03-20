@@ -46,8 +46,12 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     );
 
     event Invest(uint256 amount);
-    event StrategyAnnounced(address newStrategy, uint256 time);
-    event StrategyChanged(address newStrategy, address oldStrategy);
+
+    event VaultAnnounced(address newVault, uint256 availableAtTimestamp);
+    event VaultChanged(address newVault);
+
+    event StrategyAnnounced(address newStrategy, uint256 availableAtTimestamp);
+    event StrategyChanged(address newStrategy);
 
     modifier whenStrategyDefined() {
         require(address(strategy()) != address(0), "Strategy must be defined");
@@ -223,7 +227,7 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
             "The strategy does not belong to this vault"
         );
 
-        emit StrategyChanged(_strategy, strategy());
+        emit StrategyChanged(_strategy);
         if (address(_strategy) != address(strategy())) {
             if (address(strategy()) != address(0)) {
                 // if the original strategy (no underscore) is defined, remove the token approval and withdraw all
@@ -288,9 +292,11 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     /**
      * Schedules an upgrade for this vault's proxy.
      */
-    function scheduleUpgrade(address impl) public onlyGovernance {
-        _setNextImplementation(impl);
-        _setNextImplementationTimestamp(block.timestamp.add(nextImplementationDelay()));
+    function scheduleUpgrade(address _impl) public onlyGovernance {
+        uint when = block.timestamp.add(nextImplementationDelay());
+        _setNextImplementation(_impl);
+        _setNextImplementationTimestamp(when);
+        emit VaultAnnounced(_impl, when);
     }
 
     function shouldUpgrade() external view returns (bool, address) {
@@ -305,6 +311,7 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
     function finalizeUpgrade() external onlyGovernance {
         _setNextImplementation(address(0));
         _setNextImplementationTimestamp(0);
+        emit VaultChanged(_implementation());
     }
 
     // ========================= Internal Functions =========================

@@ -120,7 +120,7 @@ describe('VaultV1', () => {
 
       const result2 = await vaultV1.connect(core.governance).setStrategy(nextStrategy.address);
       await expect(result2).to.emit(vaultV1, 'StrategyChanged')
-        .withArgs(nextStrategy.address, strategy.address);
+        .withArgs(nextStrategy.address);
 
       expect(await vaultV1.strategy()).to.eq(nextStrategy.address);
       expect(await vaultV1.nextStrategy()).to.eq(ethers.constants.AddressZero);
@@ -197,6 +197,63 @@ describe('VaultV1', () => {
     it('should not work when not called by governance or controller', async () => {
       await expect(vaultV1.connect(core.hhUser1).announceStrategyUpdate('0x0000000000000000000000000000000000000001'))
         .to.revertedWith('The caller must be controller or governance');
+    });
+  });
+
+  describe('#scheduleUpgrade/#upgrade/#finalizeUpgrade', () => {
+    it('should work', async () => {
+      const VaultV1Factory = await ethers.getContractFactory('VaultV1');
+      const nextVault = await VaultV1Factory.deploy() as VaultV1;
+
+      const result1 = await vaultV1.connect(core.governance).scheduleUpgrade(nextVault.address);
+      const latestTimestamp = await getLatestTimestamp();
+      await expect(result1).to.emit(vaultV1, 'VaultAnnounced')
+        .withArgs(nextVault.address, latestTimestamp + core.controllerParams.implementationDelaySeconds);
+      expect(await vaultV1.nextImplementation()).to.eq(nextVault.address);
+      expect(await vaultV1.nextImplementationTimestamp())
+        .to.eq(latestTimestamp + core.controllerParams.implementationDelaySeconds);
+
+      await waitTime(core.controllerParams.implementationDelaySeconds + 1);
+
+      const result2 = await vaultProxy.connect(core.governance).upgrade();
+      await expect(result2).to.emit(vaultV1, 'VaultChanged')
+        .withArgs(nextVault.address);
+
+      expect(await vaultProxy.implementation()).to.eq(nextVault.address);
+      expect(await vaultV1.nextImplementation()).to.eq(ethers.constants.AddressZero);
+      expect(await vaultV1.nextImplementationTimestamp()).to.eq(0);
+    });
+
+    it('should not work when called before next timestamp', async () => {
+      const VaultV1Factory = await ethers.getContractFactory('VaultV1');
+      const nextVault = await VaultV1Factory.deploy() as VaultV1;
+
+      const result1 = await vaultV1.connect(core.governance).scheduleUpgrade(nextVault.address);
+      const latestTimestamp = await getLatestTimestamp();
+      await expect(result1).to.emit(vaultV1, 'VaultAnnounced')
+        .withArgs(nextVault.address, latestTimestamp + core.controllerParams.implementationDelaySeconds);
+      expect(await vaultV1.nextImplementation()).to.eq(nextVault.address);
+      expect(await vaultV1.nextImplementationTimestamp())
+        .to.eq(latestTimestamp + core.controllerParams.implementationDelaySeconds);
+
+      await expect(vaultProxy.connect(core.governance).upgrade()).to.revertedWith('Upgrade not scheduled');
+    });
+
+    it('should not work when not called by governance or controller', async () => {
+      const VaultV1Factory = await ethers.getContractFactory('VaultV1');
+      const nextVault = await VaultV1Factory.deploy() as VaultV1;
+
+      const result1 = await vaultV1.connect(core.governance).scheduleUpgrade(nextVault.address);
+      const latestTimestamp = await getLatestTimestamp();
+      await expect(result1).to.emit(vaultV1, 'VaultAnnounced')
+        .withArgs(nextVault.address, latestTimestamp + core.controllerParams.implementationDelaySeconds);
+      expect(await vaultV1.nextImplementation()).to.eq(nextVault.address);
+      expect(await vaultV1.nextImplementationTimestamp())
+        .to.eq(latestTimestamp + core.controllerParams.implementationDelaySeconds);
+
+      await waitTime(core.controllerParams.implementationDelaySeconds + 1);
+
+      await expect(vaultProxy.connect(core.hhUser1).upgrade()).to.revertedWith('Issue when finalizing the upgrade');
     });
   });
 

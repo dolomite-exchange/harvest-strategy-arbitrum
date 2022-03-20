@@ -285,7 +285,7 @@ describe('BaseUpgradableStrategy', () => {
         strategy.address,
       );
       await expect(result1).to.emit(vaultV1, 'StrategyChanged')
-        .withArgs(strategy.address, ethers.constants.AddressZero);
+        .withArgs(strategy.address);
       expect(await core.controller.hasStrategy(strategy.address)).to.eq(true);
 
       // make a deposit in the form of underlying

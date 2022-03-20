@@ -1,48 +1,44 @@
 // Utilities
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
-import { BaseContract } from 'ethers';
-import { ethers } from 'hardhat';
 import {
-  Controller, IProfitSharingReceiver,
-  RewardForwarder,
+  IController,
+  IProfitSharingReceiver,
+  IRewardForwarder,
+  IUniversalLiquidator,
   Storage,
-  UniversalLiquidator,
-  UniversalLiquidator__factory,
   UniversalLiquidatorProxy,
-} from '../../src/types';
-import { CRV, DAI, SUSHI, SUSHI_ROUTER, UNISWAP_V3_ROUTER, USDC, USDT, WBTC, WETH } from '../utilities/constants';
-import { resetFork, revertToSnapshot, setupCoreProtocol, snapshot } from '../utilities/harvest-utils';
-import { getLatestTimestamp, revertToSnapshotAndCapture, waitTime } from '../utilities/utils';
+} from '../../../src/types/index';
+import { WETH } from '../../utilities/constants';
+import { CoreProtocol, setupCoreProtocol } from '../../utilities/harvest-utils';
+import { revertToSnapshotAndCapture, snapshot } from '../../utilities/utils';
 
-/**
- * Tests deployment of `Storage`, `Controller`, `RewardForwarder`, `UniversalLiquidator(Proxy)`
- */
-describe('BaseSystem', () => {
+describe('TriCryptoStrategy', () => {
 
   let governance: SignerWithAddress;
   let hhUser1: SignerWithAddress;
   let storage: Storage;
   let profitSharingReceiver: IProfitSharingReceiver;
   let universalLiquidatorProxy: UniversalLiquidatorProxy;
-  let universalLiquidator: UniversalLiquidator;
-  let rewardForwarder: RewardForwarder;
-  let controller: Controller;
+  let universalLiquidator: IUniversalLiquidator;
+  let rewardForwarder: IRewardForwarder;
+  let controller: IController;
+  let core: CoreProtocol;
 
   let snapshotId: string;
 
   before(async () => {
-    const coreProtocol = await setupCoreProtocol({
+    core = await setupCoreProtocol({
       blockNumber: 7642717,
     });
-    governance = coreProtocol.governance;
-    hhUser1 = coreProtocol.hhUser1;
-    storage = coreProtocol.storage;
-    profitSharingReceiver = coreProtocol.profitSharingReceiver;
-    universalLiquidatorProxy = coreProtocol.universalLiquidatorProxy;
-    universalLiquidator = coreProtocol.universalLiquidator;
-    rewardForwarder = coreProtocol.rewardForwarder;
-    controller = coreProtocol.controller;
+    governance = core.governance;
+    hhUser1 = core.hhUser1;
+    storage = core.storage;
+    profitSharingReceiver = core.profitSharingReceiver;
+    universalLiquidatorProxy = core.universalLiquidatorProxy;
+    universalLiquidator = core.universalLiquidator;
+    rewardForwarder = core.rewardForwarder;
+    controller = core.controller;
 
     snapshotId = await snapshot();
   })
@@ -62,13 +58,13 @@ describe('BaseSystem', () => {
 
       expect(await rewardForwarder.store()).to.eq(storage.address);
       expect(await rewardForwarder.governance()).to.eq(governance.address);
-      expect(await rewardForwarder.targetToken()).to.eq(USDC.address);
+      expect(await rewardForwarder.targetToken()).to.eq(WETH.address);
       expect(await rewardForwarder.profitSharingPool()).to.eq(profitSharingReceiver.address);
 
       expect(await controller.governance()).to.eq(governance.address);
       expect(await controller.store()).to.eq(storage.address);
       expect(await controller.rewardForwarder()).to.eq(rewardForwarder.address);
-      expect(await controller.nextImplementationDelay()).to.eq(implementationDelaySeconds);
+      expect(await controller.nextImplementationDelay()).to.eq(core.controllerParams.implementationDelaySeconds);
     });
   });
 });
