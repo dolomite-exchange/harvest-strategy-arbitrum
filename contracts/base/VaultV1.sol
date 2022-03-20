@@ -25,14 +25,25 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
      *
      * MUST be emitted when tokens are deposited into the Vault via the mint and deposit methods.
      */
-    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
+    event Deposit(
+        address indexed sender,
+        address indexed receiver,
+        uint256 assets,
+        uint256 shares
+    );
 
     /**
      * Caller has exchanged shares, owned by owner, for assets, and transferred those assets to receiver.
      *
      * MUST be emitted when shares are withdrawn from the Vault in ERC4626.redeem or ERC4626.withdraw methods.
      */
-    event Withdraw(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
+    event Withdraw(
+        address indexed sender,
+        address indexed receiver,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares
+    );
 
     event Invest(uint256 amount);
     event StrategyAnnounced(address newStrategy, uint256 time);
@@ -284,10 +295,10 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
 
     function shouldUpgrade() external view returns (bool, address) {
         return (
-        nextImplementationTimestamp() != 0
-        && block.timestamp > nextImplementationTimestamp()
-        && nextImplementation() != address(0),
-        nextImplementation()
+            nextImplementationTimestamp() != 0
+            && block.timestamp > nextImplementationTimestamp()
+            && nextImplementation() != address(0),
+            nextImplementation()
         );
     }
 
@@ -379,7 +390,7 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         _transferUnderlyingOut(_receiver, assets);
 
         // update the withdrawal amount for the holder
-        emit Withdraw(msg.sender, _receiver, assets, _shares);
+        emit Withdraw(msg.sender, _receiver, _owner, assets, _shares);
     }
 
     function _transferUnderlyingIn(address _sender, uint _amount) internal {

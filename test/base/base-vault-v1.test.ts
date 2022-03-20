@@ -200,7 +200,7 @@ describe('VaultV1', () => {
     });
   });
 
-  describe('#deposit/#withdraw', () => {
+  describe('#deposit/#withdraw/#rebalance', () => {
     const setupBalance = async (user: SignerWithAddress, balance: BigNumber) => {
       await WETH.connect(user).deposit({ value: balance });
       await WETH.connect(user).approve(vaultProxy.address, balance);
@@ -209,11 +209,14 @@ describe('VaultV1', () => {
     it('should work', async () => {
       const deposit1 = ethers.BigNumber.from('1000000000000000000');
       const deposit2 = ethers.BigNumber.from('2000000000000000000');
+      const deposit3 = ethers.BigNumber.from('3000000000000000000');
       const reward1 = ethers.BigNumber.from('250000000000000000'); // 0.25
-      const total = deposit1.add(deposit2);
+      const total1 = deposit1.add(deposit2);
+      const total2 = total1.add(deposit3);
 
       await setupBalance(core.hhUser1, deposit1);
       await setupBalance(core.hhUser2, deposit2);
+      await setupBalance(core.hhUser3, deposit3);
 
       const result1 = await vaultV1.connect(core.hhUser1).deposit(deposit1);
       await expect(result1).to.emit(vaultV1, 'Deposit')
@@ -221,8 +224,8 @@ describe('VaultV1', () => {
       expect(await vaultV1.balanceOf(core.hhUser1.address)).to.eq(deposit1);
       expect(await WETH.connect(core.hhUser1).balanceOf(vaultV1.address)).to.eq(deposit1);
 
-      await setupBalance(core.hhUser3, deposit1);
-      await WETH.connect(core.hhUser3).transfer(strategy.address, reward1);
+      await setupBalance(core.hhUser5, deposit1);
+      await WETH.connect(core.hhUser5).transfer(strategy.address, reward1);
       expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq(deposit1.add(reward1));
 
       const result2 = await vaultV1.connect(core.hhUser2).deposit(deposit2);
@@ -230,10 +233,54 @@ describe('VaultV1', () => {
       await expect(result2).to.emit(vaultV1, 'Deposit')
         .withArgs(core.hhUser2.address, core.hhUser2.address, deposit2, balance2);
       expect(await vaultV1.balanceOf(core.hhUser2.address)).to.eq(balance2);
-      expect(await WETH.connect(core.hhUser2).balanceOf(vaultV1.address)).to.eq(total);
-      expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq(total.add(reward1));
+      expect(await WETH.connect(core.hhUser2).balanceOf(vaultV1.address)).to.eq(total1);
+      expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq(total1.add(reward1));
+      expect(await vaultV1.getPricePerFullShare()).to.eq('1250000000000000000');
 
-      // TODO withdraw
+      // re-balancing keeps 0.5% in the vault and 99.5% in the strategy
+      const result3 = await vaultV1.connect(core.governance).rebalance();
+      const toInvestAmount = ethers.BigNumber.from('3233750000000000000').sub(reward1);
+      await expect(result3).to.emit(vaultV1, 'Invest').withArgs(toInvestAmount);
+      expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq(total1.add(reward1));
+      const balanceInVault = total1.sub(toInvestAmount);
+      expect(await vaultV1.underlyingBalanceInVault()).to.eq(balanceInVault);
+
+      const result4 = await vaultV1.connect(core.hhUser3).deposit(deposit3);
+      const balance3 = '2400000000000000000'; // this is the user's shares (equity) of the vault
+      await expect(result4).to.emit(vaultV1, 'Deposit')
+        .withArgs(core.hhUser3.address, core.hhUser3.address, deposit3, balance3);
+      expect(await vaultV1.balanceOf(core.hhUser3.address)).to.eq(balance3);
+      expect(await WETH.connect(core.hhUser3).balanceOf(vaultV1.address)).to.eq(deposit3.add(balanceInVault));
+      expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq(total2.add(reward1));
+      expect(await vaultV1.getPricePerFullShare()).to.eq('1250000000000000000');
+
+      const result5 = await vaultV1.connect(core.hhUser1).withdraw(deposit1.div(2));
+      await expect(result5).to.emit(vaultV1, 'Withdraw')
+        .withArgs(
+          core.hhUser1.address,
+          core.hhUser1.address,
+          core.hhUser1.address,
+          (deposit1.add(reward1)).div(2),
+          deposit1.div(2),
+        );
+      expect(await vaultV1.totalSupply()).to.eq('4500000000000000000');
+      expect(await vaultV1.balanceOf(core.hhUser1.address)).to.eq('500000000000000000');
+      expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq('5625000000000000000');
+      expect(await WETH.connect(core.hhUser1).balanceOf(core.hhUser1.address)).to.eq('625000000000000000');
+
+      const result6 = await vaultV1.connect(core.hhUser3).withdraw(deposit3.mul('100').div('125'));
+      await expect(result6).to.emit(vaultV1, 'Withdraw')
+        .withArgs(
+          core.hhUser3.address,
+          core.hhUser3.address,
+          core.hhUser3.address,
+          deposit3,
+          deposit3.mul('100').div('125'),
+        );
+      expect(await vaultV1.totalSupply()).to.eq('2100000000000000000');
+      expect(await vaultV1.balanceOf(core.hhUser3.address)).to.eq('0');
+      expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq('2625000000000000000');
+      expect(await WETH.connect(core.hhUser3).balanceOf(core.hhUser3.address)).to.eq(deposit3);
     });
   });
 });

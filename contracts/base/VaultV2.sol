@@ -34,7 +34,10 @@ contract VaultV2 is IERC4626, VaultV1 {
     }
 
     function deposit(uint256 _assets, address _receiver) public nonReentrant defense returns (uint256) {
-        (, uint256 shares) = _deposit(_assets, msg.sender, _receiver);
+        uint shares = previewDeposit(_assets);
+        (uint256 retAssets, uint256 retShares) = _deposit(_assets, msg.sender, _receiver);
+        assert(_assets == retAssets);
+        assert(shares == retShares);
         return shares;
     }
 
@@ -47,8 +50,11 @@ contract VaultV2 is IERC4626, VaultV1 {
     }
 
     function mint(uint256 _shares, address _receiver) public nonReentrant defense returns (uint256) {
-        (uint256 _assets,) = _deposit(_shares, msg.sender, _receiver);
-        return _assets;
+        uint assets = previewMint(_shares);
+        (uint retAssets, uint retShares) = _deposit(assets, msg.sender, _receiver);
+        assert(assets == retAssets);
+        assert(_shares == retShares);
+        return assets;
     }
 
     function maxWithdraw(address _caller) public view returns (uint256) {
@@ -69,7 +75,8 @@ contract VaultV2 is IERC4626, VaultV1 {
     defense
     returns (uint256) {
         uint256 shares = previewWithdraw(_assets);
-        _withdraw(shares, _receiver, _owner);
+        uint256 retAssets = _withdraw(shares, _receiver, _owner);
+        assert(retAssets == _assets);
         return shares;
     }
 
@@ -91,20 +98,21 @@ contract VaultV2 is IERC4626, VaultV1 {
     defense
     returns (uint256) {
         uint256 assets = previewRedeem(_shares);
-        _withdraw(_shares, _receiver, _owner);
+        uint256 retAssets = _withdraw(_shares, _receiver, _owner);
+        assert(assets == retAssets);
         return assets;
     }
 
     // ========================= Internal Functions =========================
 
     function _sharesToAssets(uint256 _shares) internal view returns (uint256) {
-        return totalAssets() == 0 && totalSupply() == 0
+        return totalAssets() == 0 || totalSupply() == 0
             ? _shares * (TEN ** ERC20Detailed(underlying()).decimals()) / (TEN ** decimals())
             : _shares * totalAssets() / totalSupply();
     }
 
     function _assetsToShares(uint256 _assets) internal view returns (uint256) {
-        return totalAssets() == 0 && totalSupply() == 0
+        return totalAssets() == 0 || totalSupply() == 0
             ? _assets * (TEN ** decimals()) / (TEN ** ERC20Detailed(underlying()).decimals())
             : _assets * totalSupply() / totalAssets();
     }
