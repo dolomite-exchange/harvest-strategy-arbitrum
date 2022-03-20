@@ -298,6 +298,9 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
 
     // ========================= Internal Functions =========================
 
+    /**
+     * @dev Transfers any available assets to the strategy
+     */
     function _invest() internal whenStrategyDefined {
         uint256 availableAmount = availableToInvestOut();
         if (availableAmount > 0) {

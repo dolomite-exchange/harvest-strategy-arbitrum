@@ -1,19 +1,18 @@
 // Utilities
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
-import { StrategyProxy, TestRewardPool, TestStrategy, VaultProxy, VaultV1 } from '../../src/types';
+import { StrategyProxy, TestRewardPool, TestStrategy, VaultProxy, VaultV2Payable } from '../../src/types';
 import { IVault } from '../../types/ethers-contracts';
 import { USDC, WETH } from '../utilities/constants';
 import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../utilities/harvest-utils';
 import { getLatestTimestamp, revertToSnapshotAndCapture, snapshot, waitTime } from '../utilities/utils';
 
 
-describe('VaultV1', () => {
+describe('VaultV2Payable', () => {
   let core: CoreProtocol;
   let vaultProxy: VaultProxy;
-  let vaultV1: VaultV1;
+  let vaultV1: VaultV2Payable;
   let rewardPool: TestRewardPool;
   let strategyProxy: StrategyProxy;
   let strategy: TestStrategy;
@@ -197,43 +196,6 @@ describe('VaultV1', () => {
     it('should not work when not called by governance or controller', async () => {
       await expect(vaultV1.connect(core.hhUser1).announceStrategyUpdate('0x0000000000000000000000000000000000000001'))
         .to.revertedWith('The caller must be controller or governance');
-    });
-  });
-
-  describe('#deposit/#withdraw', () => {
-    const setupBalance = async (user: SignerWithAddress, balance: BigNumber) => {
-      await WETH.connect(user).deposit({ value: balance });
-      await WETH.connect(user).approve(vaultProxy.address, balance);
-    }
-
-    it('should work', async () => {
-      const deposit1 = ethers.BigNumber.from('1000000000000000000');
-      const deposit2 = ethers.BigNumber.from('2000000000000000000');
-      const reward1 = ethers.BigNumber.from('250000000000000000'); // 0.25
-      const total = deposit1.add(deposit2);
-
-      await setupBalance(core.hhUser1, deposit1);
-      await setupBalance(core.hhUser2, deposit2);
-
-      const result1 = await vaultV1.connect(core.hhUser1).deposit(deposit1);
-      await expect(result1).to.emit(vaultV1, 'Deposit')
-        .withArgs(core.hhUser1.address, core.hhUser1.address, deposit1, deposit1);
-      expect(await vaultV1.balanceOf(core.hhUser1.address)).to.eq(deposit1);
-      expect(await WETH.connect(core.hhUser1).balanceOf(vaultV1.address)).to.eq(deposit1);
-
-      await setupBalance(core.hhUser3, deposit1);
-      await WETH.connect(core.hhUser3).transfer(strategy.address, reward1);
-      expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq(deposit1.add(reward1));
-
-      const result2 = await vaultV1.connect(core.hhUser2).deposit(deposit2);
-      const balance2 = '1600000000000000000'; // this is the user's shares (equity) of the vault
-      await expect(result2).to.emit(vaultV1, 'Deposit')
-        .withArgs(core.hhUser2.address, core.hhUser2.address, deposit2, balance2);
-      expect(await vaultV1.balanceOf(core.hhUser2.address)).to.eq(balance2);
-      expect(await WETH.connect(core.hhUser2).balanceOf(vaultV1.address)).to.eq(total);
-      expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq(total.add(reward1));
-
-      // TODO withdraw
     });
   });
 });

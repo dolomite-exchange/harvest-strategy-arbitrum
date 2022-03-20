@@ -69,7 +69,9 @@ contract UniversalLiquidatorV1 is IUniversalLiquidator, ControllableInit, BaseUp
         return (nextImplementation() != address(0), nextImplementation());
     }
 
-    function scheduleUpgrade(address _nextImplementation) external onlyGovernance {
+    function scheduleUpgrade(
+        address _nextImplementation
+    ) external onlyGovernance {
         _setNextImplementation(_nextImplementation);
         emit UpgradeScheduled(_nextImplementation, block.timestamp);
     }
@@ -95,7 +97,10 @@ contract UniversalLiquidatorV1 is IUniversalLiquidator, ControllableInit, BaseUp
         }
     }
 
-    function getSwapRouter(address _inputToken, address _outputToken) public view returns (address router) {
+    function getSwapRouter(
+        address _inputToken,
+        address _outputToken
+    ) public view returns (address router) {
         bytes32 slot = _getSlotForRouter(_inputToken, _outputToken);
         // solhint-disable-next-line no-inline-assembly
         assembly {
@@ -161,7 +166,9 @@ contract UniversalLiquidatorV1 is IUniversalLiquidator, ControllableInit, BaseUp
         return _amountIn;
     }
 
-    function _address2ToMemory(address[2] memory _tokens) internal pure returns (address[] memory) {
+    function _address2ToMemory(
+        address[2] memory _tokens
+    ) internal pure returns (address[] memory) {
         address[] memory dynamicTokens = new address[](_tokens.length);
         for (uint i = 0; i < _tokens.length; i++) {
             dynamicTokens[i] = _tokens[i];
