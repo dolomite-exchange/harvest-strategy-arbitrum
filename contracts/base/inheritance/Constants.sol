@@ -7,16 +7,17 @@ contract Constants {
 
     address constant public CRV_TRI_CRYPTO = 0x8e0B8c8BB9db49a46697F3a5Bb8A308e744821D2;
 
-    address constant public CRV_TRI_CRYPTO_POOL = 0x960ea3e3C7FB317332d990873d354E18d7645590;
-
     address constant public CRV_TRI_CRYPTO_GAUGE = 0x97E2768e8E73511cA874545DC5Ff8067eB19B787;
+
+    address constant public CRV_TRI_CRYPTO_POOL = 0x960ea3e3C7FB317332d990873d354E18d7645590;
 
     address constant public DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
     /// @notice Used as governance
     address constant public DEFAULT_MULTI_SIG_ADDRESS = 0x0000000000000000000000000000000000000000;
 
-    address constant public FARM = 0x0000000000000000000000000000000000000000;
+    // We can set this later once we know the address
+//    address constant public FARM = 0x0000000000000000000000000000000000000000;
 
     address constant public LINK = 0xf97f4df75117a78c1A5a0DBb814Af92458539FB4;
 

@@ -8,8 +8,6 @@ deployments
 dev-keys.json
 package-lock.json
 
-yarn.lock
-
 .DS_Store
 
 .idea

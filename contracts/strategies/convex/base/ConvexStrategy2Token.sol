@@ -113,11 +113,11 @@ contract ConvexStrategy2Token is IStrategy, BaseUpgradeableStrategy {
         }
     }
 
-    function isUnsalvageableToken(address token) public view returns (bool) {
-        return (isRewardToken(token) || token == underlying() || token == depositReceipt());
+    function isUnsalvageableToken(address _token) public view returns (bool) {
+        return super.isUnsalvageableToken(_token) || _token == depositReceipt();
     }
 
-    function enterRewardPool() internal {
+    function _enterRewardPool() internal {
         uint256 entireBalance = IERC20(underlying()).balanceOf(address(this));
         IERC20(underlying()).safeApprove(booster, 0);
         IERC20(underlying()).safeApprove(booster, entireBalance);
@@ -184,7 +184,7 @@ contract ConvexStrategy2Token is IStrategy, BaseUpgradeableStrategy {
         // this check is needed, because most of the SNX reward pools will revert if
         // you try to stake(0).
         if (IERC20(underlying()).balanceOf(address(this)) > 0) {
-            enterRewardPool();
+            _enterRewardPool();
         }
     }
 
@@ -230,21 +230,6 @@ contract ConvexStrategy2Token is IStrategy, BaseUpgradeableStrategy {
         IBaseRewardPool(rewardPool()).getReward();
         _liquidateReward();
         investAllUnderlying();
-    }
-
-    /**
-     * Can completely disable claiming UNI rewards and selling. Good for emergency withdraw in the
-     * simplest possible way.
-     */
-    function setSell(bool s) public onlyGovernance {
-        _setSell(s);
-    }
-
-    /**
-     * Sets the minimum amount of reward token needed to trigger a sale.
-     */
-    function setSellFloor(uint256 floor) public onlyGovernance {
-        _setSellFloor(floor);
     }
 
     function _setPoolId(uint256 _value) internal {

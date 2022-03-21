@@ -21,7 +21,7 @@ pragma experimental ABIEncoderV2;
 
 import "../interfaces/IDolomiteMargin.sol";
 
-import "./interfaces/CrvPool.sol";
+import "./interfaces/CrvTriCryptoPool.sol";
 import "./interfaces/CrvToken.sol";
 
 import "../lib/DolomiteMarginMonetary.sol";
@@ -40,7 +40,7 @@ contract CrvTriCryptoPriceOracle is FTokenPriceOracle {
 
     function getFTokenParts(address _fToken) public view returns (address[] memory) {
         CrvToken crvToken = CrvToken(IVault(_fToken).underlying());
-        CrvPool crvPool = CrvPool(crvToken.minter());
+        CrvTriCryptoPool crvPool = CrvTriCryptoPool(crvToken.minter());
         address[] memory parts = new address[](3);
         parts[0] = crvPool.coins(0);
         parts[1] = crvPool.coins(1);
@@ -52,7 +52,7 @@ contract CrvTriCryptoPriceOracle is FTokenPriceOracle {
         // convert fToken value to underlying value using exchange rate
         // convert value of underlying into the value of the claim on token parts
         CrvToken crvToken = CrvToken(IVault(_fToken).underlying());
-        CrvPool crvPool = CrvPool(crvToken.minter());
+        CrvTriCryptoPool crvPool = CrvTriCryptoPool(crvToken.minter());
         uint fExchangeRate = IVault(_fToken).getPricePerFullShare();
         uint fBase = IVault(_fToken).underlyingUnit();
         // TODO discover if crvPool.D() and fExchangeRate is flash loan resistant; if they are not, we need to set up 15

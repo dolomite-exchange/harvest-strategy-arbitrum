@@ -19,22 +19,28 @@ contract Storage {
   address public nextController;
   uint256 public nextControllerTimestamp;
 
-  constructor (address _controller) public {
-    governance = msg.sender;
-    controller = _controller;
-
-    require(
-      IController(controller).nextImplementationDelay() >= 0,
-      "new controller doesn't get delay properly"
-    );
-
-    emit GovernanceChanged(governance);
-    emit ControllerChanged(controller);
-  }
-
   modifier onlyGovernance() {
     require(isGovernance(msg.sender), "Not governance");
     _;
+  }
+
+  constructor () public {
+    governance = msg.sender;
+    emit GovernanceChanged(msg.sender);
+  }
+
+  function setInitialController(address _controller) public onlyGovernance {
+    require(
+      controller == address(0),
+      "controller already set"
+    );
+    require(
+      IController(_controller).nextImplementationDelay() >= 0,
+      "new controller doesn't get delay properly"
+    );
+
+    controller = _controller;
+    emit ControllerChanged(_controller);
   }
 
   function nextImplementationDelay() public view returns (uint) {

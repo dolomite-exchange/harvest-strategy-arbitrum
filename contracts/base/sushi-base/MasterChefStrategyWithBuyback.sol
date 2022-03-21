@@ -70,11 +70,7 @@ contract MasterChefStrategyWithBuyback is IStrategy, BaseUpgradeableStrategy {
         }
     }
 
-    function isUnsalvageableToken(address token) public view returns (bool) {
-        return (isRewardToken(token) || token == underlying());
-    }
-
-    function enterRewardPool() internal {
+    function _enterRewardPool() internal {
         uint256 entireBalance = IERC20(underlying()).balanceOf(address(this));
         IERC20(underlying()).safeApprove(rewardPool(), 0);
         IERC20(underlying()).safeApprove(rewardPool(), entireBalance);
@@ -135,7 +131,7 @@ contract MasterChefStrategyWithBuyback is IStrategy, BaseUpgradeableStrategy {
         // this check is needed, because most of the SNX reward pools will revert if
         // you try to stake(0).
         if (IERC20(underlying()).balanceOf(address(this)) > 0) {
-            enterRewardPool();
+            _enterRewardPool();
         }
     }
 
@@ -194,24 +190,6 @@ contract MasterChefStrategyWithBuyback is IStrategy, BaseUpgradeableStrategy {
         investAllUnderlying();
     }
 
-    /**
-     * Can completely disable claiming UNI rewards and selling. Good for emergency withdraw in the simplest possible
-     * way.
-     */
-    function setSell(bool s) public onlyGovernance {
-        _setSell(s);
-    }
-
-    /**
-     * Sets the minimum amount of CRV needed to trigger a sale.
-     */
-    function setSellFloor(uint256 floor) public onlyGovernance {
-        _setSellFloor(floor);
-    }
-
-    /**
-     * MasterChef rewards pool ID
-     */
     function _setPoolId(uint256 _value) internal {
         setUint256(_POOL_ID_SLOT, _value);
     }

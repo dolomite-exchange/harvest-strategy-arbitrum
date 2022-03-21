@@ -22,11 +22,18 @@ contract IStrategy {
 
     function withdrawToVault(uint256 _amount) external;
 
-    function investedUnderlyingBalance() external view returns (uint256); // itsNotMuch()
+    function investedUnderlyingBalance() external view returns (uint256);
 
     function doHardWork() external;
 
     function depositArbCheck() external view returns (bool);
 
     function strategist() external view returns (address);
+
+    /**
+     * @return  The value of any accumulated rewards that are under control by the strategy. Each index corresponds with
+     *          the tokens in `rewardTokens`. This function is not a `view`, because some protocols, like Curve, need
+     *          writeable functions to get the # of claimable reward tokens
+     */
+    function getRewardPoolValues() external returns (uint256[] memory);
 }

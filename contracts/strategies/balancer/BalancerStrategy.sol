@@ -76,8 +76,13 @@ contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
         bal = IERC20(underlying()).balanceOf(address(this));
     }
 
-    function isUnsalvageableToken(address token) public view returns (bool) {
-        return (isRewardToken(token) || token == underlying());
+    function isUnsalvageableToken(address _token) public view returns (bool) {
+        (IERC20[] memory poolERC20Tokens,,) = IBVault(bVault()).getPoolTokens(poolId());
+        address[] memory poolTokens = new address[](poolERC20Tokens.length);
+        for (uint i = 0; i < poolTokens.length; i++) {
+            poolTokens[i] = address(poolERC20Tokens[i]);
+        }
+        return super.isUnsalvageableToken(_token) || _isAddressInList(_token, poolTokens);
     }
 
     // We assume that all the tradings can be done on Uniswap
@@ -184,21 +189,6 @@ contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
 
     function liquidateAll() external onlyGovernance {
         _liquidateReward();
-    }
-
-    /**
-     * Can completely disable claiming UNI rewards and selling. Good for emergency withdraw in the
-     * simplest possible way.
-     */
-    function setSell(bool s) public onlyGovernance {
-        _setSell(s);
-    }
-
-    /**
-     * Sets the minimum amount of CRV needed to trigger a sale.
-     */
-    function setSellFloor(uint256 floor) public onlyGovernance {
-        _setSellFloor(floor);
     }
 
     function _setPoolId(bytes32 _value) internal {

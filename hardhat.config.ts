@@ -1,22 +1,25 @@
 import '@nomiclabs/hardhat-etherscan';
 import '@nomiclabs/hardhat-truffle5';
-
 import '@nomiclabs/hardhat-waffle';
 import '@typechain/hardhat';
 import 'hardhat-gas-reporter';
+
+import chai from 'chai';
+import { solidity } from 'ethereum-waffle';
 import { HardhatUserConfig } from 'hardhat/config';
 
 const keys = require('./dev-keys.json');
 
-const config: HardhatUserConfig = {
+chai.use(solidity);
+
+export const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
       forking: {
-        url: 'https://mainnet.infura.io/v3/' + keys.infuraKey,
-        // url: "https://eth-mainnet.alchemyapi.io/v2/" + keys.alchemyKey,
-        blockNumber: 11807770, // <-- edit here
+        url: `https://arbitrum-mainnet.infura.io/v3/${keys.infuraKey}`,
+        blockNumber: 7642717,
       },
     },
   },

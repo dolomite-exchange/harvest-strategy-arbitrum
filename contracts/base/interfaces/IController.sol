@@ -25,6 +25,8 @@ interface IController {
 
     function stakingWhiteList(address _target) external view returns (bool);
 
+    function store() external view returns (address);
+
     function governance() external view returns (address);
 
     function hasVault(address _vault) external view returns (bool);
@@ -35,22 +37,22 @@ interface IController {
 
     function addVaultsAndStrategies(address[] calldata _vaults, address[] calldata _strategies) external;
 
-    function doHardWork(address _vault) external;
+    function doHardWork(
+        address _vault,
+        uint256 _hint,
+        uint256 _deviationNumerator,
+        uint256 _deviationDenominator
+    ) external;
 
     function salvage(address _token, uint256 amount) external;
 
     function salvageStrategy(address _strategy, address _token, uint256 amount) external;
 
-    function notifyFee(
-        address _underlying,
-        uint256 _profitSharingFee,
-        uint256 _strategistFee,
-        uint256 _platformFee
-    ) external;
+    function rewardForwarder() external view returns (address);
 
-    function feeRewardForwarder() external view returns (address);
+    function setRewardForwarder(address _rewardForwarder) external;
 
-    function setFeeRewardForwarder(address _value) external;
+    function setUniversalLiquidator(address _universalLiquidator) external;
 
     function addHardWorker(address _worker) external;
 
@@ -85,4 +87,16 @@ interface IController {
     function setPlatformFeeNumerator(uint _platformFeeNumerator) external;
 
     function confirmSetPlatformFeeNumerator() external;
+
+    function nextProfitSharingNumerator() external view returns (uint256);
+
+    function nextProfitSharingNumeratorTimestamp() external view returns (uint256);
+
+    function nextStrategistFeeNumerator() external view returns (uint256);
+
+    function nextStrategistFeeNumeratorTimestamp() external view returns (uint256);
+
+    function nextPlatformFeeNumerator() external view returns (uint256);
+
+    function nextPlatformFeeNumeratorTimestamp() external view returns (uint256);
 }

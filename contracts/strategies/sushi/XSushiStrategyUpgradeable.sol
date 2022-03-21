@@ -62,7 +62,7 @@ contract XSushiStrategyUpgradeable is IStrategy, AaveInteractorInit, BaseUpgrade
   }
 
   function isUnsalvageableToken(address _token) public view returns(bool) {
-    return _token == underlying() || _token == xsushi() || _token == aTokenAddress();
+    return super.isUnsalvageableToken(_token) || _token == aTokenAddress();
   }
 
   function setAaveCap(uint256 _newCap) public onlyGovernance {
