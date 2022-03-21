@@ -6,7 +6,7 @@ import {
   ControllerV1,
   IController,
   IController__factory,
-  IERC20, IERC4626, IERC4626__factory,
+  IERC20,
   IProfitSharingReceiver,
   IProfitSharingReceiver__factory,
   IRewardForwarder,
@@ -18,12 +18,18 @@ import {
   ProfitSharingReceiverV1,
   RewardForwarderV1,
   Storage,
-  Storage__factory, StrategyProxy,
+  Storage__factory,
+  StrategyProxy,
   UniversalLiquidatorProxy,
   UniversalLiquidatorProxy__factory,
-  UniversalLiquidatorV1, VaultProxy, VaultV1, VaultV1__factory, VaultV2, VaultV2__factory,
+  UniversalLiquidatorV1,
+  VaultProxy,
+  VaultV1,
+  VaultV1__factory,
+  VaultV2,
+  VaultV2__factory,
 } from '../../src/types';
-import { DefaultImplementationDelay, USDC, WETH } from './constants';
+import { DefaultImplementationDelay, WETH } from './constants';
 import { impersonateAll, resetFork, setEtherBalance } from './utils';
 
 export interface ExistingCoreAddresses {
@@ -80,6 +86,7 @@ export interface CoreProtocol {
   hhUser3: SignerWithAddress
   hhUser4: SignerWithAddress
   hhUser5: SignerWithAddress
+  strategist: SignerWithAddress
   profitSharingReceiver: IProfitSharingReceiver
   rewardForwarder: IRewardForwarder
   storage: Storage
@@ -90,7 +97,7 @@ export interface CoreProtocol {
 export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promise<CoreProtocol> {
   await resetFork(config.blockNumber);
 
-  const [hhUser1, hhUser2, hhUser3, hhUser4, hhUser5] = await ethers.getSigners();
+  const [hhUser1, hhUser2, hhUser3, hhUser4, hhUser5, strategist] = await ethers.getSigners();
   let governance: SignerWithAddress;
   let profitSharingReceiver: IProfitSharingReceiver;
   let universalLiquidator: IUniversalLiquidator;
@@ -152,7 +159,8 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
     storage = (await StorageFactory.connect(governance).deploy()) as Storage;
 
     const UniversalLiquidatorFactory = await ethers.getContractFactory('UniversalLiquidatorV1');
-    const universalLiquidatorImplementation = await UniversalLiquidatorFactory.connect(governance).deploy() as UniversalLiquidatorV1;
+    const universalLiquidatorImplementation = await UniversalLiquidatorFactory.connect(governance)
+      .deploy() as UniversalLiquidatorV1;
 
     const UniversalLiquidatorProxyFactory = await ethers.getContractFactory('UniversalLiquidatorProxy');
     universalLiquidatorProxy = await UniversalLiquidatorProxyFactory.connect(governance).deploy(
@@ -219,6 +227,7 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
     hhUser3,
     hhUser4,
     hhUser5,
+    strategist,
     profitSharingReceiver,
     rewardForwarder,
     storage,
@@ -365,9 +374,15 @@ export async function createStrategy<T extends BaseContract>(implementation: T):
 
 /**
  * @param implementation  The implementation contract
+ * @param core            The `CoreProtocol` used for deployment
+ * @param underlying      The underlying token used for the vault
  * @return  The deployed strategy proxy and the implementation contract at the proxy's address
  */
-export async function createVault(implementation: IVault): Promise<[VaultProxy, VaultV1, VaultV2]> {
+export async function createVault(
+  implementation: IVault,
+  core: CoreProtocol,
+  underlying: { address: string },
+): Promise<[VaultProxy, VaultV1, VaultV2]> {
   const VaultProxyFactory = await ethers.getContractFactory('VaultProxy');
   const vaultProxy = await VaultProxyFactory.deploy(implementation.address) as VaultProxy;
   const vaultImplV1 = new BaseContract(
@@ -380,6 +395,9 @@ export async function createVault(implementation: IVault): Promise<[VaultProxy, 
     VaultV2__factory.createInterface(),
     implementation.signer,
   ) as VaultV2;
+
+  await vaultImplV1.initializeVault(core.storage.address, underlying.address, '995', '1000');
+
   return [vaultProxy, vaultImplV1, vaultImplV2]
 }
 

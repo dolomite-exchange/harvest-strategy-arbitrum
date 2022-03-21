@@ -7,6 +7,10 @@ interface IGauge {
 
     function balanceOf(address user) external view returns (uint);
 
+    function claimable_reward(address user, address token) external view returns (uint);
+
+    function claimable_reward_write(address _addr, address _token) external returns (uint256);
+
     function deposit(uint value) external;
 
     function withdraw(uint value) external;

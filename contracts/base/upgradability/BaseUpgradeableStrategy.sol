@@ -150,6 +150,10 @@ contract BaseUpgradeableStrategy is
         _enterRewardPool();
     }
 
+    function enterRewardPool() external onlyNotPausedInvesting restricted nonReentrant {
+        _enterRewardPool();
+    }
+
     /**
      * Withdraws all of the assets to the vault
      */

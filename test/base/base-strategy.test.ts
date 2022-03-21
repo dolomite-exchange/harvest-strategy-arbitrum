@@ -2,12 +2,12 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
+import { IVault } from '../../src/types/IVault';
 import { StrategyProxy } from '../../src/types/StrategyProxy';
 import { TestRewardPool } from '../../src/types/TestRewardPool';
 import { TestStrategy } from '../../src/types/TestStrategy';
 import { VaultProxy } from '../../src/types/VaultProxy';
 import { VaultV1 } from '../../src/types/VaultV1';
-import { IVault } from '../../types/ethers-contracts';
 import { CRV, USDC, WETH } from '../utilities/constants';
 import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../utilities/harvest-utils';
 import { getLatestTimestamp, impersonate, revertToSnapshotAndCapture, snapshot, waitTime } from '../utilities/utils';
@@ -37,13 +37,7 @@ describe('BaseUpgradableStrategy', () => {
     const VaultV2Factory = await ethers.getContractFactory('VaultV2');
     const testVaultImplementation = await VaultV2Factory.deploy() as IVault;
 
-    [vaultProxy, vaultV1] = await createVault(testVaultImplementation);
-    await vaultV1.initializeVault(
-      core.storage.address,
-      WETH.address,
-      995,
-      1000,
-    );
+    [vaultProxy, vaultV1] = await createVault(testVaultImplementation, core, WETH);
 
     const TestRewardPoolFactory = await ethers.getContractFactory('TestRewardPool');
     rewardPool = await TestRewardPoolFactory.deploy(WETH.address, USDC.address) as TestRewardPool;
@@ -327,7 +321,10 @@ describe('BaseUpgradableStrategy', () => {
       // price is about $2775. Compounding gets $75 --> >1.027 ETH
       expect(await vaultV1.underlyingBalanceWithInvestment()).to.be.gt(depositAmount.add('27000000000000000'));
       // price is about $2775. Profit Sharing gets $15 --> >0.0054 ETH
-      expect(await WETH.connect(core.hhUser1).balanceOf(core.profitSharingReceiver.address)).to.be.gt('5400000000000000');
+      expect(await WETH.connect(core.hhUser1).balanceOf(core.profitSharingReceiver.address))
+        .to
+        .be
+        .gt('5400000000000000');
       // price is about $2775. Platform gets $5 --> >0.0017 ETH
       expect(await WETH.connect(core.hhUser1).balanceOf(core.governance.address)).to.be.gt('1700000000000000');
       // price is about $2775. Strategist gets $5 --> >0.0017 ETH

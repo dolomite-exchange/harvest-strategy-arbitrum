@@ -115,11 +115,6 @@ contract UniversalLiquidatorV1 is IUniversalLiquidator, ControllableInit, BaseUp
         uint256 _amountOutMin,
         address _recipient
     ) external returns (uint) {
-        require(
-            msg.sender == IController(controller()).rewardForwarder(),
-            "only callable from fee reward forwarder"
-        );
-
         IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amountIn);
 
         if (_tokenIn == _tokenOut) {

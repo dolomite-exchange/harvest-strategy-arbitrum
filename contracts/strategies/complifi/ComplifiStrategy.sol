@@ -96,7 +96,7 @@ contract ComplifiStrategy is IStrategy, BaseUpgradeableStrategy {
       }
   }
 
-  function enterRewardPool() internal {
+  function _enterRewardPool() internal {
     uint256 entireBalance = IERC20(underlying()).balanceOf(address(this));
     IERC20(underlying()).safeApprove(rewardPool(), 0);
     IERC20(underlying()).safeApprove(rewardPool(), entireBalance);
@@ -235,7 +235,7 @@ contract ComplifiStrategy is IStrategy, BaseUpgradeableStrategy {
     // this check is needed, because most of the SNX reward pools will revert if
     // you try to stake(0).
     if(IERC20(underlying()).balanceOf(address(this)) > 0) {
-      enterRewardPool();
+      _enterRewardPool();
     }
   }
 

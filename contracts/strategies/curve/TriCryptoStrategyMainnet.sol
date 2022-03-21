@@ -6,7 +6,7 @@ import "./TriCryptoStrategy.sol";
 
 contract TriCryptoStrategyMainnet is TriCryptoStrategy, IMainnetStrategy {
 
-    function initializeStrategy(
+    function initializeMainnetStrategy(
         address _storage,
         address _vault,
         address _strategist

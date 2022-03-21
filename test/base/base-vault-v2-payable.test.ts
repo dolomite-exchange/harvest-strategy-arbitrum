@@ -4,6 +4,7 @@ import { expect } from 'chai';
 import { BaseContract, BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import {
+  IVault,
   StrategyProxy,
   TestRewardPool,
   TestStrategy,
@@ -11,7 +12,6 @@ import {
   VaultV2Payable,
   VaultV2Payable__factory,
 } from '../../src/types';
-import { IVault } from '../../types/ethers-contracts';
 import { USDC, WETH } from '../utilities/constants';
 import { CoreProtocol, createStrategy, setupCoreProtocol } from '../utilities/harvest-utils';
 import { revertToSnapshotAndCapture, snapshot } from '../utilities/utils';

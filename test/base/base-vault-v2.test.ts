@@ -3,8 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
-import { StrategyProxy, TestRewardPool, TestStrategy, VaultProxy, VaultV2 } from '../../src/types';
-import { IVault } from '../../types/ethers-contracts';
+import { IVault, StrategyProxy, TestRewardPool, TestStrategy, VaultProxy, VaultV2 } from '../../src/types';
 import { USDC, WETH } from '../utilities/constants';
 import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../utilities/harvest-utils';
 import { revertToSnapshotAndCapture, snapshot } from '../utilities/utils';
@@ -34,13 +33,7 @@ describe('VaultV2', () => {
     const VaultV2Factory = await ethers.getContractFactory('VaultV2');
     const testVaultImplementation = await VaultV2Factory.deploy() as IVault;
 
-    [vaultProxy, , vaultV2] = await createVault(testVaultImplementation);
-    await vaultV2.initializeVault(
-      core.storage.address,
-      WETH.address,
-      995,
-      1000,
-    );
+    [vaultProxy, , vaultV2] = await createVault(testVaultImplementation, core, WETH);
 
     const TestRewardPoolFactory = await ethers.getContractFactory('TestRewardPool');
     rewardPool = await TestRewardPoolFactory.deploy(WETH.address, USDC.address) as TestRewardPool;

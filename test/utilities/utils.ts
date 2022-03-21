@@ -169,14 +169,30 @@ export async function inBNfixed(a: BigNumber) {
   return a.toString();
 }
 
-export function calculateApr(newValue: BigNumber, oldValue: BigNumber) {
-  const blocksPerHour = 4800;
-  return newValue.div(oldValue).sub(1).mul((24 / (blocksPerHour / 272))).mul(365);
+export function calculateApr(
+  newValue: BigNumberish,
+  oldValue: BigNumberish,
+  durationDeltaSeconds: BigNumberish,
+): BigNumber {
+  const base = ethers.BigNumber.from('1000000000000000000');
+  const _newValue = ethers.BigNumber.from(newValue);
+  const _oldValue = ethers.BigNumber.from(oldValue);
+  return _newValue.mul(base).div(_oldValue).sub(base).mul(365 * 86400).div(durationDeltaSeconds);
 }
 
-export function calculateApy(newValue: BigNumber, oldValue: BigNumber) {
-  const blocksPerHour = 4800;
-  return (newValue.div(oldValue).sub(1).mul((24 / (blocksPerHour / 272))).add(1));
+export function calculateApy(
+  newValue: BigNumberish,
+  oldValue: BigNumberish,
+  durationDeltaSeconds: BigNumberish,
+): BigNumber {
+  const _newValue = ethers.BigNumber.from(newValue);
+  const _oldValue = ethers.BigNumber.from(oldValue);
+  const one = ethers.BigNumber.from('1000000000000000000');
+  return one.add(calculateApr(_newValue, _oldValue, durationDeltaSeconds).div(365))
+    .pow(365)
+    .mul(one)
+    .div(one.pow(365))
+    .sub(one);
 }
 
 // ========================= Private Functions =========================

@@ -1,11 +1,15 @@
 import { BaseContract } from 'ethers';
 import { CrvPool } from '../../src/types/CrvPool';
+import { CrvRewardNotifier } from '../../src/types/CrvRewardNotifier';
 import { CrvPool__factory } from '../../src/types/factories/CrvPool__factory';
+import { CrvRewardNotifier__factory } from '../../src/types/factories/CrvRewardNotifier__factory';
 import { IERC20__factory } from '../../src/types/factories/IERC20__factory';
+import { IGauge__factory } from '../../src/types/factories/IGauge__factory';
 import { IUniswapV2Router02__factory } from '../../src/types/factories/IUniswapV2Router02__factory';
 import { IUniswapV3Router__factory } from '../../src/types/factories/IUniswapV3Router__factory';
 import { IWETH__factory } from '../../src/types/factories/IWETH__factory';
 import { IERC20 } from '../../src/types/IERC20';
+import { IGauge } from '../../src/types/IGauge';
 import { IUniswapV2Router02 } from '../../src/types/IUniswapV2Router02';
 import { IUniswapV3Router } from '../../src/types/IUniswapV3Router';
 import { IWETH } from '../../src/types/IWETH';
@@ -21,6 +25,11 @@ export const CRV_TRI_CRYPTO = new BaseContract(
   '0x8e0B8c8BB9db49a46697F3a5Bb8A308e744821D2',
   IERC20__factory.createInterface(),
 ) as IERC20
+
+export const CRV_TRI_CRYPTO_GAUGE = new BaseContract(
+  '0x97E2768e8E73511cA874545DC5Ff8067eB19B787',
+  IGauge__factory.createInterface(),
+) as IGauge
 
 export const CRV_TRI_CRYPTO_POOL = new BaseContract(
   '0x960ea3e3C7FB317332d990873d354E18d7645590',
@@ -77,9 +86,19 @@ export const WETH = new BaseContract(
   IWETH__factory.createInterface(),
 ) as IWETH
 
+export const CRV_REWARD_NOTIFIER = new BaseContract(
+  '0x9044E12fB1732f88ed0c93cfa5E9bB9bD2990cE5',
+  CrvRewardNotifier__factory.createInterface(),
+) as CrvRewardNotifier
+
+// ************************* General Constants *************************
+
+export const SecondsInYear = 31_536_000;
+
 // ************************* Network Addresses Addresses *************************
 
-
+export const CrvDistributorAddress = '0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a';
+export const CrvWhaleAddress = '0x4A65e76bE1b4e8dd6eF618277Fa55200e3F8F20a';
 
 // ************************* Harvest Contract Addresses *************************
 
@@ -87,7 +106,7 @@ export const ControllerAddress = '';
 export const RewardForwarderAddress = '';
 export const StorageAddress = '';
 export const UniversalLiquidatorAddress = '';
-export const VaultImplementationV1 = '';
+export const VaultImplementationV2 = '';
 
 // ************************* Harvest Params *************************
 

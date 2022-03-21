@@ -74,6 +74,11 @@ contract TriCryptoStrategy is IStrategy, BaseUpgradeableStrategy {
         return getUint256(_DEPOSIT_ARRAY_POSITION_SLOT);
     }
 
+    function getRewardPoolValues() public returns (uint256[] memory values) {
+        values = new uint256[](1);
+        values[0] = IGauge(rewardPool()).claimable_reward_write(address(this), rewardTokens()[0]);
+    }
+
     // ========================= Internal Functions =========================
 
     function _setDepositToken(address _address) internal {

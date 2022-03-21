@@ -54,6 +54,15 @@ contract TestStrategy is BaseUpgradeableStrategy {
         TestRewardPool(rewardPool()).claimRewards();
     }
 
+    function getRewardPoolValues() external returns (uint256[] memory values) {
+        address[] memory _rewardTokens = rewardTokens();
+        values = new uint256[](_rewardTokens.length);
+        address _rewardPool = rewardPool();
+        for (uint i = 0; i < _rewardTokens.length; ++i) {
+            values[i] = IERC20(_rewardTokens[i]).balanceOf(_rewardPool);
+        }
+    }
+
     function _rewardPoolBalance() internal view returns (uint) {
         return IERC20(underlying()).balanceOf(rewardPool());
     }

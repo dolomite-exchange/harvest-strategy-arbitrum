@@ -3,8 +3,9 @@ pragma solidity ^0.5.16;
 
 interface IMainnetStrategy {
 
-    function initializeStrategy(
+    function initializeMainnetStrategy(
         address _storage,
-        address _vault
+        address _vault,
+        address _strategist
     ) external;
 }
