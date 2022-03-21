@@ -11,8 +11,6 @@ interface IRewardForwarder {
 
     function governance() external view returns (address);
 
-    function targetToken() external view returns (address);
-
     /**
      * @dev This function sends converted `_buybackTokens` to `msg.sender`. The returned amounts will match the
      *      `amounts` return value. The fee amounts are converted to the profit sharing token and sent to the proper

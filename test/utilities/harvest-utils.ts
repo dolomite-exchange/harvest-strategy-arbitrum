@@ -1,12 +1,13 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
-import { BaseContract, BigNumber } from 'ethers';
+import { BaseContract, BigNumber, BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
 import {
   ControllerV1,
   IController,
   IController__factory,
   IERC20,
+  IERC20__factory,
   IProfitSharingReceiver,
   IProfitSharingReceiver__factory,
   IRewardForwarder,
@@ -14,6 +15,7 @@ import {
   IUniversalLiquidator,
   IUniversalLiquidator__factory,
   IVault,
+  IWETH,
   PotPool,
   ProfitSharingReceiverV1,
   RewardForwarderV1,
@@ -74,7 +76,8 @@ export interface CoreProtocolSetupConfig {
 }
 
 export interface ControllerConfig {
-  implementationDelaySeconds: number
+  implementationDelaySeconds: number;
+  targetToken: TargetToken;
 }
 
 export interface CoreProtocol {
@@ -182,7 +185,6 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
     const RewardForwarderV1Factory = await ethers.getContractFactory('RewardForwarderV1');
     rewardForwarder = await RewardForwarderV1Factory.connect(governance).deploy(
       storage.address,
-      WETH.address,
       profitSharingReceiver.address,
     ) as IRewardForwarder;
 
@@ -190,6 +192,7 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
     const ControllerV1Factory = await ethers.getContractFactory('ControllerV1');
     controller = await ControllerV1Factory.connect(governance).deploy(
       storage.address,
+      WETH.address,
       rewardForwarder.address,
       universalLiquidator.address,
       implementationDelaySeconds,
@@ -199,6 +202,7 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
     await expect(result).to.emit(storage, 'ControllerChanged').withArgs(controller.address);
 
     expect(await controller.nextImplementationDelay()).to.eq(implementationDelaySeconds);
+    expect(await controller.targetToken()).to.eq(WETH.address);
   }
 
   expect(await storage.governance()).to.eq(governance.address);
@@ -209,7 +213,6 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
 
   expect(await rewardForwarder.store()).to.eq(storage.address);
   expect(await rewardForwarder.governance()).to.eq(governance.address);
-  expect(await rewardForwarder.targetToken()).to.eq(WETH.address);
   expect(await rewardForwarder.profitSharingPool()).to.eq(profitSharingReceiver.address);
 
   expect(await controller.governance()).to.eq(governance.address);
@@ -220,6 +223,7 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
     controller,
     controllerParams: {
       implementationDelaySeconds,
+      targetToken: new BaseContract(await controller.targetToken(), IERC20__factory.createInterface()) as IERC20,
     },
     governance,
     hhUser1,
@@ -235,127 +239,6 @@ export async function setupCoreProtocol(config: CoreProtocolSetupConfig): Promis
     universalLiquidatorProxy,
   }
 }
-
-// export async function setupCoreProtocol(config: CoreProtocolConfig) {
-//   // Set vault (or Deploy new vault), underlying, underlying Whale,
-//   // amount the underlying whale should send to farmers
-//   let vault: IVault;
-//   if (config.existingVaultAddress != null) {
-//     vault = await IVaultArtifact.at(config.existingVaultAddress);
-//     console.log('Fetching Vault at: ', vault.address);
-//   } else {
-//     const implAddress = config.vaultImplementationOverrideAddress || addresses.VaultImplementationV1;
-//     vault = await makeVault(implAddress, addresses.Storage, config.underlying.address, 100, 100, {
-//       from: config.governance,
-//     });
-//     console.log('New Vault Deployed: ', vault.address);
-//   }
-//
-//   let controller: IController = await IControllerArtifact.at(addresses.Controller);
-//
-//   let rewardPool: IPotPool | null = null;
-//
-//   if (!config.rewardPoolConfig) {
-//     config.rewardPoolConfig = {};
-//   }
-//   // if reward pool is required, then deploy it
-//   if (config.rewardPool != null && config.existingRewardPoolAddress == null) {
-//     const rewardTokens = config.rewardPoolConfig.rewardTokens || [addresses.FARM];
-//     const rewardDistributions = [config.governance];
-//     if (config.feeRewardForwarderV1) {
-//       rewardDistributions.push(config.feeRewardForwarderV1);
-//     }
-//
-//     if (config.rewardPoolConfig.type === 'PotPool') {
-//       console.log('reward pool needs to be deployed');
-//       rewardPool = await PotPoolArtifact.new(
-//         rewardTokens,
-//         vault.address,
-//         64800,
-//         rewardDistributions,
-//         addresses.Storage,
-//         'fPool Token',
-//         'fPool',
-//         18,
-//         { from: config.governance },
-//       );
-//       console.log('New PotPool deployed: ', rewardPool?.address);
-//     }
-//   } else if (config.existingRewardPoolAddress) {
-//     rewardPool = await PotPoolArtifact.at(config.existingRewardPoolAddress);
-//     console.log('Fetching Reward Pool deployed: ', rewardPool?.address);
-//   }
-//
-//   let universalLiquidatorRegistry = await IUniversalLiquidatorArtifact.at(addresses.UniversalLiquidatorRegistry);
-//
-//   // default arguments are storage and vault addresses
-//   config.strategyArgs = config.strategyArgs || [
-//     addresses.Storage,
-//     vault.address,
-//   ];
-//
-//   for (let i = 0; i < config.strategyArgs.length; i++) {
-//     if (config.strategyArgs[i] == 'vaultAddr') {
-//       config.strategyArgs[i] = vault.address;
-//     } else if (config.strategyArgs[i] == 'poolAddr') {
-//       config.strategyArgs[i] = rewardPool?.address;
-//     } else if (config.strategyArgs[i] == 'universalLiquidatorRegistryAddr') {
-//       config.strategyArgs[i] = universalLiquidatorRegistry.address;
-//     }
-//   }
-//
-//   let strategyImpl = null;
-//
-//   let strategy: IMainnetStrategy;
-//   if (!config.strategyArtifactIsUpgradable) {
-//     strategy = await config.strategyArtifact.new(
-//       ...config.strategyArgs,
-//       { from: config.governance },
-//     );
-//   } else {
-//     strategyImpl = await config.strategyArtifact.new();
-//     const StrategyProxy = artifacts.require('StrategyProxy');
-//
-//     const strategyProxy = await StrategyProxy.new(strategyImpl.address);
-//     strategy = await config.strategyArtifact.at(strategyProxy.address);
-//     await strategy.initializeStrategy(
-//       config.strategyArgs[0],
-//       config.strategyArgs[1],
-//       { from: config.governance },
-//     );
-//   }
-//
-//   console.log('Strategy Deployed: ', strategy.address);
-//
-//   if (config.shouldAnnounceStrategy) {
-//     // Announce switch, time pass, switch to strategy
-//     await vault.announceStrategyUpdate(strategy.address, { from: config.governance });
-//     console.log('Strategy switch announced. Waiting...');
-//     await utils.waitHours(13);
-//     await vault.setStrategy(strategy.address, { from: config.governance });
-//     await vault.setVaultFractionToInvest(100, 100, { from: config.governance });
-//     console.log('Strategy switch completed.');
-//   } else if (config.upgradeStrategy) {
-//     // Announce upgrade, time pass, upgrade the strategy
-//     const strategyAsUpgradable = await IUpgradeableStrategyArtifact.at(await vault.strategy());
-//     await strategyAsUpgradable.scheduleUpgrade(strategyImpl.address, { from: config.governance });
-//     console.log('Upgrade scheduled. Waiting...');
-//     await utils.waitHours(13);
-//     await strategyAsUpgradable.upgrade({ from: config.governance });
-//     await vault.setVaultFractionToInvest(100, 100, { from: config.governance });
-//     strategy = await config.strategyArtifact.at(await vault.strategy());
-//     console.log('Strategy upgrade completed.');
-//   } else {
-//     await controller.addVaultAndStrategy(
-//       vault.address,
-//       strategy.address,
-//       { from: config.governance },
-//     );
-//     console.log('Strategy and vault added to Controller.');
-//   }
-//
-//   return [controller, vault, strategy, rewardPool];
-// }
 
 /**
  * @param implementation  The implementation contract
@@ -401,7 +284,57 @@ export async function createVault(
   return [vaultProxy, vaultImplV1, vaultImplV2]
 }
 
-export async function depositVault(_farmer: string, _underlying: IERC20, _vault: IVault, _amount: BigNumber) {
-  await _underlying.approve(_vault.address, _amount, { from: _farmer });
-  await _vault.deposit(_amount, { from: _farmer });
+export async function setupWETHBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
+  await WETH.connect(signer).deposit({ value: amount });
+  await WETH.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
+}
+
+type VaultType = IVault | VaultV1 | VaultV2;
+
+export async function depositIntoVault(
+  farmer: SignerWithAddress,
+  underlying: IERC20,
+  vault: VaultType,
+  amount: BigNumber,
+) {
+  const balanceBefore = await vault.underlyingBalanceWithInvestmentForHolder(farmer.address);
+  await underlying.connect(farmer).approve(vault.address, amount);
+  if ('deposit' in vault) {
+    // vault is instance of IVault or VaultV1
+    await vault.connect(farmer).deposit(amount);
+  } else {
+    await vault['deposit(uint256)'](amount);
+  }
+  expect(await vault.underlyingBalanceWithInvestmentForHolder(farmer.address)).to.eq(balanceBefore.add(amount));
+}
+
+type RewardToken = IERC20 | IWETH;
+type TargetToken = IERC20 | IWETH;
+
+export async function getReceivedAmountBeforeHardWork(
+  core: CoreProtocol,
+  user: SignerWithAddress,
+  tokenIn: RewardToken,
+  rewardAmount: BigNumberish,
+): Promise<BigNumber> {
+  return core.universalLiquidator.connect(user).callStatic.swapTokens(
+    tokenIn.address,
+    core.controllerParams.targetToken.address,
+    rewardAmount,
+    '1',
+    core.rewardForwarder.address,
+  );
+}
+
+export async function checkHardWorkResults(
+  core: CoreProtocol,
+  receivedTargetAmount: BigNumber,
+) {
+  const target = core.controllerParams.targetToken.connect(core.governance);
+  expect(await target.balanceOf(core.profitSharingReceiver.address))
+    .to
+    .be
+    .gte(receivedTargetAmount.mul('15').div('100'));
+  expect(await target.balanceOf(core.strategist.address)).to.be.gte(receivedTargetAmount.mul('5').div('100'));
+  expect(await target.balanceOf(core.governance.address)).to.be.gte(receivedTargetAmount.mul('5').div('100'));
 }

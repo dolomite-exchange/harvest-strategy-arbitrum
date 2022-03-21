@@ -31,9 +31,9 @@ interface IVault {
 
     function setVaultFractionToInvest(uint256 _numerator, uint256 _denominator) external;
 
-    function deposit(uint256 _amountWei) external;
+    function deposit(uint256 _amount) external;
 
-    function depositFor(uint256 _amountWei, address _holder) external;
+    function depositFor(uint256 _amount, address _holder) external;
 
     function withdrawAll() external;
 

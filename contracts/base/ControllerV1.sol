@@ -20,6 +20,7 @@ contract ControllerV1 is IController, Governable {
     using SafeMath for uint256;
 
     // external parties
+    address public targetToken;
     address public rewardForwarder;
     address public universalLiquidator;
     address public dolomiteYieldFarmingRouter;
@@ -113,6 +114,7 @@ contract ControllerV1 is IController, Governable {
 
     constructor(
         address _storage,
+        address _targetToken,
         address _rewardForwarder,
         address _universalLiquidator,
         uint _nextImplementationDelay
@@ -120,19 +122,10 @@ contract ControllerV1 is IController, Governable {
     Governable(_storage)
     public {
         require(_rewardForwarder != address(0), "feeRewardForwarder should not be empty");
+        targetToken = _targetToken;
         rewardForwarder = _rewardForwarder;
         universalLiquidator = _universalLiquidator;
         nextImplementationDelay = _nextImplementationDelay;
-    }
-
-    function addHardWorker(address _worker) public onlyGovernance {
-        require(_worker != address(0), "_worker must be defined");
-        hardWorkers[_worker] = true;
-    }
-
-    function removeHardWorker(address _worker) public onlyGovernance {
-        require(_worker != address(0), "_worker must be defined");
-        hardWorkers[_worker] = false;
     }
 
     function hasVault(address _vault) external view returns (bool) {
@@ -175,6 +168,11 @@ contract ControllerV1 is IController, Governable {
     function setRewardForwarder(address _rewardForwarder) public onlyGovernance {
         require(_rewardForwarder != address(0), "new reward forwarder should not be empty");
         rewardForwarder = _rewardForwarder;
+    }
+
+    function setTargetToken(address _targetToken) public onlyGovernance {
+        require(_targetToken != address(0), "new target token should not be empty");
+        targetToken = _targetToken;
     }
 
     function setUniversalLiquidator(address _universalLiquidator) public onlyGovernance {
@@ -227,6 +225,16 @@ contract ControllerV1 is IController, Governable {
             IVault(_vault).getPricePerFullShare(),
             block.timestamp
         );
+    }
+
+    function addHardWorker(address _worker) public onlyGovernance {
+        require(_worker != address(0), "_worker must be defined");
+        hardWorkers[_worker] = true;
+    }
+
+    function removeHardWorker(address _worker) public onlyGovernance {
+        require(_worker != address(0), "_worker must be defined");
+        hardWorkers[_worker] = false;
     }
 
     function withdrawAll(

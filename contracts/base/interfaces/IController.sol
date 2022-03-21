@@ -44,17 +44,26 @@ interface IController {
         uint256 _deviationDenominator
     ) external;
 
+    function addHardWorker(address _worker) external;
+
+    function removeHardWorker(address _worker) external;
+
     function salvage(address _token, uint256 amount) external;
 
     function salvageStrategy(address _strategy, address _token, uint256 amount) external;
+
+    /**
+     * @return The targeted profit token to convert all-non-compounding rewards to. Defaults to WETH.
+     */
+    function targetToken() external view returns (address);
+
+    function setTargetToken(address _targetToken) external;
 
     function rewardForwarder() external view returns (address);
 
     function setRewardForwarder(address _rewardForwarder) external;
 
     function setUniversalLiquidator(address _universalLiquidator) external;
-
-    function addHardWorker(address _worker) external;
 
     function universalLiquidator() external view returns (address);
 

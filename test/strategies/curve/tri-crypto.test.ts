@@ -1,9 +1,8 @@
 // Utilities
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
-import { BigNumberish } from 'ethers';
 import { ethers, web3 } from 'hardhat';
-import { IVault, StrategyProxy, TriCryptoStrategyMainnet, VaultV1 } from '../../../src/types/index';
+import { IGauge, IVault, StrategyProxy, TriCryptoStrategyMainnet, VaultV1 } from '../../../src/types/index';
 import {
   CRV,
   CRV_REWARD_NOTIFIER,
@@ -14,7 +13,16 @@ import {
   CrvWhaleAddress,
   WETH,
 } from '../../utilities/constants';
-import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../../utilities/harvest-utils';
+import {
+  checkHardWorkResults,
+  CoreProtocol,
+  createStrategy,
+  createVault,
+  depositIntoVault,
+  getReceivedAmountBeforeHardWork,
+  setupCoreProtocol,
+  setupWETHBalance,
+} from '../../utilities/harvest-utils';
 import {
   calculateApr,
   calculateApy,
@@ -31,6 +39,7 @@ describe('TriCryptoStrategy', () => {
   let strategyProxy: StrategyProxy;
   let triCryptoStrategy: TriCryptoStrategyMainnet;
   let vaultV1: VaultV1;
+  let gauge: IGauge;
 
   let user: SignerWithAddress;
 
@@ -52,6 +61,7 @@ describe('TriCryptoStrategy', () => {
     await core.controller.connect(core.governance).addVaultAndStrategy(vaultV1.address, strategyProxy.address);
 
     user = await ethers.getSigner(core.hhUser1.address);
+    gauge = CRV_TRI_CRYPTO_GAUGE.connect(core.governance);
 
     snapshotId = await snapshot();
   })
@@ -75,32 +85,22 @@ describe('TriCryptoStrategy', () => {
     });
   });
 
-  const setupWETHBalance = async (signer: SignerWithAddress, amount: BigNumberish) => {
-    await WETH.connect(signer).deposit({ value: amount });
-    await WETH.connect(signer).approve(CRV_TRI_CRYPTO_POOL.address, ethers.constants.MaxUint256);
-  }
-
   describe('deposit and compound', () => {
     it('should work', async () => {
       const amount = ethers.BigNumber.from('1000000000000000000');
-      await setupWETHBalance(user, amount);
+      await setupWETHBalance(user, amount, CRV_TRI_CRYPTO_POOL);
       await CRV_TRI_CRYPTO_POOL.connect(user).add_liquidity([0, 0, amount], '0');
-      await CRV_TRI_CRYPTO.connect(user).approve(vaultV1.address, ethers.constants.MaxUint256);
 
-      const lpBalance = await CRV_TRI_CRYPTO.connect(user).balanceOf(user.address);
-      await vaultV1.connect(user).deposit(lpBalance);
-      expect(await CRV_TRI_CRYPTO.connect(core.governance).balanceOf(vaultV1.address)).to.eq(lpBalance);
-      await vaultV1.connect(core.governance).rebalance();
-      await triCryptoStrategy.connect(core.governance).enterRewardPool();
+      const lpBalance1 = await CRV_TRI_CRYPTO.connect(user).balanceOf(user.address);
+      await depositIntoVault(user, CRV_TRI_CRYPTO, vaultV1, lpBalance1);
 
-      const lpBalanceAfterFees = lpBalance.mul('995').div('1000');
-      expect(await CRV_TRI_CRYPTO_GAUGE.connect(core.governance).balanceOf(strategyProxy.address))
-        .to
-        .eq(lpBalanceAfterFees);
+      await vaultV1.connect(core.governance).rebalance(); // move funds to the strategy
+      await triCryptoStrategy.connect(core.governance).enterRewardPool(); // deposit strategy funds into CRV
 
-      expect(await CRV_TRI_CRYPTO_GAUGE.connect(core.governance).claimable_reward(strategyProxy.address, CRV.address))
-        .to
-        .eq('0');
+      const lpBalanceAfterFees = lpBalance1.mul('995').div('1000');
+      expect(await gauge.balanceOf(strategyProxy.address)).to.eq(lpBalanceAfterFees);
+
+      expect(await triCryptoStrategy.callStatic.getRewardPoolValues()).to.eql([ethers.constants.Zero]);
 
       const crvWhale = await impersonate(CrvWhaleAddress);
       await CRV.connect(crvWhale).transfer(CRV_REWARD_NOTIFIER.address, '20000000000000000000000');
@@ -112,14 +112,8 @@ describe('TriCryptoStrategy', () => {
       const waitDurationSeconds = (86400 * 3) + 43200; // 3.5 days
       await waitTime(waitDurationSeconds);
 
-      const crvReward = (await triCryptoStrategy.connect(core.governance).callStatic.getRewardPoolValues())[0];
-      const receivedWETH = await core.universalLiquidator.connect(crvWhale).callStatic.swapTokens(
-        CRV.address,
-        WETH.address,
-        crvReward,
-        '1',
-        core.rewardForwarder.address,
-      );
+      const crvReward = (await triCryptoStrategy.callStatic.getRewardPoolValues())[0];
+      const receivedWETH = await getReceivedAmountBeforeHardWork(core, crvWhale, CRV, crvReward);
 
       const result = await core.controller.connect(core.governance)
         .doHardWork(vaultV1.address, ethers.constants.WeiPerEther, '101', '100');
@@ -129,20 +123,19 @@ describe('TriCryptoStrategy', () => {
 
       await expect(result).to.emit(core.controller, 'SharePriceChangeLog')
         .withArgs(vaultV1.address, strategyProxy.address, '1000000000000000000', priceFullShare, latestTimestamp);
+      expect(priceFullShare).to.be.gt('1000000000000000000');
 
-      const balanceNow = await vaultV1.underlyingBalanceWithInvestment();
+      const lpBalance2 = await vaultV1.underlyingBalanceWithInvestment();
 
-      const amountHeldInVault = lpBalance.sub(lpBalance.mul('995').div('1000'));
-      expect(await CRV_TRI_CRYPTO_GAUGE.connect(core.governance).balanceOf(strategyProxy.address))
-        .to
-        .eq(balanceNow.sub(amountHeldInVault));
+      const amountHeldInVault = lpBalance1.sub(lpBalance1.mul('995').div('1000'));
+      expect(await gauge.balanceOf(strategyProxy.address)).to.eq(lpBalance2.sub(amountHeldInVault));
 
-      const apr = calculateApr(balanceNow, lpBalance, waitDurationSeconds);
-      const apy = calculateApy(balanceNow, lpBalance, waitDurationSeconds);
-      const balanceDelta = balanceNow.sub(lpBalance).toString();
+      const apr = calculateApr(lpBalance2, lpBalance1, waitDurationSeconds);
+      const apy = calculateApy(lpBalance2, lpBalance1, waitDurationSeconds);
+      const balanceDelta = lpBalance2.sub(lpBalance1).toString();
 
-      console.log('\tTriCrypto LP-CRV Before', lpBalance.toString(), `(${web3.utils.fromWei(lpBalance.toString())})`);
-      console.log('\tTriCrypto LP-CRV After', balanceNow.toString(), `(${web3.utils.fromWei(balanceNow.toString())})`);
+      console.log('\tTriCrypto LP-CRV Before', lpBalance1.toString(), `(${web3.utils.fromWei(lpBalance1.toString())})`);
+      console.log('\tTriCrypto LP-CRV After', lpBalance2.toString(), `(${web3.utils.fromWei(lpBalance2.toString())})`);
       console.log('\tTriCrypto LP-CRV Earned', balanceDelta, `(${web3.utils.fromWei(balanceDelta)})`);
       console.log('\tTriCrypto LP-CRV APR', `${web3.utils.fromWei(apr.mul(100).toString())}%`);
       console.log('\tTriCrypto LP-CRV APY', `${web3.utils.fromWei(apy.mul(100).toString())}%`);
@@ -150,15 +143,12 @@ describe('TriCryptoStrategy', () => {
       const expectedApr = ethers.BigNumber.from('77000000000000000'); // 7.7%
       const expectedApy = ethers.BigNumber.from('80000000000000000'); // 8.0%
 
-      expect(balanceNow).to.be.gt(lpBalance);
+      expect(lpBalance2).to.be.gt(lpBalance1);
       expect(apr).to.be.gt(expectedApr);
       expect(apy).to.be.gt(expectedApy);
 
       // check the platform fee and strategist fees accrued properly
-      const weth = WETH.connect(core.governance);
-      expect(await weth.balanceOf(core.profitSharingReceiver.address)).to.be.gte(receivedWETH.mul('15').div('100'));
-      expect(await weth.balanceOf(core.strategist.address)).to.be.gte(receivedWETH.mul('5').div('100'));
-      expect(await weth.balanceOf(core.governance.address)).to.be.gte(receivedWETH.mul('5').div('100'));
+      await checkHardWorkResults(core, receivedWETH);
     });
   });
 });

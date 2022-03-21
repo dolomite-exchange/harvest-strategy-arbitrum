@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./inheritance/Governable.sol";
 import "./interfaces/IRewardForwarder.sol";
-import "./interfaces/IPotPool.sol";
+import "./interfaces/IProfitSharingReceiver.sol";
 import "./interfaces/IStrategy.sol";
 import "./interfaces/IUniversalLiquidator.sol";
 import "./interfaces/uniswap/IUniswapV2Router02.sol";
@@ -23,18 +23,14 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    /// @notice the targeted reward token to convert everything to
-    address public targetToken;
     address public profitSharingPool;
 
-    event ProfitSharingPoolSet(address token, address pool);
+    event ProfitSharingPoolSet(address pool);
 
     constructor(
         address _storage,
-        address _targetToken,
         address _profitSharingPool
     ) public Controllable(_storage) {
-        targetToken = _targetToken;
         profitSharingPool = _profitSharingPool;
     }
 
@@ -43,12 +39,12 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
      */
     function setProfitSharingPool(address _profitSharingPool) public onlyGovernance {
         require(
-            IPotPool(_profitSharingPool).getRewardTokenIndex(targetToken) != uint(- 1),
-            "The PotPool does not contain targetToken"
+            IProfitSharingReceiver(_profitSharingPool).governance() == governance(),
+            "The profit sharing pool must have the same governance"
         );
 
         profitSharingPool = _profitSharingPool;
-        emit ProfitSharingPoolSet(targetToken, _profitSharingPool);
+        emit ProfitSharingPoolSet(_profitSharingPool);
     }
 
     function notifyFeeAndBuybackAmounts(
@@ -112,12 +108,13 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
             IERC20(_token).safeApprove(liquidator, totalTransferAmount);
         }
 
+        address _targetToken = IController(_controller).targetToken();
         uint amountOutMin = 1;
 
         if (_strategistFee > 0) {
             IUniversalLiquidator(liquidator).swapTokens(
                 _token,
-                targetToken,
+                _targetToken,
                 _strategistFee,
                 amountOutMin,
                 IStrategy(msg.sender).strategist()
@@ -126,7 +123,7 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
         if (_platformFee > 0) {
             IUniversalLiquidator(liquidator).swapTokens(
                 _token,
-                targetToken,
+                _targetToken,
                 _platformFee,
                 amountOutMin,
                 IController(_controller).governance()
@@ -135,7 +132,7 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
         if (_profitSharingFee > 0) {
             IUniversalLiquidator(liquidator).swapTokens(
                 _token,
-                targetToken,
+                _targetToken,
                 _profitSharingFee,
                 amountOutMin,
                 profitSharingPool

@@ -61,11 +61,11 @@ describe('BaseSystem', () => {
 
       expect(await rewardForwarder.store()).to.eq(storage.address);
       expect(await rewardForwarder.governance()).to.eq(governance.address);
-      expect(await rewardForwarder.targetToken()).to.eq(WETH.address);
       expect(await rewardForwarder.profitSharingPool()).to.eq(profitSharingReceiver.address);
 
       expect(await controller.governance()).to.eq(governance.address);
       expect(await controller.store()).to.eq(storage.address);
+      expect(await controller.targetToken()).to.eq(WETH.address);
       expect(await controller.rewardForwarder()).to.eq(rewardForwarder.address);
       expect(await controller.nextImplementationDelay()).to.eq(implementationDelaySeconds);
     });
@@ -274,6 +274,17 @@ describe('BaseSystem', () => {
       await waitTime(1);
 
       await expect(controller.connect(hhUser1).confirmSetPlatformFeeNumerator())
+        .to.be.revertedWith('Not governance');
+    });
+  });
+
+  describe('Controller#setTargetToken', () => {
+    it('should work normally', async () => {
+      await controller.connect(governance).setTargetToken(USDC.address);
+      expect(await controller.targetToken()).to.eq(USDC.address);
+    });
+    it('should fail when not called by governance', async () => {
+      await expect(controller.connect(hhUser1).setTargetToken(USDC.address))
         .to.be.revertedWith('Not governance');
     });
   });
