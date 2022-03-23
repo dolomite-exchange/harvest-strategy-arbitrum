@@ -9,15 +9,13 @@ import Web3 from 'web3';
 let gasLogger: Record<string, BigNumber> = {};
 let gasLoggerNumberOfCalls: Record<string, number> = {};
 
-const keys = require('../../dev-keys.json');
-
 export async function resetFork(blockNumber: number) {
   await network.provider.request({
     method: 'hardhat_reset',
     params: [
       {
         forking: {
-          jsonRpcUrl: `https://arbitrum-mainnet.infura.io/v3/${keys.infuraKey}`,
+          jsonRpcUrl: `https://arbitrum-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
           blockNumber: blockNumber,
         },
       },

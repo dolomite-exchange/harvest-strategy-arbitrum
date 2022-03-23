@@ -1,6 +1,6 @@
-import { CRV, CRV_REWARD_NOTIFIER } from '../../utilities/constants';
-import { CoreProtocol } from '../../utilities/harvest-utils';
-import { getLatestTimestamp, waitTime } from '../../utilities/utils';
+import { CRV, CRV_REWARD_NOTIFIER } from '../../../src/utils/constants';
+import { CoreProtocol } from '../../../src/utils/harvest-utils';
+import { getLatestTimestamp, waitTime } from '../../../src/utils/utils';
 
 /**
  * @return The time waited for the rewards to deplete

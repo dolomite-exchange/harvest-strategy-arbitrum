@@ -9,7 +9,7 @@ import {
   CRV_TRI_CRYPTO_TOKEN,
   CrvWhaleAddress,
   WETH,
-} from '../../utilities/constants';
+} from '../../../src/utils/constants';
 import {
   checkHardWorkResults,
   CoreProtocol,
@@ -21,8 +21,8 @@ import {
   logYieldData,
   setupCoreProtocol,
   setupWETHBalance,
-} from '../../utilities/harvest-utils';
-import { calculateApr, calculateApy, impersonate, revertToSnapshotAndCapture, snapshot } from '../../utilities/utils';
+} from '../../../src/utils/harvest-utils';
+import { calculateApr, calculateApy, impersonate, revertToSnapshotAndCapture, snapshot } from '../../../src/utils/utils';
 import { waitForRewardsToDeplete } from './curve-utils';
 
 const strategyName = 'TriCryptoStrategy';
@@ -42,9 +42,7 @@ describe(strategyName, () => {
     core = await setupCoreProtocol({
       blockNumber: 8216000,
     });
-    const TriCryptoStrategyMainnetFactory = await ethers.getContractFactory('TriCryptoStrategyMainnet');
-    const strategyImplementation = await TriCryptoStrategyMainnetFactory.deploy() as TriCryptoStrategyMainnet;
-    [strategyProxy, strategyMainnet] = await createStrategy(strategyImplementation);
+    [strategyProxy, strategyMainnet] = await createStrategy<TriCryptoStrategyMainnet>('TriCryptoStrategyMainnet');
 
     const VaultV1Factory = await ethers.getContractFactory('VaultV1');
     const vaultImplementation = await VaultV1Factory.deploy() as IVault;

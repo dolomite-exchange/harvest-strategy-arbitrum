@@ -9,10 +9,10 @@
   "scripts": {
     "build": "hardhat compile",
     "clean": "hardhat clean",
+    "deploy": "hardhat --network arbitrum run ./scripts/deploy-1-curve.ts",
     "lint": "solhint 'contracts/**/*.sol'",
     "test": "hardhat test",
-    "typechain": "hardhat typechain",
-    "verify:arbitrum": "HARDHAT_NETWORK=mainnet ts-node ./scripts/verify-mainnet-contracts.ts"
+    "typechain": "hardhat typechain"
   },
   "repository": {
     "type": "git",
@@ -41,6 +41,7 @@
     "babel-eslint": "^10.0.1",
     "chai": "^4.3.6",
     "chai-bignumber": "^3.0.0",
+    "dotenv": "^16.0.0",
     "eslint": "^5.16.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-plugin-import": "^2.16.0",

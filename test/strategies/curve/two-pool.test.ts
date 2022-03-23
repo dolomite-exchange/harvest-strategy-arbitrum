@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { IGauge, IVault, StrategyProxy, TwoPoolStrategyMainnet, VaultV1 } from '../../../src/types';
-import { CRV, CRV_TWO_POOL, CRV_TWO_POOL_GAUGE, CrvWhaleAddress, USDC } from '../../utilities/constants';
+import { CRV, CRV_TWO_POOL, CRV_TWO_POOL_GAUGE, CrvWhaleAddress, USDC } from '../../../src/utils/constants';
 import {
   checkHardWorkResults,
   CoreProtocol,
@@ -15,8 +15,8 @@ import {
   logYieldData,
   setupCoreProtocol,
   setupUSDCBalance,
-} from '../../utilities/harvest-utils';
-import { calculateApr, calculateApy, impersonate, revertToSnapshotAndCapture, snapshot } from '../../utilities/utils';
+} from '../../../src/utils/harvest-utils';
+import { calculateApr, calculateApy, impersonate, revertToSnapshotAndCapture, snapshot } from '../../../src/utils/utils';
 import { waitForRewardsToDeplete } from './curve-utils';
 
 const strategyName = 'TwoPoolStrategy';
@@ -34,9 +34,7 @@ describe(strategyName, () => {
 
   before(async () => {
     core = await setupCoreProtocol(DefaultCoreProtocolSetupConfig);
-    const TwoPoolStrategyMainnetFactory = await ethers.getContractFactory('TwoPoolStrategyMainnet');
-    const strategyImplementation = await TwoPoolStrategyMainnetFactory.deploy() as TwoPoolStrategyMainnet;
-    [strategyProxy, strategyMainnet] = await createStrategy(strategyImplementation);
+    [strategyProxy, strategyMainnet] = await createStrategy<TwoPoolStrategyMainnet>('TwoPoolStrategyMainnet');
 
     const VaultV1Factory = await ethers.getContractFactory('VaultV1');
     const vaultImplementation = await VaultV1Factory.deploy() as IVault;

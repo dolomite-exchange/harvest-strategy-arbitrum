@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { BaseContract, BigNumber, BigNumberish, ContractTransaction, Overrides } from 'ethers';
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import {
   ControllerV1,
   IController,
@@ -30,10 +30,10 @@ import {
   VaultV1__factory,
   VaultV2,
   VaultV2__factory,
-} from '../../src/types';
+} from '../types';
 import {
   ControllerV1Address,
-  CRV,
+  CRV, DefaultBlockNumber,
   DefaultImplementationDelay,
   GovernorAddress,
   ProfitSharingReceiverV1Address,
@@ -89,7 +89,7 @@ export interface CoreProtocolSetupConfig {
 }
 
 export const DefaultCoreProtocolSetupConfig: CoreProtocolSetupConfig = {
-  blockNumber: 8356500,
+  blockNumber: DefaultBlockNumber,
   existingCoreAddresses: {
     governanceAddress: GovernorAddress,
     profitSharingReceiverAddress: ProfitSharingReceiverV1Address,
@@ -127,7 +127,11 @@ export interface CoreProtocol {
 export async function setupCoreProtocol(
   config: CoreProtocolSetupConfig = DefaultCoreProtocolSetupConfig,
 ): Promise<CoreProtocol> {
-  await resetFork(config.blockNumber);
+  if (network.name === 'hardhat') {
+    await resetFork(config.blockNumber);
+  } else {
+    console.log('Skipping forking...');
+  }
 
   const [hhUser1, hhUser2, hhUser3, hhUser4, hhUser5, strategist] = await ethers.getSigners();
   let governance: SignerWithAddress;
@@ -141,7 +145,11 @@ export async function setupCoreProtocol(
   let implementationDelaySeconds: number;
 
   if (config.existingCoreAddresses) {
-    governance = await impersonate(config.existingCoreAddresses.governanceAddress, true);
+    if (network.name === 'hardhat') {
+      governance = await impersonate(config.existingCoreAddresses.governanceAddress, true);
+    } else {
+      governance = await ethers.getSigner(config.existingCoreAddresses.governanceAddress);
+    }
 
     storage = new BaseContract(
       config.existingCoreAddresses.storageAddress,
@@ -269,18 +277,17 @@ export async function setupCoreProtocol(
 }
 
 /**
- * @param implementation  The implementation contract
+ * @param contractName  The name of the implementation contract to be deployed
  * @return  The deployed strategy proxy and the implementation contract at the proxy's address
  */
-export async function createStrategy<T extends BaseContract>(implementation: T): Promise<[StrategyProxy, T]> {
+export async function createStrategy<T extends BaseContract>(contractName: string): Promise<[StrategyProxy, T, T]> {
+  const factory = await ethers.getContractFactory(contractName);
+  const rawImpl = await factory.deploy() as T;
+
   const StrategyProxyFactory = await ethers.getContractFactory('StrategyProxy');
-  const strategyProxy = await StrategyProxyFactory.deploy(implementation.address) as StrategyProxy;
-  const strategyImpl = new BaseContract(
-    strategyProxy.address,
-    implementation.interface,
-    implementation.signer,
-  ) as T;
-  return [strategyProxy, strategyImpl]
+  const strategyProxy = await StrategyProxyFactory.deploy(rawImpl.address) as StrategyProxy;
+  const strategyImpl = new BaseContract(strategyProxy.address, rawImpl.interface, rawImpl.signer) as T;
+  return [strategyProxy, strategyImpl, rawImpl]
 }
 
 /**
@@ -290,21 +297,21 @@ export async function createStrategy<T extends BaseContract>(implementation: T):
  * @return  The deployed strategy proxy and the implementation contract at the proxy's address
  */
 export async function createVault(
-  implementation: IVault,
+  implementation: IVault | VaultV1 | VaultV2,
   core: CoreProtocol,
-  underlying: { address: string },
+  underlying: BaseContract,
 ): Promise<[VaultProxy, VaultV1, VaultV2]> {
   const VaultProxyFactory = await ethers.getContractFactory('VaultProxy');
   const vaultProxy = await VaultProxyFactory.deploy(implementation.address) as VaultProxy;
   const vaultImplV1 = new BaseContract(
     vaultProxy.address,
     VaultV1__factory.createInterface(),
-    implementation.signer,
+    vaultProxy.signer,
   ) as VaultV1;
   const vaultImplV2 = new BaseContract(
     vaultProxy.address,
     VaultV2__factory.createInterface(),
-    implementation.signer,
+    vaultProxy.signer,
   ) as VaultV2;
 
   await vaultImplV1.initializeVault(core.storage.address, underlying.address, '995', '1000');
@@ -384,7 +391,7 @@ export async function doHardWork(
     vault.address,
     ethers.constants.WeiPerEther,
     '101',
-    '100'
+    '100',
   );
   await checkSharePriceLogChange(vault, core, result, strategyProxy)
 

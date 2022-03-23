@@ -12,9 +12,9 @@ import {
   VaultV2,
   VaultV2Payable,
 } from '../../src/types';
-import { USDC, WETH } from '../utilities/constants';
-import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../utilities/harvest-utils';
-import { revertToSnapshotAndCapture, snapshot } from '../utilities/utils';
+import { USDC, WETH } from '../../src/utils/constants';
+import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../../src/utils/harvest-utils';
+import { revertToSnapshotAndCapture, snapshot } from '../../src/utils/utils';
 
 
 describe('VaultV2Payable', () => {
@@ -36,9 +36,6 @@ describe('VaultV2Payable', () => {
       blockNumber: 8049264,
     });
 
-    const TestStrategyFactory = await ethers.getContractFactory('TestStrategy');
-    const testStrategyImplementation = await TestStrategyFactory.deploy() as TestStrategy;
-
     const VaultV2Factory = await ethers.getContractFactory('VaultV2');
     const vaultV2Implementation = await VaultV2Factory.deploy() as IVault;
     [vaultProxy, , vaultV2] = await createVault(vaultV2Implementation, core, WETH);
@@ -50,7 +47,7 @@ describe('VaultV2Payable', () => {
     rewardPool = await TestRewardPoolFactory.deploy(WETH.address, USDC.address) as TestRewardPool;
 
     strategist = core.hhUser1;
-    [strategyProxy, strategy] = await createStrategy(testStrategyImplementation);
+    [strategyProxy, strategy] = await createStrategy<TestStrategy>('TestStrategy');
     await strategy.initializeBaseStrategy(
       core.storage.address,
       WETH.address,

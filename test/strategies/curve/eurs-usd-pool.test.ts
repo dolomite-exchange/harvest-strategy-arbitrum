@@ -10,7 +10,7 @@ import {
   CRV_TWO_POOL,
   CrvWhaleAddress,
   USDC,
-} from '../../utilities/constants';
+} from '../../../src/utils/constants';
 import {
   checkHardWorkResults,
   CoreProtocol,
@@ -23,8 +23,8 @@ import {
   logYieldData,
   setupCoreProtocol,
   setupUSDCBalance,
-} from '../../utilities/harvest-utils';
-import { calculateApr, calculateApy, impersonate, revertToSnapshotAndCapture, snapshot } from '../../utilities/utils';
+} from '../../../src/utils/harvest-utils';
+import { calculateApr, calculateApy, impersonate, revertToSnapshotAndCapture, snapshot } from '../../../src/utils/utils';
 import { waitForRewardsToDeplete } from './curve-utils';
 
 const strategyName = 'EursUsdStrategy';
@@ -42,9 +42,7 @@ describe(strategyName, () => {
 
   before(async () => {
     core = await setupCoreProtocol(DefaultCoreProtocolSetupConfig);
-    const EursUsdPoolStrategyMainnetFactory = await ethers.getContractFactory('EursUsdPoolStrategyMainnet');
-    const strategyImplementation = await EursUsdPoolStrategyMainnetFactory.deploy() as EursUsdPoolStrategyMainnet;
-    [strategyProxy, strategyMainnet] = await createStrategy(strategyImplementation);
+    [strategyProxy, strategyMainnet] = await createStrategy<EursUsdPoolStrategyMainnet>('EursUsdPoolStrategyMainnet');
 
     const VaultV1Factory = await ethers.getContractFactory('VaultV1');
     const vaultImplementation = await VaultV1Factory.deploy() as IVault;

@@ -2,15 +2,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { IVault } from '../../src/types/IVault';
-import { StrategyProxy } from '../../src/types/StrategyProxy';
-import { TestRewardPool } from '../../src/types/TestRewardPool';
-import { TestStrategy } from '../../src/types/TestStrategy';
-import { VaultProxy } from '../../src/types/VaultProxy';
-import { VaultV1 } from '../../src/types/VaultV1';
-import { CRV, USDC, WETH } from '../utilities/constants';
-import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../utilities/harvest-utils';
-import { getLatestTimestamp, impersonate, revertToSnapshotAndCapture, snapshot, waitTime } from '../utilities/utils';
+import { IVault, StrategyProxy, TestRewardPool, TestStrategy, VaultProxy, VaultV1 } from '../../src/types';
+import { CRV, USDC, WETH } from '../../src/utils/constants';
+import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../../src/utils/harvest-utils';
+import { getLatestTimestamp, impersonate, revertToSnapshotAndCapture, snapshot, waitTime } from '../../src/utils/utils';
 
 describe('BaseUpgradableStrategy', () => {
 
@@ -31,9 +26,6 @@ describe('BaseUpgradableStrategy', () => {
       blockNumber: 8049264,
     });
 
-    const TestStrategyFactory = await ethers.getContractFactory('TestStrategy');
-    const testStrategyImplementation = await TestStrategyFactory.deploy() as TestStrategy;
-
     const VaultV2Factory = await ethers.getContractFactory('VaultV2');
     const testVaultImplementation = await VaultV2Factory.deploy() as IVault;
 
@@ -43,7 +35,7 @@ describe('BaseUpgradableStrategy', () => {
     rewardPool = await TestRewardPoolFactory.deploy(WETH.address, USDC.address) as TestRewardPool;
 
     strategist = core.hhUser1;
-    [strategyProxy, strategy] = await createStrategy(testStrategyImplementation);
+    [strategyProxy, strategy] = await createStrategy<TestStrategy>('TestStrategy');
     await strategy.initializeBaseStrategy(
       core.storage.address,
       WETH.address,

@@ -1,13 +1,17 @@
 import { BaseContract } from 'ethers';
 import {
-  ITriCryptoPool,
-  ITriCryptoPool__factory,
   ICrvRewardNotifier,
   ICrvRewardNotifier__factory,
   IERC20,
   IERC20__factory,
+  IEursUsdPool,
+  IEursUsdPool__factory,
   IGauge,
   IGauge__factory,
+  IRenWbtcPool,
+  IRenWbtcPool__factory,
+  ITriCryptoPool,
+  ITriCryptoPool__factory,
   ITwoPool,
   ITwoPool__factory,
   IUniswapV2Router02,
@@ -15,8 +19,10 @@ import {
   IUniswapV3Router,
   IUniswapV3Router__factory,
   IWETH,
-  IWETH__factory, IRenWbtcPool__factory, IRenWbtcPool, IEursUsdPool__factory, IEursUsdPool,
-} from '../../src/types';
+  IWETH__factory,
+  VaultV2,
+  VaultV2__factory, VaultV2Payable, VaultV2Payable__factory,
+} from '../types';
 
 // ************************* External Contract Addresses *************************
 
@@ -44,6 +50,12 @@ export const CRV_REN_WBTC_POOL = new BaseContract(
   '0x3E01dD8a5E1fb3481F0F589056b428Fc308AF0Fb',
   IRenWbtcPool__factory.createInterface(),
 ) as IRenWbtcPool;
+
+// address is indeed the same as REN_WBTC_POOL
+export const CRV_REN_WBTC_TOKEN = new BaseContract(
+  '0x3E01dD8a5E1fb3481F0F589056b428Fc308AF0Fb',
+  IERC20__factory.createInterface(),
+) as IERC20;
 
 export const CRV_REN_WBTC_POOL_GAUGE = new BaseContract(
   '0xC2b1DF84112619D190193E48148000e3990Bf627',
@@ -74,6 +86,12 @@ export const CRV_TWO_POOL = new BaseContract(
   '0x7f90122BF0700F9E7e1F688fe926940E8839F353',
   ITwoPool__factory.createInterface(),
 ) as ITwoPool;
+
+// address is the same as TWO_POOL
+export const CRV_TWO_POOL_TOKEN = new BaseContract(
+  '0x7f90122BF0700F9E7e1F688fe926940E8839F353',
+  IERC20__factory.createInterface(),
+) as IERC20;
 
 export const CRV_TWO_POOL_GAUGE = new BaseContract(
   '0xbF7E49483881C76487b0989CD7d9A8239B20CA41',
@@ -132,7 +150,9 @@ export const WETH = new BaseContract(
 
 // ************************* General Constants *************************
 
-// ************************* Network Addresses Addresses *************************
+export const DefaultBlockNumber = 8357000;
+
+// ************************* Network Addresses *************************
 
 export const CrvDistributorAddress = '0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a';
 export const CrvWhaleAddress = '0x4A65e76bE1b4e8dd6eF618277Fa55200e3F8F20a';
@@ -148,6 +168,18 @@ export const StorageAddress = '0xc1234a98617385D1a4b87274465375409f7E248f';
 export const UniversalLiquidatorAddress = '0xe5dcf0eB836adb04FF58A472B6924fE941c4Fe76';
 export const VaultV2ImplementationAddress = '0x89D4bcF2d1Ba622dD26830995E8A4aAcCc939F7e';
 export const WethVaultProxyAddress = '0x4e1B3DE0cEe69AaD99f79D7cE10Bf243A7BD3A07';
+
+// ************************* Harvest Contract Addresses *************************
+
+export const EthVaultProxy = new BaseContract(
+  EthPayableVaultProxyAddress,
+  VaultV2Payable__factory.createInterface(),
+) as VaultV2Payable;
+
+export const VaultV2Implementation = new BaseContract(
+  VaultV2ImplementationAddress,
+  VaultV2__factory.createInterface(),
+) as VaultV2;
 
 // ************************* Harvest Params *************************
 

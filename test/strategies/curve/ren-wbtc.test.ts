@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { IGauge, IVault, RenWbtcPoolStrategyMainnet, StrategyProxy, VaultV1 } from '../../../src/types';
-import { CRV, CRV_REN_WBTC_POOL, CRV_REN_WBTC_POOL_GAUGE, CrvWhaleAddress, WBTC } from '../../utilities/constants';
+import { CRV, CRV_REN_WBTC_POOL, CRV_REN_WBTC_POOL_GAUGE, CrvWhaleAddress, WBTC } from '../../../src/utils/constants';
 import {
   checkHardWorkResults,
   CoreProtocol,
@@ -15,8 +15,8 @@ import {
   logYieldData,
   setupCoreProtocol,
   setupWBTCBalance,
-} from '../../utilities/harvest-utils';
-import { calculateApr, calculateApy, impersonate, revertToSnapshotAndCapture, snapshot } from '../../utilities/utils';
+} from '../../../src/utils/harvest-utils';
+import { calculateApr, calculateApy, impersonate, revertToSnapshotAndCapture, snapshot } from '../../../src/utils/utils';
 import { waitForRewardsToDeplete } from './curve-utils';
 
 const strategyName = 'RenWbtcPoolStrategy';
@@ -34,9 +34,7 @@ describe(strategyName, () => {
 
   before(async () => {
     core = await setupCoreProtocol(DefaultCoreProtocolSetupConfig);
-    const RenWbtcPoolStrategyMainnetFactory = await ethers.getContractFactory('RenWbtcPoolStrategyMainnet');
-    const strategyImplementation = await RenWbtcPoolStrategyMainnetFactory.deploy() as RenWbtcPoolStrategyMainnet;
-    [strategyProxy, strategyMainnet] = await createStrategy(strategyImplementation);
+    [strategyProxy, strategyMainnet] = await createStrategy<RenWbtcPoolStrategyMainnet>('RenWbtcPoolStrategyMainnet');
 
     const VaultV1Factory = await ethers.getContractFactory('VaultV1');
     const vaultImplementation = await VaultV1Factory.deploy() as IVault;
@@ -102,8 +100,8 @@ describe(strategyName, () => {
 
       logYieldData(strategyName, lpBalance1, lpBalance2, waitDurationSeconds);
 
-      const expectedApr = ethers.BigNumber.from('11000000000000000'); // 1.10%
-      const expectedApy = ethers.BigNumber.from('11500000000000000'); // 1.12%
+      const expectedApr = ethers.BigNumber.from('11100000000000000'); // 1.110%
+      const expectedApy = ethers.BigNumber.from('11160000000000000'); // 1.116%
 
       expect(lpBalance2).to.be.gt(lpBalance1);
       expect(calculateApr(lpBalance2, lpBalance1, waitDurationSeconds)).to.be.gt(expectedApr);

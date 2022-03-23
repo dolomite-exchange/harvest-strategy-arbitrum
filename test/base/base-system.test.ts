@@ -10,9 +10,9 @@ import {
   Storage,
   UniversalLiquidatorProxy,
 } from '../../src/types';
-import { CRV, DAI, SUSHI, SUSHI_ROUTER, UNISWAP_V3_ROUTER, USDC, USDT, WBTC, WETH } from '../utilities/constants';
-import { setupCoreProtocol } from '../utilities/harvest-utils';
-import { getLatestTimestamp, revertToSnapshotAndCapture, snapshot, waitTime } from '../utilities/utils';
+import { CRV, DAI, SUSHI, SUSHI_ROUTER, UNISWAP_V3_ROUTER, USDC, USDT, WBTC, WETH } from '../../src/utils/constants';
+import { setupCoreProtocol } from '../../src/utils/harvest-utils';
+import { getLatestTimestamp, revertToSnapshotAndCapture, snapshot, waitTime } from '../../src/utils/utils';
 
 /**
  * Tests deployment of `Storage`, `Controller`, `RewardForwarder`, `UniversalLiquidator(Proxy)`
