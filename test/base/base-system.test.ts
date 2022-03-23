@@ -2,15 +2,17 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { IController } from '../../src/types/IController';
-import { IProfitSharingReceiver } from '../../src/types/IProfitSharingReceiver';
-import { IRewardForwarder } from '../../src/types/IRewardForwarder';
-import { IUniversalLiquidator } from '../../src/types/IUniversalLiquidator';
-import { Storage } from '../../src/types/Storage';
-import { UniversalLiquidatorProxy } from '../../src/types/UniversalLiquidatorProxy';
-import { CRV, DAI, SUSHI, SUSHI_ROUTER, UNISWAP_V3_ROUTER, USDC, USDT, WBTC, WETH } from '../utilities/constants';
-import { setupCoreProtocol } from '../utilities/harvest-utils';
-import { getLatestTimestamp, revertToSnapshotAndCapture, snapshot, waitTime } from '../utilities/utils';
+import {
+  IController,
+  IProfitSharingReceiver,
+  IRewardForwarder,
+  IUniversalLiquidator,
+  Storage,
+  UniversalLiquidatorProxy,
+} from '../../src/types';
+import { CRV, DAI, SUSHI, SUSHI_ROUTER, UNISWAP_V3_ROUTER, USDC, USDT, WBTC, WETH } from '../../src/utils/constants';
+import { setupCoreProtocol } from '../../src/utils/harvest-utils';
+import { getLatestTimestamp, revertToSnapshotAndCapture, snapshot, waitTime } from '../../src/utils/utils';
 
 /**
  * Tests deployment of `Storage`, `Controller`, `RewardForwarder`, `UniversalLiquidator(Proxy)`
@@ -61,11 +63,11 @@ describe('BaseSystem', () => {
 
       expect(await rewardForwarder.store()).to.eq(storage.address);
       expect(await rewardForwarder.governance()).to.eq(governance.address);
-      expect(await rewardForwarder.profitSharingPool()).to.eq(profitSharingReceiver.address);
 
       expect(await controller.governance()).to.eq(governance.address);
       expect(await controller.store()).to.eq(storage.address);
       expect(await controller.targetToken()).to.eq(WETH.address);
+      expect(await controller.profitSharingReceiver()).to.eq(profitSharingReceiver.address);
       expect(await controller.rewardForwarder()).to.eq(rewardForwarder.address);
       expect(await controller.nextImplementationDelay()).to.eq(implementationDelaySeconds);
     });
@@ -278,6 +280,69 @@ describe('BaseSystem', () => {
     });
   });
 
+  describe('Controller#setNextImplementationDelay', () => {
+    it('should work for normal conditions', async () => {
+      const tempNextImplementationDelay = 86400;
+      const result1 = await controller.connect(governance).setNextImplementationDelay(tempNextImplementationDelay);
+      const latestTimestamp = await getLatestTimestamp();
+      const nextImplementationTimestamp = latestTimestamp + implementationDelaySeconds;
+      await expect(result1).to.emit(controller, 'QueueNextImplementationDelay')
+        .withArgs(tempNextImplementationDelay, nextImplementationTimestamp);
+
+      expect(await controller.nextImplementationDelay()).to.not.eq(tempNextImplementationDelay);
+      expect(await controller.tempNextImplementationDelay()).to.eq(tempNextImplementationDelay);
+      expect(await controller.tempNextImplementationDelayTimestamp()).to.eq(nextImplementationTimestamp);
+
+      await waitTime(implementationDelaySeconds + 1);
+
+      const result2 = await controller.connect(governance).confirmNextImplementationDelay();
+      await expect(result2).to.emit(controller, 'ConfirmNextImplementationDelay')
+        .withArgs(tempNextImplementationDelay)
+
+      expect(await controller.nextImplementationDelay()).to.eq(tempNextImplementationDelay);
+      expect(await controller.tempNextImplementationDelay()).to.eq(0);
+      expect(await controller.tempNextImplementationDelayTimestamp()).to.eq(0);
+    });
+
+    it('should fail when called before implementation delay', async () => {
+      const tempNextImplementationDelay = 86400;
+      const result1 = await controller.connect(governance).setNextImplementationDelay(tempNextImplementationDelay);
+      const latestTimestamp = await getLatestTimestamp();
+      const nextImplementationTimestamp = latestTimestamp + implementationDelaySeconds;
+      await expect(result1).to.emit(controller, 'QueueNextImplementationDelay')
+        .withArgs(tempNextImplementationDelay, nextImplementationTimestamp);
+
+      expect(await controller.nextImplementationDelay()).to.not.eq(tempNextImplementationDelay);
+      expect(await controller.tempNextImplementationDelay()).to.eq(tempNextImplementationDelay);
+      expect(await controller.tempNextImplementationDelayTimestamp()).to.eq(nextImplementationTimestamp);
+
+      await waitTime(1);
+
+      await expect(controller.connect(governance).confirmNextImplementationDelay())
+        .to.be.revertedWith('invalid timestamp or no new implementation delay confirmed');
+    });
+
+    it('should fail when not called by governance', async () => {
+      const tempNextImplementationDelay = 250;
+      await expect(controller.connect(hhUser1).setNextImplementationDelay(tempNextImplementationDelay))
+        .to.be.revertedWith('Not governance');
+      const result1 = await controller.connect(governance).setNextImplementationDelay(tempNextImplementationDelay);
+      const latestTimestamp = await getLatestTimestamp();
+      const nextImplementationTimestamp = latestTimestamp + implementationDelaySeconds;
+      await expect(result1).to.emit(controller, 'QueueNextImplementationDelay')
+        .withArgs(tempNextImplementationDelay, nextImplementationTimestamp);
+
+      expect(await controller.nextImplementationDelay()).to.not.eq(tempNextImplementationDelay);
+      expect(await controller.tempNextImplementationDelay()).to.eq(tempNextImplementationDelay);
+      expect(await controller.tempNextImplementationDelayTimestamp()).to.eq(nextImplementationTimestamp);
+
+      await waitTime(1);
+
+      await expect(controller.connect(hhUser1).confirmNextImplementationDelay())
+        .to.be.revertedWith('Not governance');
+    });
+  });
+
   describe('Controller#setTargetToken', () => {
     it('should work normally', async () => {
       await controller.connect(governance).setTargetToken(USDC.address);
@@ -285,6 +350,17 @@ describe('BaseSystem', () => {
     });
     it('should fail when not called by governance', async () => {
       await expect(controller.connect(hhUser1).setTargetToken(USDC.address))
+        .to.be.revertedWith('Not governance');
+    });
+  });
+
+  describe('Controller#setProfitSharingReceiver', () => {
+    it('should work normally', async () => {
+      await controller.connect(governance).setProfitSharingReceiver(hhUser1.address);
+      expect(await controller.profitSharingReceiver()).to.eq(hhUser1.address);
+    });
+    it('should fail when not called by governance', async () => {
+      await expect(controller.connect(hhUser1).setProfitSharingReceiver(hhUser1.address))
         .to.be.revertedWith('Not governance');
     });
   });

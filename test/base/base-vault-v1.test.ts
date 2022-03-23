@@ -3,10 +3,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
-import { StrategyProxy, TestRewardPool, TestStrategy, VaultProxy, VaultV1, IVault } from '../../src/types';
-import { USDC, WETH } from '../utilities/constants';
-import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../utilities/harvest-utils';
-import { getLatestTimestamp, revertToSnapshotAndCapture, snapshot, waitTime } from '../utilities/utils';
+import { IVault, StrategyProxy, TestRewardPool, TestStrategy, VaultProxy, VaultV1 } from '../../src/types';
+import { USDC, WETH } from '../../src/utils/constants';
+import { CoreProtocol, createStrategy, createVault, setupCoreProtocol } from '../../src/utils/harvest-utils';
+import { getLatestTimestamp, revertToSnapshotAndCapture, snapshot, waitTime } from '../../src/utils/utils';
 
 
 describe('VaultV1', () => {
@@ -27,9 +27,6 @@ describe('VaultV1', () => {
       blockNumber: 8049264,
     });
 
-    const TestStrategyFactory = await ethers.getContractFactory('TestStrategy');
-    const testStrategyImplementation = await TestStrategyFactory.deploy() as TestStrategy;
-
     const VaultV2Factory = await ethers.getContractFactory('VaultV2');
     const testVaultImplementation = await VaultV2Factory.deploy() as IVault;
 
@@ -39,7 +36,7 @@ describe('VaultV1', () => {
     rewardPool = await TestRewardPoolFactory.deploy(WETH.address, USDC.address) as TestRewardPool;
 
     strategist = core.hhUser1;
-    [strategyProxy, strategy] = await createStrategy(testStrategyImplementation);
+    [strategyProxy, strategy] = await createStrategy<TestStrategy>('TestStrategy');
     await strategy.initializeBaseStrategy(
       core.storage.address,
       WETH.address,

@@ -22,7 +22,7 @@
 pragma solidity ^0.5.16;
 
 
-contract WETH9 {
+contract IWETH {
 
     function balanceOf(address target) public view returns (uint256);
 

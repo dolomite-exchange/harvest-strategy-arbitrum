@@ -8,6 +8,7 @@ import "@openzeppelin/upgrades/contracts/Initializable.sol";
 import "../inheritance/Constants.sol";
 import "../inheritance/ControllableInit.sol";
 import "../interfaces/IController.sol";
+import "../interfaces/IVault.sol";
 import "./BaseUpgradeableStrategyStorage.sol";
 import "../interfaces/IStrategy.sol";
 
@@ -51,6 +52,11 @@ contract BaseUpgradeableStrategy is
         address[] memory _rewardTokens,
         address _strategist
     ) public initializer {
+        require(
+            IVault(_vault).underlying() == _underlying,
+            "underlying does not match vault underlying"
+        );
+
         ControllableInit.initialize(_storage);
         _setUnderlying(_underlying);
         _setVault(_vault);

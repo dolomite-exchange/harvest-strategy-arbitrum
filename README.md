@@ -1,19 +1,22 @@
 # Harvest & Dolomite Strategy Development
 
-This [Hardhat](https://hardhat.org/) environment is configured to use Mainnet fork by default and provides templates and utilities for strategy development and testing.
+This [Hardhat](https://hardhat.org/) environment is configured to use an Arbitrum One fork by default and provides
+templates and utilities for strategy development and testing.
 
-Aside from forking Harvest Finance core contracts on <INSERT_L2_HERE>, this repository integrates the Dolomite Margin Protocol to enable leveraged yield farming.
+Aside from forking Harvest Finance core contracts on Arbitrum One, this repository integrates the Dolomite Margin
+Protocol to enable leveraged yield farming.
 
 ## Installation
 
 1. Run `npm install` to install all the dependencies.
-2. Sign up on [Alchemy](https://dashboard.alchemyapi.io/signup/). We recommend using Alchemy over Infura to allow for a reproducible
-Mainnet fork testing environment as well as efficiency due to caching.
-3. Create a file `dev-keys.json`:
+2. Sign up on [Infura](https://infura.io/register). We recommend using Infura to allow for a reproducible Arbitrum One
+   testing environment as well as efficiency due to caching.
+3. Create a file `.env`:
+
   ```
-    {
-      "alchemyKey": "<your-alchemy-key>"
-    }
+   ETHERSCAN_API_KEY=<YOUR KEY>
+   INFURA_API_KEY=<YOUR KEY>
+   STRATEGIST=0x123...321
   ```
 
 ## Run
@@ -37,11 +40,13 @@ All tests are located under the `test` folder.
       }
     },
     ```
-    The block number is often necessary because many tests depend on the blockchain state at a given time. For example, for using whale
-    accounts that are no longer such at the most recent block, or for time-sensitive activities like migrations.
-    In addition, specifying block number speeds up tests due to caching.
+   The block number is often necessary because many tests depend on the blockchain state at a given time. For example,
+   for using whale accounts that are no longer such at the most recent block, or for time-sensitive activities like
+   migrations. In addition, specifying block number speeds up tests due to caching.
 
-1. Run `npx hardhat test [test file location]`: `npx hardhat test ./test/1inch/eth-dai.js` (if for some reason the NodeJS heap runs out of memory, make sure to explicitly increase its size via `export NODE_OPTIONS=--max_old_space_size=4096`). This will produce the following output:
+1. Run `npx hardhat test [test file location]`: `npx hardhat test ./test/1inch/eth-dai.js` (if for some reason the
+   NodeJS heap runs out of memory, make sure to explicitly increase its size
+   via `export NODE_OPTIONS=--max_old_space_size=4096`). This will produce the following output:
     ```
     Mainnet ETH/DAI
     Impersonating...
@@ -100,31 +105,35 @@ All tests are located under the `test` folder.
 
 ## Develop
 
-Under `contracts/strategies`, there are plenty of examples to choose from in the repository already, therefore, creating a strategy is no longer a complicated task. Copy-pasting existing strategies with minor modifications is acceptable.
+Under `contracts/strategies`, there are plenty of examples to choose from in the repository already, therefore, creating
+a strategy is no longer a complicated task. Copy-pasting existing strategies with minor modifications is acceptable.
 
-Under `contracts/base`, there are existing base interfaces and contracts that can speed up development.
-Base contracts currently exist for developing SNX and MasterChef-based strategies.
+Under `contracts/base`, there are existing base interfaces and contracts that can speed up development. Base contracts
+currently exist for developing SNX and MasterChef-based strategies.
 
-We recommend favouring `StrategyBaseUL` over `StrategyBase` as the former's liquidation goes through the Universal Liquidator
-that was originally developed by our community.
+We recommend favouring `StrategyBaseUL` over `StrategyBase` as the former's liquidation goes through the Universal
+Liquidator that was originally developed by our community.
 
 ## Contribute
 
 When ready, open a pull request with the following information:
+
 1. Instructions on how to run the test and at which block number
 2. A **mainnet fork test output** (like the one above in the README) clearly showing the increases of share price
 3. Info about the protocol, including:
-   - Live farm page(s)
-   - GitHub link(s)
-   - Etherscan link(s)
-   - Start/end dates for rewards
-   - Any limitations (e.g., maximum pool size)
-   - Current Uniswap/Sushiswap/etc. pool sizes used for liquidation (to make sure they are not too shallow)
+    - Live farm page(s)
+    - GitHub link(s)
+    - Etherscan link(s)
+    - Start/end dates for rewards
+    - Any limitations (e.g., maximum pool size)
+    - Current Uniswap/Sushiswap/etc. pool sizes used for liquidation (to make sure they are not too shallow)
 
    The first few items can be omitted for well-known protocols (such as `curve.fi`).
 
-5. A description of **potential value** for Harvest: why should your strategy be live? High APYs, decent pool sizes, longevity of rewards, well-secured protocols, high-potential collaborations, etc.
+5. A description of **potential value** for Harvest: why should your strategy be live? High APYs, decent pool sizes,
+   longevity of rewards, well-secured protocols, high-potential collaborations, etc.
 
 ## Deployment
 
-If your pull request is merged and given a green light for deployment, the Harvest team will take care of on-chain deployment.
+If your pull request is merged and given a green light for deployment, the Harvest team will take care of on-chain
+deployment.

@@ -19,9 +19,9 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IDolomiteMargin.sol";
+import "../../../strategies/curve/interfaces/ITriCryptoPool.sol";
 
-import "./interfaces/CrvTriCryptoPool.sol";
+import "../interfaces/IDolomiteMargin.sol";
 import "./interfaces/CrvToken.sol";
 
 import "../lib/DolomiteMarginMonetary.sol";
@@ -40,11 +40,11 @@ contract CrvTriCryptoPriceOracle is FTokenPriceOracle {
 
     function getFTokenParts(address _fToken) public view returns (address[] memory) {
         CrvToken crvToken = CrvToken(IVault(_fToken).underlying());
-        CrvTriCryptoPool crvPool = CrvTriCryptoPool(crvToken.minter());
+        ITriCryptoPool triCryptoPool = ITriCryptoPool(crvToken.minter());
         address[] memory parts = new address[](3);
-        parts[0] = crvPool.coins(0);
-        parts[1] = crvPool.coins(1);
-        parts[2] = crvPool.coins(2);
+        parts[0] = triCryptoPool.coins(0);
+        parts[1] = triCryptoPool.coins(1);
+        parts[2] = triCryptoPool.coins(2);
         return parts;
     }
 
@@ -52,12 +52,12 @@ contract CrvTriCryptoPriceOracle is FTokenPriceOracle {
         // convert fToken value to underlying value using exchange rate
         // convert value of underlying into the value of the claim on token parts
         CrvToken crvToken = CrvToken(IVault(_fToken).underlying());
-        CrvTriCryptoPool crvPool = CrvTriCryptoPool(crvToken.minter());
+        ITriCryptoPool triCryptoPool = ITriCryptoPool(crvToken.minter());
         uint fExchangeRate = IVault(_fToken).getPricePerFullShare();
         uint fBase = IVault(_fToken).underlyingUnit();
-        // TODO discover if crvPool.D() and fExchangeRate is flash loan resistant; if they are not, we need to set up 15
+        // TODO discover if triCryptoPool.D() and fExchangeRate is flash loan resistant; if they are not, we need to set up 15
         // TODO minute TWAP oracles for them
-        return DolomiteMarginMonetary.Price(crvPool.D() * 1e18 / crvToken.totalSupply() * fExchangeRate / fBase);
+        return DolomiteMarginMonetary.Price(triCryptoPool.D() * 1e18 / crvToken.totalSupply() * fExchangeRate / fBase);
     }
 
 }

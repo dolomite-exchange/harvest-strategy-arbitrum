@@ -19,8 +19,11 @@ contract ControllerV1 is IController, Governable {
     using Address for address;
     using SafeMath for uint256;
 
+    // ========================= Fields =========================
+
     // external parties
     address public targetToken;
+    address public profitSharingReceiver;
     address public rewardForwarder;
     address public universalLiquidator;
     address public dolomiteYieldFarmingRouter;
@@ -41,6 +44,10 @@ contract ControllerV1 is IController, Governable {
     uint256 public platformFeeNumerator = 500;
     uint256 public nextPlatformFeeNumerator = 0;
     uint256 public nextPlatformFeeNumeratorTimestamp = 0;
+
+    /// used for queuing a new delay
+    uint256 public tempNextImplementationDelay = 0;
+    uint256 public tempNextImplementationDelayTimestamp = 0;
 
     uint256 public constant FEE_DENOMINATOR = 10000;
 
@@ -67,17 +74,7 @@ contract ControllerV1 is IController, Governable {
     // All eligible hardWorkers that we have
     mapping (address => bool) public hardWorkers;
 
-    event QueueProfitSharingNumeratorChange(uint profitSharingNumerator, uint validAtTimestamp);
-    event ConfirmProfitSharingNumeratorChange(uint profitSharingNumerator);
-
-    event QueueStrategistFeeNumeratorChange(uint strategistFeeNumerator, uint validAtTimestamp);
-    event ConfirmStrategistFeeNumeratorChange(uint strategistFeeNumerator);
-
-    event QueuePlatformFeeNumeratorChange(uint platformFeeNumerator, uint validAtTimestamp);
-    event ConfirmPlatformFeeNumeratorChange(uint platformFeeNumerator);
-
-    event AddedStakingContract(address indexed stakingContract);
-    event RemovedStakingContract(address indexed stakingContract);
+    // ========================= Modifiers =========================
 
     modifier validVault(address _vault){
         require(vaults[_vault], "vault does not exist");
@@ -115,14 +112,21 @@ contract ControllerV1 is IController, Governable {
     constructor(
         address _storage,
         address _targetToken,
+        address _profitSharingReceiver,
         address _rewardForwarder,
         address _universalLiquidator,
         uint _nextImplementationDelay
     )
     Governable(_storage)
     public {
-        require(_rewardForwarder != address(0), "feeRewardForwarder should not be empty");
+        require(_targetToken != address(0), "_targetToken should not be empty");
+        require(_profitSharingReceiver != address(0), "_profitSharingReceiver should not be empty");
+        require(_rewardForwarder != address(0), "_rewardForwarder should not be empty");
+        require(_universalLiquidator != address(0), "_universalLiquidator should not be empty");
+        require(_nextImplementationDelay > 0, "_nextImplementationDelay should be gt 0");
+
         targetToken = _targetToken;
+        profitSharingReceiver = _profitSharingReceiver;
         rewardForwarder = _rewardForwarder;
         universalLiquidator = _universalLiquidator;
         nextImplementationDelay = _nextImplementationDelay;
@@ -173,6 +177,11 @@ contract ControllerV1 is IController, Governable {
     function setTargetToken(address _targetToken) public onlyGovernance {
         require(_targetToken != address(0), "new target token should not be empty");
         targetToken = _targetToken;
+    }
+
+    function setProfitSharingReceiver(address _profitSharingReceiver) public onlyGovernance {
+        require(_profitSharingReceiver != address(0), "new profit sharing receiver should not be empty");
+        profitSharingReceiver = _profitSharingReceiver;
     }
 
     function setUniversalLiquidator(address _universalLiquidator) public onlyGovernance {
@@ -362,6 +371,30 @@ contract ControllerV1 is IController, Governable {
         nextPlatformFeeNumeratorTimestamp = 0;
         emit ConfirmPlatformFeeNumeratorChange(platformFeeNumerator);
     }
+
+    function setNextImplementationDelay(uint256 _nextImplementationDelay) public onlyGovernance {
+        require(
+            _nextImplementationDelay > 0,
+            "invalid _nextImplementationDelay"
+        );
+
+        tempNextImplementationDelay = _nextImplementationDelay;
+        tempNextImplementationDelayTimestamp = block.timestamp + nextImplementationDelay;
+        emit QueueNextImplementationDelay(tempNextImplementationDelay, tempNextImplementationDelayTimestamp);
+    }
+
+    function confirmNextImplementationDelay() public onlyGovernance {
+        require(
+            tempNextImplementationDelayTimestamp != 0 && block.timestamp >= tempNextImplementationDelayTimestamp,
+            "invalid timestamp or no new implementation delay confirmed"
+        );
+        nextImplementationDelay = tempNextImplementationDelay;
+        tempNextImplementationDelay = 0;
+        tempNextImplementationDelayTimestamp = 0;
+        emit ConfirmNextImplementationDelay(nextImplementationDelay);
+    }
+
+    // ========================= Internal Functions =========================
 
     function _addVaultAndStrategy(address _vault, address _strategy) internal {
         require(_vault != address(0), "new vault shouldn't be empty");

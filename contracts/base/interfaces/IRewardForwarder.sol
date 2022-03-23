@@ -55,6 +55,4 @@ interface IRewardForwarder {
         uint256 _strategistFee,
         uint256 _platformFee
     ) external;
-
-    function profitSharingPool() external view returns (address);
 }

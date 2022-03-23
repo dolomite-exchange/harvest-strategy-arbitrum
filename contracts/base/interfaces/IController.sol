@@ -2,7 +2,22 @@ pragma solidity ^0.5.16;
 
 interface IController {
 
-    // ==================== Events ====================
+    // ========================= Events =========================
+
+    event QueueProfitSharingNumeratorChange(uint profitSharingNumerator, uint validAtTimestamp);
+    event ConfirmProfitSharingNumeratorChange(uint profitSharingNumerator);
+
+    event QueueStrategistFeeNumeratorChange(uint strategistFeeNumerator, uint validAtTimestamp);
+    event ConfirmStrategistFeeNumeratorChange(uint strategistFeeNumerator);
+
+    event QueuePlatformFeeNumeratorChange(uint platformFeeNumerator, uint validAtTimestamp);
+    event ConfirmPlatformFeeNumeratorChange(uint platformFeeNumerator);
+
+    event QueueNextImplementationDelay(uint implementationDelay, uint validAtTimestamp);
+    event ConfirmNextImplementationDelay(uint implementationDelay);
+
+    event AddedStakingContract(address indexed stakingContract);
+    event RemovedStakingContract(address indexed stakingContract);
 
     event SharePriceChangeLog(
         address indexed vault,
@@ -59,6 +74,10 @@ interface IController {
 
     function setTargetToken(address _targetToken) external;
 
+    function profitSharingReceiver() external view returns (address);
+
+    function setProfitSharingReceiver(address _profitSharingReceiver) external;
+
     function rewardForwarder() external view returns (address);
 
     function setRewardForwarder(address _rewardForwarder) external;
@@ -108,4 +127,12 @@ interface IController {
     function nextPlatformFeeNumerator() external view returns (uint256);
 
     function nextPlatformFeeNumeratorTimestamp() external view returns (uint256);
+
+    function tempNextImplementationDelay() external view returns (uint256);
+
+    function tempNextImplementationDelayTimestamp() external view returns (uint256);
+
+    function setNextImplementationDelay(uint256 _nextImplementationDelay) external;
+
+    function confirmNextImplementationDelay() external;
 }
