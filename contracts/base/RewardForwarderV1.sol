@@ -23,29 +23,9 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address public profitSharingPool;
-
-    event ProfitSharingPoolSet(address pool);
-
     constructor(
-        address _storage,
-        address _profitSharingPool
-    ) public Controllable(_storage) {
-        profitSharingPool = _profitSharingPool;
-    }
-
-    /**
-     * @notice Set the pool that will receive the reward token based on the address of the reward Token
-     */
-    function setProfitSharingPool(address _profitSharingPool) public onlyGovernance {
-        require(
-            IProfitSharingReceiver(_profitSharingPool).governance() == governance(),
-            "The profit sharing pool must have the same governance"
-        );
-
-        profitSharingPool = _profitSharingPool;
-        emit ProfitSharingPoolSet(_profitSharingPool);
-    }
+        address _storage
+    ) public Controllable(_storage) {}
 
     function notifyFeeAndBuybackAmounts(
         address _token,
@@ -135,7 +115,7 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
                 _targetToken,
                 _profitSharingFee,
                 amountOutMin,
-                profitSharingPool
+                IController(_controller).profitSharingReceiver()
             );
         }
 

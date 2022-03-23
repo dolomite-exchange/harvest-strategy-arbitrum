@@ -1,36 +1,38 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { IGauge, IVault, StrategyProxy, TriCryptoStrategyMainnet, VaultV1 } from '../../../src/types';
+import { EursUsdPoolStrategyMainnet, IGauge, IVault, StrategyProxy, VaultV1 } from '../../../src/types';
 import {
   CRV,
-  CRV_TRI_CRYPTO_GAUGE,
-  CRV_TRI_CRYPTO_POOL,
-  CRV_TRI_CRYPTO_TOKEN,
+  CRV_EURS_USD_POOL,
+  CRV_EURS_USD_POOL_GAUGE,
+  CRV_EURS_USD_TOKEN,
+  CRV_TWO_POOL,
   CrvWhaleAddress,
-  WETH,
+  USDC,
 } from '../../utilities/constants';
 import {
   checkHardWorkResults,
   CoreProtocol,
   createStrategy,
   createVault,
+  DefaultCoreProtocolSetupConfig,
   depositIntoVault,
   doHardWork,
   getReceivedAmountBeforeHardWork,
   logYieldData,
   setupCoreProtocol,
-  setupWETHBalance,
+  setupUSDCBalance,
 } from '../../utilities/harvest-utils';
 import { calculateApr, calculateApy, impersonate, revertToSnapshotAndCapture, snapshot } from '../../utilities/utils';
 import { waitForRewardsToDeplete } from './curve-utils';
 
-const strategyName = 'TriCryptoStrategy';
+const strategyName = 'EursUsdStrategy';
 describe(strategyName, () => {
 
   let core: CoreProtocol;
   let strategyProxy: StrategyProxy;
-  let strategyMainnet: TriCryptoStrategyMainnet;
+  let strategyMainnet: EursUsdPoolStrategyMainnet;
   let vaultV1: VaultV1;
   let gauge: IGauge;
 
@@ -39,22 +41,20 @@ describe(strategyName, () => {
   let snapshotId: string;
 
   before(async () => {
-    core = await setupCoreProtocol({
-      blockNumber: 8216000,
-    });
-    const TriCryptoStrategyMainnetFactory = await ethers.getContractFactory('TriCryptoStrategyMainnet');
-    const strategyImplementation = await TriCryptoStrategyMainnetFactory.deploy() as TriCryptoStrategyMainnet;
+    core = await setupCoreProtocol(DefaultCoreProtocolSetupConfig);
+    const EursUsdPoolStrategyMainnetFactory = await ethers.getContractFactory('EursUsdPoolStrategyMainnet');
+    const strategyImplementation = await EursUsdPoolStrategyMainnetFactory.deploy() as EursUsdPoolStrategyMainnet;
     [strategyProxy, strategyMainnet] = await createStrategy(strategyImplementation);
 
     const VaultV1Factory = await ethers.getContractFactory('VaultV1');
     const vaultImplementation = await VaultV1Factory.deploy() as IVault;
-    [, vaultV1] = await createVault(vaultImplementation, core, CRV_TRI_CRYPTO_TOKEN);
+    [, vaultV1] = await createVault(vaultImplementation, core, CRV_EURS_USD_TOKEN);
     await strategyMainnet.connect(core.governance)
       .initializeMainnetStrategy(core.storage.address, vaultV1.address, core.strategist.address);
     await core.controller.connect(core.governance).addVaultAndStrategy(vaultV1.address, strategyProxy.address);
 
     user = await ethers.getSigner(core.hhUser1.address);
-    gauge = CRV_TRI_CRYPTO_GAUGE.connect(core.governance);
+    gauge = CRV_EURS_USD_POOL_GAUGE.connect(core.governance);
 
     snapshotId = await snapshot();
   })
@@ -67,25 +67,32 @@ describe(strategyName, () => {
     it('should work properly', async () => {
       expect(await strategyMainnet.controller()).to.eq(core.controller.address);
       expect(await strategyMainnet.governance()).to.eq(core.governance.address);
-      expect(await strategyMainnet.underlying()).to.eq(CRV_TRI_CRYPTO_TOKEN.address);
+      expect(await strategyMainnet.underlying()).to.eq(CRV_EURS_USD_TOKEN.address);
       expect(await strategyMainnet.vault()).to.eq(vaultV1.address);
-      expect(await strategyMainnet.rewardPool()).to.eq(CRV_TRI_CRYPTO_GAUGE.address);
+      expect(await strategyMainnet.rewardPool()).to.eq(CRV_EURS_USD_POOL_GAUGE.address);
       expect(await strategyMainnet.rewardTokens()).to.eql([CRV.address]);
       expect(await strategyMainnet.strategist()).to.eq(core.strategist.address);
-      expect(await strategyMainnet.curveDepositPool()).to.eq(CRV_TRI_CRYPTO_POOL.address);
-      expect(await strategyMainnet.depositToken()).to.eq(WETH.address);
-      expect(await strategyMainnet.depositArrayPosition()).to.eq(2);
+      expect(await strategyMainnet.curveDepositPool()).to.eq(CRV_TWO_POOL.address);
+      expect(await strategyMainnet.depositToken()).to.eq(USDC.address);
+      expect(await strategyMainnet.depositArrayPosition()).to.eq(0);
+      expect(await strategyMainnet.wrapperCurveDepositPool()).to.eq(CRV_EURS_USD_POOL.address);
+      expect(await strategyMainnet.wrapperDepositToken()).to.eq(CRV_TWO_POOL.address);
+      expect(await strategyMainnet.wrapperDepositArrayPosition()).to.eq(1);
     });
   });
 
   describe('deposit and compound', () => {
     it('should work', async () => {
-      const amount = ethers.BigNumber.from('1000000000000000000');
-      await setupWETHBalance(user, amount, CRV_TRI_CRYPTO_POOL);
-      await CRV_TRI_CRYPTO_POOL.connect(user).add_liquidity([0, 0, amount], '0');
+      const usdcAmount = ethers.BigNumber.from('5000000000'); // 5,000 USDC
+      await setupUSDCBalance(user, usdcAmount, CRV_TWO_POOL);
+      await CRV_TWO_POOL.connect(user).add_liquidity([usdcAmount, 0], '0');
 
-      const lpBalance1 = await CRV_TRI_CRYPTO_TOKEN.connect(user).balanceOf(user.address);
-      await depositIntoVault(user, CRV_TRI_CRYPTO_TOKEN, vaultV1, lpBalance1);
+      const twoPoolLpBalance = await CRV_TWO_POOL.connect(user).balanceOf(user.address);
+      await CRV_TWO_POOL.connect(user).approve(CRV_EURS_USD_POOL.address, ethers.constants.MaxUint256);
+      await CRV_EURS_USD_POOL.connect(user).add_liquidity([0, twoPoolLpBalance], '0');
+
+      const lpBalance1 = await CRV_EURS_USD_TOKEN.connect(user).balanceOf(user.address);
+      await depositIntoVault(user, CRV_EURS_USD_TOKEN, vaultV1, lpBalance1);
 
       await vaultV1.connect(core.governance).rebalance(); // move funds to the strategy
       await strategyMainnet.connect(core.governance).enterRewardPool(); // deposit strategy funds into CRV
@@ -99,7 +106,7 @@ describe(strategyName, () => {
 
       const crvReward = (await strategyMainnet.callStatic.getRewardPoolValues())[0];
       const crvWhale = await impersonate(CrvWhaleAddress);
-      const receivedWETH = await getReceivedAmountBeforeHardWork(core, crvWhale, CRV, crvReward);
+      const receivedUSDC = await getReceivedAmountBeforeHardWork(core, crvWhale, CRV, crvReward);
 
       await doHardWork(core, vaultV1, strategyProxy);
 
@@ -110,15 +117,15 @@ describe(strategyName, () => {
 
       logYieldData(strategyName, lpBalance1, lpBalance2, waitDurationSeconds);
 
-      const expectedApr = ethers.BigNumber.from('72500000000000000'); // 7.25%
-      const expectedApy = ethers.BigNumber.from('75000000000000000'); // 7.50%
+      const expectedApr = ethers.BigNumber.from('65000000000000000'); // 6.50%
+      const expectedApy = ethers.BigNumber.from('67000000000000000'); // 6.70%
 
       expect(lpBalance2).to.be.gt(lpBalance1);
       expect(calculateApr(lpBalance2, lpBalance1, waitDurationSeconds)).to.be.gt(expectedApr);
       expect(calculateApy(lpBalance2, lpBalance1, waitDurationSeconds)).to.be.gt(expectedApy);
 
       // check the platform fee and strategist fees accrued properly
-      await checkHardWorkResults(core, receivedWETH);
+      await checkHardWorkResults(core, receivedUSDC);
     });
   });
 });

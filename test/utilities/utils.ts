@@ -4,6 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { assert } from 'chai';
 import { BigNumber, BigNumberish, ContractTransaction } from 'ethers';
 import { ethers, network } from 'hardhat';
+import Web3 from 'web3';
 
 let gasLogger: Record<string, BigNumber> = {};
 let gasLoggerNumberOfCalls: Record<string, number> = {};
@@ -70,13 +71,12 @@ export async function impersonate(targetAccount: string, giveEther: boolean = fa
   return ethers.getSigner(targetAccount);
 }
 
-export async function impersonateAll(targetAccounts: string[]) {
+export async function impersonateAll(targetAccounts: string[], giveEther: boolean = false): Promise<SignerWithAddress[]> {
+  const signers = [];
   for (let i = 0; i < targetAccounts.length; i++) {
-    await network.provider.request({
-      method: 'hardhat_impersonateAccount',
-      params: [targetAccounts[i]],
-    });
+    signers[i] = await impersonate(targetAccounts[i], giveEther);
   }
+  return signers;
 }
 
 export async function gasLog(logTo: string, transactionPromise: Promise<ContractTransaction>) {
@@ -123,6 +123,11 @@ export async function waitTime(n: number) {
 export async function getLatestTimestamp(): Promise<number> {
   const block = await ethers.provider.getBlock('latest');
   return block.timestamp
+}
+
+export async function getLatestBlockNumber(): Promise<number> {
+  const block = await ethers.provider.getBlock('latest');
+  return block.number
 }
 
 export async function sendEther(from: string, to: string, value: BigNumberish): Promise<any> {
@@ -193,6 +198,11 @@ export function calculateApy(
     .mul(one)
     .div(one.pow(365))
     .sub(one);
+}
+
+export function formatNumber(n: BigNumberish): string {
+  const _n = ethers.BigNumber.from(n);
+  return Web3.utils.fromWei(_n.toString());
 }
 
 // ========================= Private Functions =========================

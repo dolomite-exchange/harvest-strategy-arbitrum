@@ -1,10 +1,10 @@
 pragma solidity ^0.5.16;
 
 import "../../base/interfaces/IMainnetStrategy.sol";
-import "./TriCryptoStrategy.sol";
+import "./TwoPoolStrategy.sol";
 
 
-contract TriCryptoStrategyMainnet is TriCryptoStrategy, IMainnetStrategy {
+contract RenWbtcPoolStrategyMainnet is TwoPoolStrategy, IMainnetStrategy {
 
     function initializeMainnetStrategy(
         address _storage,
@@ -15,14 +15,14 @@ contract TriCryptoStrategyMainnet is TriCryptoStrategy, IMainnetStrategy {
         rewardTokens[0] = CRV;
         CurveStrategy.initializeCurveStrategy(
             _storage,
-            CRV_TRI_CRYPTO_TOKEN,
+            CRV_REN_WBTC_POOL,
             _vault,
-            CRV_TRI_CRYPTO_GAUGE,
+            CRV_REN_WBTC_GAUGE,
             rewardTokens,
             _strategist,
-            CRV_TRI_CRYPTO_POOL,
-            WETH,
-            /* depositArrayPosition = */ 2
+            CRV_REN_WBTC_POOL,
+            WBTC,
+            /* depositArrayPosition = */ 0
         );
     }
 
