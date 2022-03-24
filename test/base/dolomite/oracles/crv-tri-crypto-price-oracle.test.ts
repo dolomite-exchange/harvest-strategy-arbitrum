@@ -31,6 +31,7 @@ describe('CrvTriCryptoPriceOracle', () => {
 
   let snapshotId: string;
 
+  const tolerableFlashloanThreshold = '10000000000000000'; // 1%
   const priceThreshold = '10000000000000000'; // 1%
   const expectedOraclePriceNoDeviation = ethers.BigNumber.from('1535445967567637237507'); // $1,535.44...
 
@@ -123,7 +124,8 @@ describe('CrvTriCryptoPriceOracle', () => {
       } else {
         percentDiff = priceAfterSwap.mul(OneEth).div(normalPriceWithExchangeRate);
       }
-      expect(percentDiff).to.be.lt(OneEth.add(priceThreshold)); // the flash loan price is less than priceThreshold
+      // the flash loan price diff should be less than priceThreshold
+      expect(percentDiff).to.be.lt(OneEth.add(tolerableFlashloanThreshold));
     });
   });
 });

@@ -44,19 +44,25 @@ contract CrvTriCryptoPriceOracle is FTokenPriceOracle, Constants {
     using SafeMath for uint256;
     using AdvancedMath for uint256;
 
-    uint deviationThreshold;
+    uint public maxDeviationThreshold;
 
     /**
-     * @param _dolomiteMargin       The instance of DolomiteMargin
-     * @param _deviationThreshold   The max % diff between the pool's value and the contract's reported value where the
-     *                              geometric mean (more gas cost) is calculated instead of the arithmetic mean (costs
-     *                              less gas). 1e16 equals 1%. Has 18 decimals.
+     * @param _dolomiteMargin           The instance of DolomiteMargin
+     * @param __maxDeviationThreshold   The max % diff between the pool's value and the contract's reported value where
+     *                                  the geometric mean (more gas cost) is calculated instead of the arithmetic mean
+     *                                  (costs less gas). 1e16 equals 1%. Has 18 decimals.
      */
     constructor(
         address _dolomiteMargin,
-        uint _deviationThreshold
+        uint __maxDeviationThreshold
     ) public FTokenPriceOracle(_dolomiteMargin) {
-        deviationThreshold = _deviationThreshold;
+        maxDeviationThreshold = __maxDeviationThreshold;
+    }
+
+    function setDeviationThreshold(
+        uint _maxDeviationThreshold
+    ) external onlyOwner {
+        maxDeviationThreshold = _maxDeviationThreshold;
     }
 
     function getFTokenParts(address _fToken) public view returns (address[] memory) {
@@ -117,9 +123,9 @@ contract CrvTriCryptoPriceOracle is FTokenPriceOracle, Constants {
 
     function _hasPriceDeviation(uint d1, uint d2) internal view returns (bool) {
         if (d1 > d2) {
-            return d1.mul(1e18).div(d2).sub(1e18) > deviationThreshold;
+            return d1.mul(1e18).div(d2).sub(1e18) > maxDeviationThreshold;
         } else {
-            return d2.mul(1e18).div(d1).sub(1e18) > deviationThreshold;
+            return d2.mul(1e18).div(d1).sub(1e18) > maxDeviationThreshold;
         }
     }
 

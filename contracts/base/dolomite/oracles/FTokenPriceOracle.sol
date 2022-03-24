@@ -19,6 +19,8 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/ownership/Ownable.sol";
+
 import "../interfaces/IDolomiteMargin.sol";
 import "../interfaces/IPriceOracle.sol";
 
@@ -27,7 +29,7 @@ import "../lib/DolomiteMarginMonetary.sol";
 /**
  * @notice  Calculates the USD value of a given fToken by breaking it down into it's underlying tokens.
  */
-contract FTokenPriceOracle is IPriceOracle {
+contract FTokenPriceOracle is IPriceOracle, Ownable {
 
     IDolomiteMargin public dolomiteMargin;
 
