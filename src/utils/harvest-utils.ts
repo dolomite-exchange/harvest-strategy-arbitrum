@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import { BaseContract, BigNumber, BigNumberish, ContractTransaction, Overrides } from 'ethers';
 import { ethers, network } from 'hardhat';
 import {
-  ControllerV1,
   IController,
   IController__factory,
   IERC20,
@@ -17,8 +16,6 @@ import {
   IVault,
   IWETH,
   PotPool,
-  ProfitSharingReceiverV1,
-  RewardForwarderV1,
   Storage,
   Storage__factory,
   StrategyProxy,
@@ -33,7 +30,7 @@ import {
 } from '../types';
 import {
   ControllerV1Address,
-  CRV, DefaultBlockNumber,
+  CRV,
   DefaultImplementationDelay,
   GovernorAddress,
   ProfitSharingReceiverV1Address,
@@ -45,7 +42,16 @@ import {
   WBTC,
   WETH,
 } from './constants';
-import { calculateApr, calculateApy, formatNumber, getLatestTimestamp, impersonate, resetFork } from './utils';
+import { DefaultBlockNumber } from './default-block-number';
+import {
+  calculateApr,
+  calculateApy,
+  formatNumber,
+  getLatestTimestamp,
+  impersonate,
+  resetFork,
+  setEtherBalance,
+} from './utils';
 
 export interface ExistingCoreAddresses {
   governanceAddress: string

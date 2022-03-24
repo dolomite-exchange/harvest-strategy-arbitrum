@@ -7,7 +7,7 @@ import 'hardhat-gas-reporter';
 import chai from 'chai';
 import { solidity } from 'ethereum-waffle';
 import { HardhatUserConfig } from 'hardhat/config';
-import { DefaultBlockNumber } from './src/utils/constants';
+import { DefaultBlockNumber } from './src/utils/default-block-number';
 
 chai.use(solidity);
 require('dotenv').config()

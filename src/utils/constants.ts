@@ -1,4 +1,4 @@
-import { BaseContract } from 'ethers';
+import { BaseContract, ethers } from 'ethers';
 import {
   ICrvRewardNotifier,
   ICrvRewardNotifier__factory,
@@ -21,7 +21,9 @@ import {
   IWETH,
   IWETH__factory,
   VaultV2,
-  VaultV2__factory, VaultV2Payable, VaultV2Payable__factory,
+  VaultV2__factory,
+  VaultV2Payable,
+  VaultV2Payable__factory,
 } from '../types';
 
 // ************************* External Contract Addresses *************************
@@ -150,7 +152,7 @@ export const WETH = new BaseContract(
 
 // ************************* General Constants *************************
 
-export const DefaultBlockNumber = 8357000;
+export const OneEth = ethers.BigNumber.from('1000000000000000000');
 
 // ************************* Network Addresses *************************
 
@@ -160,6 +162,7 @@ export const CrvWhaleAddress = '0x4A65e76bE1b4e8dd6eF618277Fa55200e3F8F20a';
 // ************************* Harvest Contract Addresses *************************
 
 export const ControllerV1Address = '0xD5C5017659Af1E53b48aE9d55b02756342A7d4fF';
+export const DolomiteMarginAddress = '0xb7576f7A382B8f446846EF72FEdB6C3E6D699E7e';
 export const EthPayableVaultProxyAddress = '0xb695801B9D55A7818debF063e1E49D31C2761945';
 export const GovernorAddress = '0xb39710a1309847363b9cBE5085E427cc2cAeE563';
 export const ProfitSharingReceiverV1Address = '0x5F11EfDF4422B548007Cae9919b0b38c35fa6BE7';
@@ -169,7 +172,7 @@ export const UniversalLiquidatorAddress = '0xe5dcf0eB836adb04FF58A472B6924fE941c
 export const VaultV2ImplementationAddress = '0x89D4bcF2d1Ba622dD26830995E8A4aAcCc939F7e';
 export const WethVaultProxyAddress = '0x4e1B3DE0cEe69AaD99f79D7cE10Bf243A7BD3A07';
 
-// ************************* Harvest Contract Addresses *************************
+// ************************* Harvest Contracts *************************
 
 export const EthVaultProxy = new BaseContract(
   EthPayableVaultProxyAddress,
