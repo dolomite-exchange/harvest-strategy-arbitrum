@@ -31,10 +31,25 @@ import "../lib/DolomiteMarginMonetary.sol";
  */
 contract FTokenPriceOracle is IPriceOracle, Ownable {
 
-    IDolomiteMargin public dolomiteMargin;
+    // ========================= Events =========================
 
-    constructor(address _dolomiteMargin) public {
+    event MaxDeviationThresholdSet(uint maxDeviationThreshold);
+
+    // ========================= Fields =========================
+
+
+    IDolomiteMargin public dolomiteMargin;
+    uint public maxDeviationThreshold;
+
+    /**
+     * @param _dolomiteMargin           The instance of DolomiteMargin
+     * @param _maxDeviationThreshold    The max % diff between the pool's value and the contract's reported value where
+     *                                  the geometric mean (more gas cost) is calculated instead of the arithmetic mean
+     *                                  (costs less gas). 1e16 equals 1%. Has 18 decimals.
+     */
+    constructor(address _dolomiteMargin, uint _maxDeviationThreshold) public {
         dolomiteMargin = IDolomiteMargin(_dolomiteMargin);
+        _setMaxDeviationThreshold(_maxDeviationThreshold);
     }
 
     /**
@@ -43,4 +58,21 @@ contract FTokenPriceOracle is IPriceOracle, Ownable {
      */
     function getFTokenParts(address _fToken) public view returns (address[] memory);
 
+
+    function setMaxDeviationThreshold(
+        uint _maxDeviationThreshold
+    ) external onlyOwner {
+        _setMaxDeviationThreshold(_maxDeviationThreshold);
+    }
+
+    // ========================= Internal Functions =========================
+
+    function _setMaxDeviationThreshold(uint _maxDeviationThreshold) internal {
+        require(
+            _maxDeviationThreshold >= 1e16,
+            "max deviation threshold too low"
+        );
+        maxDeviationThreshold = _maxDeviationThreshold;
+        emit MaxDeviationThresholdSet(_maxDeviationThreshold);
+    }
 }

@@ -127,5 +127,12 @@ describe('CrvTriCryptoPriceOracle', () => {
       // the flash loan price diff should be less than priceThreshold
       expect(percentDiff).to.be.lt(OneEth.add(tolerableFlashloanThreshold));
     });
+
+    // TODO
+    it('should work for WBTC flash loan when share price is gt 1', async () => {});
+
+    it('should work for USDT flash loan when share price is gt 1', async () => {});
+
+    it('should work for multiple flash loan when share price is gt 1', async () => {});
   });
 });

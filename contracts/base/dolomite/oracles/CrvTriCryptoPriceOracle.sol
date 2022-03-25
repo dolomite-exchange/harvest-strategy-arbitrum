@@ -44,26 +44,10 @@ contract CrvTriCryptoPriceOracle is FTokenPriceOracle, Constants {
     using SafeMath for uint256;
     using AdvancedMath for uint256;
 
-    uint public maxDeviationThreshold;
-
-    /**
-     * @param _dolomiteMargin           The instance of DolomiteMargin
-     * @param __maxDeviationThreshold   The max % diff between the pool's value and the contract's reported value where
-     *                                  the geometric mean (more gas cost) is calculated instead of the arithmetic mean
-     *                                  (costs less gas). 1e16 equals 1%. Has 18 decimals.
-     */
     constructor(
         address _dolomiteMargin,
-        uint __maxDeviationThreshold
-    ) public FTokenPriceOracle(_dolomiteMargin) {
-        maxDeviationThreshold = __maxDeviationThreshold;
-    }
-
-    function setDeviationThreshold(
         uint _maxDeviationThreshold
-    ) external onlyOwner {
-        maxDeviationThreshold = _maxDeviationThreshold;
-    }
+    ) public FTokenPriceOracle(_dolomiteMargin, _maxDeviationThreshold) {}
 
     function getFTokenParts(address _fToken) public view returns (address[] memory) {
         CrvToken crvToken = CrvToken(IVault(_fToken).underlying());
