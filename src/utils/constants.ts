@@ -148,10 +148,6 @@ export const WETH = new BaseContract(
   IWETH__factory.createInterface(),
 ) as IWETH;
 
-// ************************* General Constants *************************
-
-export const DefaultBlockNumber = 8357000;
-
 // ************************* Network Addresses *************************
 
 export const CrvDistributorAddress = '0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a';
