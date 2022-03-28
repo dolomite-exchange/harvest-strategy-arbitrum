@@ -4,6 +4,8 @@ import { BaseContract, BigNumber, BigNumberish, ContractTransaction, Overrides }
 import { ethers, network } from 'hardhat';
 import {
   ControllerV1,
+  ERC20Detailed,
+  ERC20Detailed__factory,
   IController,
   IController__factory,
   IERC20,
@@ -16,7 +18,9 @@ import {
   IUniversalLiquidator__factory,
   IVault,
   IWETH,
-  PotPool,
+  IPotPool,
+  NonUpgradableProxy,
+  PotPoolV1,
   ProfitSharingReceiverV1,
   RewardForwarderV1,
   Storage,
@@ -33,7 +37,7 @@ import {
 } from '../types';
 import {
   ControllerV1Address,
-  CRV, DefaultBlockNumber,
+  CRV,
   DefaultImplementationDelay,
   GovernorAddress,
   ProfitSharingReceiverV1Address,
@@ -45,6 +49,7 @@ import {
   WBTC,
   WETH,
 } from './constants';
+import { DefaultBlockNumber } from './no-deps-constants';
 import { calculateApr, calculateApy, formatNumber, getLatestTimestamp, impersonate, resetFork } from './utils';
 
 export interface ExistingCoreAddresses {
@@ -63,7 +68,7 @@ export interface StrategyConfig {
   existingVaultAddress: string;
   rewardForwarder: string;
   governance: string;
-  rewardPool: PotPool;
+  rewardPool: IPotPool;
   rewardPoolConfig: Record<string, any>;
   strategyArgs: any[];
   strategyArtifact: any;
@@ -317,6 +322,43 @@ export async function createVault(
   await vaultImplV1.initializeVault(core.storage.address, underlying.address, '995', '1000');
 
   return [vaultProxy, vaultImplV1, vaultImplV2]
+}
+
+type PotPoolType = IPotPool | PotPoolV1
+
+/**
+ * @return  The deployed strategy proxy and the implementation contract at the proxy's address
+ */
+export async function createPotPool<T extends PotPoolType>(
+  implementation: PotPoolType,
+  rewardTokens: string[],
+  lpToken: string,
+  duration: number,
+  rewardDistribution: string[],
+  storage: string,
+): Promise<[NonUpgradableProxy, T]> {
+  const NonUpgradableProxyFactory = await ethers.getContractFactory('NonUpgradableProxy');
+  const potPoolProxy = await NonUpgradableProxyFactory.deploy(implementation.address) as NonUpgradableProxy;
+  const potPoolImpl = new BaseContract(potPoolProxy.address, implementation.interface, potPoolProxy.signer) as T;
+
+  const lpTokenERC20 = new BaseContract(
+    lpToken,
+    ERC20Detailed__factory.createInterface(),
+    potPoolProxy.signer,
+  ) as ERC20Detailed;
+
+  await potPoolImpl.initializePotPool(
+    rewardTokens,
+    lpToken,
+    duration,
+    rewardDistribution,
+    storage,
+    `p${await lpTokenERC20.name()}`,
+    `p${await lpTokenERC20.symbol()}`,
+    await lpTokenERC20.decimals(),
+  );
+
+  return [potPoolProxy, potPoolImpl]
 }
 
 export async function setupWETHBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {

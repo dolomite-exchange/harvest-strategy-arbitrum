@@ -9,7 +9,7 @@
   "scripts": {
     "build": "hardhat compile",
     "clean": "hardhat clean",
-    "deploy": "hardhat --network arbitrum run ./scripts/deploy-1-curve.ts",
+    "deploy:1": "hardhat --network arbitrum run ./scripts/deploy-1-curve.ts",
     "lint": "solhint 'contracts/**/*.sol'",
     "test": "hardhat test",
     "typechain": "hardhat typechain"

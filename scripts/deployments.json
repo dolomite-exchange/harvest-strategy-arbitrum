@@ -1,24 +1,28 @@
 {
   "TwoPoolStrategyMainnet": {
     "42161": {
+      "potPool": "0xdf3d8e9E96468A66fdA65C7DDcAD9F42D340BC03",
       "strategy": "0xEfcF4AB8298010E1E4059F46a054de5e0f89EE52",
       "vault": "0x7FEBd439C00339C377031001048B556C085f100E"
     }
   },
   "EursUsdPoolStrategyMainnet": {
     "42161": {
+      "potPool": "0x9d240F3B7b8D3446E8C74908016dd8E38a866A2a",
       "strategy": "0x85b589ed03bFf4969fB821ECd8a61d3e5DfFc0f2",
       "vault": "0x09C29F5e64636487dD1DD851B994fa0AdE73A1bd"
     }
   },
   "RenWbtcPoolStrategyMainnet": {
     "42161": {
+      "potPool": "0xA387fC22A1680B3B0244a1D5269FCA0078232D86",
       "strategy": "0xECC3CeDA34e3B61Dc6d1d00F69DB1b50d0C62332",
       "vault": "0xBB9864A9bb3341818F061Cce305aa82b0cF5B3A3"
     }
   },
   "TriCryptoStrategyMainnet": {
     "42161": {
+      "potPool": "0xe87BD4EeBb65238809913E93EEbA2CC22Dbd0526",
       "strategy": "0xa603Ee4c897d5C241f22A2541f07415F0d5d0618",
       "vault": "0xcF1F62c17fcd5027d6810D76697F228FE44074FD"
     }

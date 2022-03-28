@@ -16,15 +16,21 @@
 
 */
 
-pragma solidity ^0.5.4;
+pragma solidity ^0.5.16;
 
 
-contract IAssetTransformerInternal {
+import "@openzeppelin/upgrades/contracts/upgradeability/BaseUpgradeabilityProxy.sol";
 
-    // ============ Enums ============
 
-    enum TransformationType {
-        TRANSFORM,
-        REVERT
+contract NonUpgradableProxy is BaseUpgradeabilityProxy {
+
+    constructor(
+        address _implementation
+    ) public {
+        _setImplementation(_implementation);
+    }
+
+    function implementation() external view returns (address) {
+        return _implementation();
     }
 }

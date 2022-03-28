@@ -28,6 +28,8 @@ contract Constants {
     /// @notice Used as governance
     address constant public DEFAULT_MULTI_SIG_ADDRESS = 0xb39710a1309847363b9cBE5085E427cc2cAeE563;
 
+    address constant public REWARD_FORWARDER = 0x26B27e13E38FA8F8e43B8fc3Ff7C601A8aA0D032;
+
     address constant public SUSHI_ROUTER = 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506;
 
     address constant public UNISWAP_V3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
@@ -38,8 +40,7 @@ contract Constants {
 
     address constant public DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
-    // We can set this later once we know the address
-//    address constant public FARM = 0x0000000000000000000000000000000000000000;
+    address constant public aiFARM = 0x9dCA587dc65AC0a043828B0acd946d71eb8D46c1;
 
     address constant public LINK = 0xf97f4df75117a78c1A5a0DBb814Af92458539FB4;
 

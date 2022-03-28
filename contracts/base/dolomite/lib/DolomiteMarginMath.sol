@@ -19,8 +19,6 @@
 pragma solidity ^0.5.7;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-
 import "./Require.sol";
 
 
@@ -31,13 +29,67 @@ import "./Require.sol";
  * Library for non-standard DolomiteMarginMath functions
  */
 library DolomiteMarginMath {
-    using SafeMath for uint256;
+    using DolomiteMarginMath for uint256;
 
     // ============ Constants ============
 
     bytes32 constant FILE = "DolomiteMarginMath";
 
     // ============ Library Functions ============
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        Require.that(c >= a, FILE, "addition overflow");
+
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "subtraction overflow");
+    }
+
+    function sub(uint256 a, uint256 b, bytes32 errorMessage) internal pure returns (uint256) {
+        Require.that(b <= a, FILE, errorMessage);
+        uint256 c = a - b;
+
+        return c;
+    }
+
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        Require.that(c / a == b, FILE, "multiplication overflow");
+
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "division by zero");
+    }
+
+    function div(uint256 a, uint256 b, bytes32 errorMessage) internal pure returns (uint256) {
+        // Solidity only automatically asserts when dividing by 0
+        Require.that(b > 0, FILE, errorMessage);
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return mod(a, b, "modulo by zero");
+    }
+
+    function mod(uint256 a, uint256 b, bytes32 errorMessage) internal pure returns (uint256) {
+        Require.that(b != 0, FILE, errorMessage);
+        return a % b;
+    }
 
     /*
      * Return target * (numerator / denominator).
@@ -67,8 +119,8 @@ library DolomiteMarginMath {
     returns (uint256)
     {
         if (target == 0 || numerator == 0) {
-            // SafeMath will check for zero denominator
-            return SafeMath.div(0, denominator);
+            // `#div` will check for zero denominator
+            return div(0, denominator);
         }
         return target.mul(numerator).sub(1).div(denominator).add(1);
     }

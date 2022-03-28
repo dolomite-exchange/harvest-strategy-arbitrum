@@ -19,7 +19,7 @@ import {
   IUniswapV3Router,
   IUniswapV3Router__factory,
   IWETH,
-  IWETH__factory,
+  IWETH__factory, PotPoolV1, PotPoolV1__factory,
   VaultV2,
   VaultV2__factory, VaultV2Payable, VaultV2Payable__factory,
 } from '../types';
@@ -103,6 +103,11 @@ export const DAI = new BaseContract(
   IERC20__factory.createInterface(),
 ) as IERC20;
 
+export const aiFARM = new BaseContract(
+  '0x9dCA587dc65AC0a043828B0acd946d71eb8D46c1',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
 export const LINK = new BaseContract(
   '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4',
   IERC20__factory.createInterface(),
@@ -158,6 +163,7 @@ export const CrvWhaleAddress = '0x4A65e76bE1b4e8dd6eF618277Fa55200e3F8F20a';
 export const ControllerV1Address = '0xD5C5017659Af1E53b48aE9d55b02756342A7d4fF';
 export const EthPayableVaultProxyAddress = '0xb695801B9D55A7818debF063e1E49D31C2761945';
 export const GovernorAddress = '0xb39710a1309847363b9cBE5085E427cc2cAeE563';
+export const PotPoolV1ImplementationAddress = '0x0A5CA646465D9BAac9e3D535E569Af3C1aB99ba8';
 export const ProfitSharingReceiverV1Address = '0x5F11EfDF4422B548007Cae9919b0b38c35fa6BE7';
 export const RewardForwarderV1Address = '0x26B27e13E38FA8F8e43B8fc3Ff7C601A8aA0D032';
 export const StorageAddress = '0xc1234a98617385D1a4b87274465375409f7E248f';
@@ -171,6 +177,11 @@ export const EthVaultProxy = new BaseContract(
   EthPayableVaultProxyAddress,
   VaultV2Payable__factory.createInterface(),
 ) as VaultV2Payable;
+
+export const PotPoolV1Implementation = new BaseContract(
+  PotPoolV1ImplementationAddress,
+  PotPoolV1__factory.createInterface(),
+) as PotPoolV1;
 
 export const VaultV2Implementation = new BaseContract(
   VaultV2ImplementationAddress,
