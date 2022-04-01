@@ -5,6 +5,8 @@ contract Constants {
 
     // ========================= Pools / Protocols =========================
 
+    address constant internal BALANCER_VAULT = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
+
     address constant internal CRV_EURS_USD_TOKEN = 0x3dFe1324A0ee9d86337d06aEB829dEb4528DB9CA;
 
     address constant internal CRV_EURS_USD_POOL = 0xA827a652Ead76c6B0b3D19dba05452E06e25c27e;
@@ -26,13 +28,21 @@ contract Constants {
     address constant internal CRV_TWO_POOL_GAUGE = 0xbF7E49483881C76487b0989CD7d9A8239B20CA41;
 
     /// @notice Used as governance
-    address constant public DEFAULT_MULTI_SIG_ADDRESS = 0xb39710a1309847363b9cBE5085E427cc2cAeE563;
+    address constant internal DEFAULT_MULTI_SIG_ADDRESS = 0xb39710a1309847363b9cBE5085E427cc2cAeE563;
 
-    address constant public REWARD_FORWARDER = 0x26B27e13E38FA8F8e43B8fc3Ff7C601A8aA0D032;
+    address constant internal REWARD_FORWARDER = 0x26B27e13E38FA8F8e43B8fc3Ff7C601A8aA0D032;
 
-    address constant public SUSHI_ROUTER = 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506;
+    address constant internal STARGATE_REWARD_POOL = 0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176;
 
-    address constant public UNISWAP_V3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address constant internal STARGATE_ROUTER = 0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614;
+
+    address constant internal STARGATE_S_USDC = 0x892785f33CdeE22A30AEF750F285E18c18040c3e;
+
+    address constant internal STARGATE_S_USDT = 0xB6CfcF89a7B22988bfC96632aC2A9D6daB60d641;
+
+    address constant internal SUSHI_ROUTER = 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506;
+
+    address constant internal UNISWAP_V3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
     // ========================= Tokens =========================
 
@@ -44,8 +54,6 @@ contract Constants {
 
     address constant public LINK = 0xf97f4df75117a78c1A5a0DBb814Af92458539FB4;
 
-    address constant public ONE_INCH = 0x0000000000000000000000000000000000000000;
-
     address constant public SUSHI = 0xd4d42F0b6DEF4CE0383636770eF773390d85c61A;
 
     address constant public UNI = 0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0;
@@ -53,6 +61,8 @@ contract Constants {
     address constant public USDC = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
 
     address constant public USDT = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
+
+    address constant public STG = 0x6694340fc020c5E6B96567843da2df01b2CE1eb6;
 
     address constant public WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
 

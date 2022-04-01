@@ -6,14 +6,14 @@ import {
   CRV_TRI_CRYPTO_TOKEN,
   CRV_TWO_POOL_TOKEN,
 } from '../src/utils/constants';
-import { DefaultCoreProtocolSetupConfig, setupCoreProtocol } from '../src/utils/harvest-utils';
+import { CoreProtocolSetupConfigV1, setupCoreProtocol } from '../src/utils/harvest-utils';
 import { deployVaultAndStrategyAndRewardPool, getStrategist } from './deploy-utils';
 
 
 async function main() {
   const strategist = getStrategist();
 
-  const core = await setupCoreProtocol(DefaultCoreProtocolSetupConfig);
+  const core = await setupCoreProtocol(CoreProtocolSetupConfigV1);
   const chainId = (await ethers.provider.getNetwork()).chainId
   await deployVaultAndStrategyAndRewardPool(
     core,

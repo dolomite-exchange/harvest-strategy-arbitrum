@@ -1,5 +1,6 @@
 import { BaseContract } from 'ethers';
 import {
+  IBVault, IBVault__factory,
   ICrvRewardNotifier,
   ICrvRewardNotifier__factory,
   IERC20,
@@ -9,7 +10,7 @@ import {
   IGauge,
   IGauge__factory,
   IRenWbtcPool,
-  IRenWbtcPool__factory,
+  IRenWbtcPool__factory, IStargateFarmingPool, IStargateFarmingPool__factory, IStargateRouter, IStargateRouter__factory,
   ITriCryptoPool,
   ITriCryptoPool__factory,
   ITwoPool,
@@ -25,6 +26,11 @@ import {
 } from '../types';
 
 // ************************* External Contract Addresses *************************
+
+export const BALANCER_VAULT = new BaseContract(
+  '0xBA12222222228d8Ba445958a75a0704d566BF2C8',
+  IBVault__factory.createInterface(),
+) as IBVault;
 
 export const CRV = new BaseContract(
   '0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978',
@@ -113,6 +119,31 @@ export const LINK = new BaseContract(
   IERC20__factory.createInterface(),
 ) as IERC20;
 
+export const STARGATE_REWARD_POOL = new BaseContract(
+  '0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176',
+  IStargateFarmingPool__factory.createInterface(),
+) as IStargateFarmingPool;
+
+export const STARGATE_ROUTER = new BaseContract(
+  '0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614',
+  IStargateRouter__factory.createInterface(),
+) as IStargateRouter;
+
+export const STARGATE_S_USDC = new BaseContract(
+  '0x892785f33CdeE22A30AEF750F285E18c18040c3e',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const STARGATE_S_USDT = new BaseContract(
+  '0xB6CfcF89a7B22988bfC96632aC2A9D6daB60d641',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const STG = new BaseContract(
+  '0x6694340fc020c5E6B96567843da2df01b2CE1eb6',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
 export const SUSHI = new BaseContract(
   '0xd4d42F0b6DEF4CE0383636770eF773390d85c61A',
   IERC20__factory.createInterface(),
@@ -155,8 +186,8 @@ export const WETH = new BaseContract(
 
 // ************************* Network Addresses *************************
 
-export const CrvDistributorAddress = '0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a';
 export const CrvWhaleAddress = '0x4A65e76bE1b4e8dd6eF618277Fa55200e3F8F20a';
+export const StgWhaleAddress = '0x67fc8c432448f9a8d541c17579ef7a142378d5ad';
 
 // ************************* Harvest Contract Addresses *************************
 

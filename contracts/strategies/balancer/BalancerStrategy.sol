@@ -7,12 +7,11 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../../base/interfaces/uniswap/IUniswapV2Router02.sol";
 import "../../base/interfaces/IStrategy.sol";
 import "../../base/interfaces/IVault.sol";
-import "../../base/upgradability/BaseUpgradeableStrategy.sol";
+import "../../base/interfaces/balancer/IBVault.sol";
 import "../../base/interfaces/uniswap/IUniswapV2Pair.sol";
-import "./interfaces/IBVault.sol";
+import "../../base/upgradability/BaseUpgradeableStrategy.sol";
 
 contract BalancerStrategy is IStrategy, BaseUpgradeableStrategy {
-
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 

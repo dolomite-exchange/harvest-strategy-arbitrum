@@ -6,7 +6,7 @@ import {
   IController,
   IProfitSharingReceiver,
   IRewardForwarder,
-  IUniversalLiquidator,
+  IUniversalLiquidatorV1,
   Storage,
   UniversalLiquidatorProxy,
 } from '../../src/types';
@@ -24,7 +24,7 @@ describe('BaseSystem', () => {
   let storage: Storage;
   let profitSharingReceiver: IProfitSharingReceiver;
   let universalLiquidatorProxy: UniversalLiquidatorProxy;
-  let universalLiquidator: IUniversalLiquidator;
+  let universalLiquidator: IUniversalLiquidatorV1;
   let rewardForwarder: IRewardForwarder;
   let controller: IController;
   let implementationDelaySeconds: number;

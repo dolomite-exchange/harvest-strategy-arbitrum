@@ -26,5 +26,19 @@
       "strategy": "0xa603Ee4c897d5C241f22A2541f07415F0d5d0618",
       "vault": "0xcF1F62c17fcd5027d6810D76697F228FE44074FD"
     }
+  },
+  "UsdcStargateStrategyMainnet": {
+    "42161": {
+      "potPool": "0x0Ca13CD8a69e93e459B20cB1dfa7eDd16380340e",
+      "strategy": "0xd6d33AD0504C3767832a96D7e2De088270407E9D",
+      "vault": "0xfC2640ca71B1724B89dc2714E661B0089f8c0EED"
+    }
+  },
+  "UsdtStargateStrategyMainnet": {
+    "42161": {
+      "potPool": "0x9e811366dB4C9FCE0c3F134a944Fe1cab2BA7B5E",
+      "strategy": "0x73FCe9666F2E162Aa7AA99B5F3B0929D2bE28558",
+      "vault": "0x6d8ed5dace7C74e2d83AE09bB29d548c964EEBc5"
+    }
   }
 }
