@@ -1,23 +1,41 @@
-// SPDX-License-Identifier: MIT
+/*
+
+    Copyright 2022 Dolomite.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+*/
+
 pragma solidity ^0.5.16;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/GSN/Context.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20Detailed.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/Math.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/GSN/Context.sol";
 
-import "./inheritance/Controllable.sol";
+import "@openzeppelin/upgrades/contracts/Initializable.sol";
+
+import "./inheritance/ControllableStorage.sol";
 import "./interfaces/IController.sol";
 import "./interfaces/IPotPool.sol";
 
 import "./MultipleRewardDistributionRecipient.sol";
 
-contract PotPool is MultipleRewardDistributionRecipient, Controllable, ERC20, ERC20Detailed, IPotPool {
+contract PotPoolV1 is IPotPool, MultipleRewardDistributionRecipient, ControllableStorage, ERC20, ERC20Detailed {
     using Address for address;
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -27,7 +45,7 @@ contract PotPool is MultipleRewardDistributionRecipient, Controllable, ERC20, ER
 
     mapping(address => uint256) public stakedBalanceOf;
 
-    mapping(address => bool) smartContractStakers;
+    mapping(address => bool) public smartContractStakers;
     address[] public rewardTokens;
     mapping(address => uint256) public periodFinishForToken;
     mapping(address => uint256) public rewardRateForToken;
@@ -66,8 +84,7 @@ contract PotPool is MultipleRewardDistributionRecipient, Controllable, ERC20, ER
         _;
     }
 
-    // [Hardwork] setting the reward, lpToken, duration, and rewardDistribution for each pool
-    constructor(
+    function initializePotPool(
         address[] memory _rewardTokens,
         address _lpToken,
         uint256 _duration,
@@ -78,15 +95,20 @@ contract PotPool is MultipleRewardDistributionRecipient, Controllable, ERC20, ER
         uint8 _decimals
     )
     public
-    ERC20Detailed(_name, _symbol, _decimals)
-    MultipleRewardDistributionRecipient(_rewardDistribution)
-    Controllable(_storage) // only used for referencing the grey list
+    initializer
     {
+        ERC20Detailed.initialize(_name, _symbol, _decimals);
+        MultipleRewardDistributionRecipient.initialize(_rewardDistribution);
+        ControllableStorage.initializeControllable(_storage);
         require(_decimals == ERC20Detailed(_lpToken).decimals(), "decimals has to be aligned with the lpToken");
         require(_rewardTokens.length != 0, "should initialize with at least 1 rewardToken");
         rewardTokens = _rewardTokens;
         lpToken = _lpToken;
         duration = _duration;
+    }
+
+    function getRewardTokens() external view returns (address[] memory) {
+        return rewardTokens;
     }
 
     function lastTimeRewardApplicable(uint256 _index) public view returns (uint256) {

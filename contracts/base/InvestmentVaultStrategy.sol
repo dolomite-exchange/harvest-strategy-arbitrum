@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./inheritance/Controllable.sol";
+import "./interfaces/IPotPool.sol";
 import "./interfaces/IStrategy.sol";
 import "./interfaces/IVault.sol";
-import "./PotPool.sol";
 
 
 /**
@@ -42,7 +42,7 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
     // _vault's underlying is not checked because it is mismatching before migration
     vault = _vault;
     potPool = _potPool;
-    investmentVault = PotPool(potPool).lpToken();
+    investmentVault = IPotPool(potPool).lpToken();
     underlying = IVault(investmentVault).underlying();
   }
 
@@ -51,9 +51,9 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
   }
 
   function withdrawAllToVault() public restricted {
-    uint256 potPoolBalance = PotPool(potPool).balanceOf(address(this));
+    uint256 potPoolBalance = IPotPool(potPool).balanceOf(address(this));
     if(potPoolBalance > 0){
-      PotPool(potPool).exit();
+      IPotPool(potPool).exit();
     }
 
     uint256 vaultBalance = IVault(investmentVault).balanceOf(address(this));
@@ -90,15 +90,15 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
     if(fVaultBalance > 0) {
       IERC20(investmentVault).safeApprove(potPool, 0);
       IERC20(investmentVault).safeApprove(potPool, fVaultBalance);
-      PotPool(potPool).stake(fVaultBalance);
+      IPotPool(potPool).stake(fVaultBalance);
     }
   }
 
   // allows vault to withdraw the reward tokens at any point
   function _claimAndApprove() internal {
-    PotPool(potPool).getAllRewards();
+    IPotPool(potPool).getAllRewards();
     for(uint256 i = 0 ; i < rewardTokensLength(); i = i.add(1)) {
-      address rt = PotPool(potPool).rewardTokens(i);
+      address rt = IPotPool(potPool).rewardTokens(i);
       uint256 rtBalance = IERC20(rt).balanceOf(address(this));
       if( rtBalance > 0 ) {
         IERC20(rt).safeApprove(vault, 0);
@@ -113,17 +113,17 @@ contract InvestmentVaultStrategy is IStrategy, Controllable {
 
   function investedUnderlyingBalance() external view returns (uint256) {
     return IVault(investmentVault).balanceOf(address(this))
-      .add(PotPool(potPool).balanceOf(address(this)))
+      .add(IPotPool(potPool).balanceOf(address(this)))
       .mul(IVault(investmentVault).getPricePerFullShare())
       .div(10 ** uint256(ERC20Detailed(address(underlying)).decimals()))
       .add(IERC20(underlying).balanceOf(address(this)));
   }
 
   function rewardTokensLength() public view returns (uint256) {
-    return PotPool(potPool).rewardTokensLength();
+    return IPotPool(potPool).rewardTokensLength();
   }
 
   function rewardTokens(uint256 i) public view returns(address){
-    return PotPool(potPool).rewardTokens(i);
+    return IPotPool(potPool).rewardTokens(i);
   }
 }

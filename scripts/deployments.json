@@ -1,26 +1,44 @@
 {
   "TwoPoolStrategyMainnet": {
     "42161": {
+      "potPool": "0xdf3d8e9E96468A66fdA65C7DDcAD9F42D340BC03",
       "strategy": "0xEfcF4AB8298010E1E4059F46a054de5e0f89EE52",
       "vault": "0x7FEBd439C00339C377031001048B556C085f100E"
     }
   },
   "EursUsdPoolStrategyMainnet": {
     "42161": {
+      "potPool": "0x9d240F3B7b8D3446E8C74908016dd8E38a866A2a",
       "strategy": "0x85b589ed03bFf4969fB821ECd8a61d3e5DfFc0f2",
       "vault": "0x09C29F5e64636487dD1DD851B994fa0AdE73A1bd"
     }
   },
   "RenWbtcPoolStrategyMainnet": {
     "42161": {
+      "potPool": "0xA387fC22A1680B3B0244a1D5269FCA0078232D86",
       "strategy": "0xECC3CeDA34e3B61Dc6d1d00F69DB1b50d0C62332",
       "vault": "0xBB9864A9bb3341818F061Cce305aa82b0cF5B3A3"
     }
   },
   "TriCryptoStrategyMainnet": {
     "42161": {
+      "potPool": "0xe87BD4EeBb65238809913E93EEbA2CC22Dbd0526",
       "strategy": "0xa603Ee4c897d5C241f22A2541f07415F0d5d0618",
       "vault": "0xcF1F62c17fcd5027d6810D76697F228FE44074FD"
+    }
+  },
+  "UsdcStargateStrategyMainnet": {
+    "42161": {
+      "potPool": "0x0Ca13CD8a69e93e459B20cB1dfa7eDd16380340e",
+      "strategy": "0xd6d33AD0504C3767832a96D7e2De088270407E9D",
+      "vault": "0xfC2640ca71B1724B89dc2714E661B0089f8c0EED"
+    }
+  },
+  "UsdtStargateStrategyMainnet": {
+    "42161": {
+      "potPool": "0x9e811366dB4C9FCE0c3F134a944Fe1cab2BA7B5E",
+      "strategy": "0x73FCe9666F2E162Aa7AA99B5F3B0929D2bE28558",
+      "vault": "0x6d8ed5dace7C74e2d83AE09bB29d548c964EEBc5"
     }
   }
 }

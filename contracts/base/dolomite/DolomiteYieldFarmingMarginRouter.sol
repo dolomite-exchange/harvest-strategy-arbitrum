@@ -19,20 +19,18 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IDolomiteMargin.sol";
+import "./interfaces/ILeveragedPotPool.sol";
 
 import "./lib/DolomiteMarginAccount.sol";
 import "./lib/DolomiteMarginActionsHelper.sol";
 import "./lib/Require.sol";
 
 import "./AssetTransformerInternal.sol";
-import "./LeveragedNoMintPotPool.sol";
 
 contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerInternal {
     using DolomiteMarginActionsHelper for *;
@@ -89,7 +87,7 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
 
         address fToken = IDolomiteAssetTransformer(_transformer).fToken();
         Require.that(
-            fToken == LeveragedNoMintPotPool(_stakingPool).lpToken(),
+            fToken == ILeveragedPotPool(_stakingPool).lpToken(),
             FILE,
             "staking pool fToken mismatch"
         );
@@ -109,7 +107,7 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
         DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
         accounts[0] = DolomiteMarginAccount.Info({
             owner: _stakingPool,
-            number: LeveragedNoMintPotPool(_stakingPool).getAccountNumber(msg.sender, 0)
+            number: ILeveragedPotPool(_stakingPool).getAccountNumber(msg.sender, 0)
         });
 
         IDolomiteMargin _dolomiteMargin = dolomiteMargin; // save gas costs by reading into memory once
@@ -154,7 +152,7 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
         _dolomiteMargin.operate(accounts, actions);
 
         // notify the staking pool of the received tokens that are now being staked
-        LeveragedNoMintPotPool(_stakingPool).notifyStake(msg.sender, 0, fAmountWei);
+        ILeveragedPotPool(_stakingPool).notifyStake(msg.sender, 0, fAmountWei);
     }
 
     /**
@@ -186,19 +184,19 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
 
         address fToken = IDolomiteAssetTransformer(_transformer).fToken();
         Require.that(
-            fToken == LeveragedNoMintPotPool(_stakingPool).lpToken(),
+            fToken == ILeveragedPotPool(_stakingPool).lpToken(),
             FILE,
             "staking pool fToken mismatch"
         );
 
-        LeveragedNoMintPotPool(_stakingPool).notifyWithdraw(msg.sender, 0, _fAmountWei);
+        ILeveragedPotPool(_stakingPool).notifyWithdraw(msg.sender, 0, _fAmountWei);
 
         IDolomiteMargin _dolomiteMargin = dolomiteMargin; // save gas costs
         DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
         {
             accounts[0] = DolomiteMarginAccount.Info({
             owner: _stakingPool,
-            number: LeveragedNoMintPotPool(_stakingPool).getAccountNumber(msg.sender, 0)
+            number: ILeveragedPotPool(_stakingPool).getAccountNumber(msg.sender, 0)
             });
         }
 

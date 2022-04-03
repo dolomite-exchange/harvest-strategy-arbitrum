@@ -19,8 +19,6 @@
 pragma solidity ^0.5.7;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-
 import "./DolomiteMarginMath.sol";
 
 
@@ -106,14 +104,14 @@ library DolomiteMarginTypes {
         Par memory result;
         if (a.sign == b.sign) {
             result.sign = a.sign;
-            result.value = SafeMath.add(a.value, b.value).to128();
+            result.value = DolomiteMarginMath.add(a.value, b.value).to128();
         } else {
             if (a.value >= b.value) {
                 result.sign = a.sign;
-                result.value = SafeMath.sub(a.value, b.value).to128();
+                result.value = DolomiteMarginMath.sub(a.value, b.value).to128();
             } else {
                 result.sign = b.sign;
-                result.value = SafeMath.sub(b.value, a.value).to128();
+                result.value = DolomiteMarginMath.sub(b.value, a.value).to128();
             }
         }
         return result;
@@ -220,14 +218,14 @@ library DolomiteMarginTypes {
         Wei memory result;
         if (a.sign == b.sign) {
             result.sign = a.sign;
-            result.value = SafeMath.add(a.value, b.value);
+            result.value = DolomiteMarginMath.add(a.value, b.value);
         } else {
             if (a.value >= b.value) {
                 result.sign = a.sign;
-                result.value = SafeMath.sub(a.value, b.value);
+                result.value = DolomiteMarginMath.sub(a.value, b.value);
             } else {
                 result.sign = b.sign;
-                result.value = SafeMath.sub(b.value, a.value);
+                result.value = DolomiteMarginMath.sub(b.value, a.value);
             }
         }
         return result;

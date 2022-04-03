@@ -4,13 +4,17 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../interfaces/uniswap/IUniswapV2Router02.sol";
+
+import "../interfaces/IPotPool.sol";
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IVault.sol";
-import "../upgradability/BaseUpgradeableStrategy.sol";
-import "./interfaces/IMasterChef.sol";
+import "../interfaces/uniswap/IUniswapV2Router02.sol";
+
 import "../interfaces/uniswap/IUniswapV2Pair.sol";
-import "../PotPool.sol";
+
+import "../upgradability/BaseUpgradeableStrategy.sol";
+
+import "./interfaces/IMasterChef.sol";
 
 
 contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
@@ -135,7 +139,7 @@ contract MasterChefHodlStrategy is IStrategy, BaseUpgradeableStrategy {
                 IVault(hodlVault()).deposit(remainingReward);
                 uint256 fRewardBalance = IERC20(hodlVault()).balanceOf(address(this));
                 IERC20(hodlVault()).safeTransfer(potPool(), fRewardBalance);
-                PotPool(potPool()).notifyTargetRewardAmount(hodlVault(), fRewardBalance);
+                IPotPool(potPool()).notifyTargetRewardAmount(hodlVault(), fRewardBalance);
             }
         }
     }

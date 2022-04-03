@@ -18,6 +18,8 @@
 
 pragma solidity 0.5.16;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "../base/interfaces/IVault.sol";
 import "../base/interfaces/IPotPool.sol";
 

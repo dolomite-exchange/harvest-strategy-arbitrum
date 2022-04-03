@@ -4,6 +4,8 @@ import { BaseContract, BigNumber, BigNumberish, ContractTransaction, Overrides }
 import { ethers, network } from 'hardhat';
 import {
   ControllerV1,
+  ERC20Detailed,
+  ERC20Detailed__factory,
   IController,
   IController__factory,
   IERC20,
@@ -12,11 +14,13 @@ import {
   IProfitSharingReceiver__factory,
   IRewardForwarder,
   IRewardForwarder__factory,
-  IUniversalLiquidator,
-  IUniversalLiquidator__factory,
+  IUniversalLiquidatorV1,
+  IUniversalLiquidatorV1__factory,
   IVault,
   IWETH,
-  PotPool,
+  IPotPool,
+  NonUpgradableProxy,
+  PotPoolV1,
   ProfitSharingReceiverV1,
   RewardForwarderV1,
   Storage,
@@ -33,18 +37,18 @@ import {
 } from '../types';
 import {
   ControllerV1Address,
-  CRV, DefaultBlockNumber,
   DefaultImplementationDelay,
   GovernorAddress,
   ProfitSharingReceiverV1Address,
   RewardForwarderV1Address,
   StorageAddress,
   UniversalLiquidatorAddress,
-  USDC,
+  USDC, USDT,
   VaultV2ImplementationAddress,
   WBTC,
   WETH,
 } from './constants';
+import { BlockNumberV1, DefaultBlockNumber } from './no-deps-constants';
 import { calculateApr, calculateApy, formatNumber, getLatestTimestamp, impersonate, resetFork } from './utils';
 
 export interface ExistingCoreAddresses {
@@ -63,7 +67,7 @@ export interface StrategyConfig {
   existingVaultAddress: string;
   rewardForwarder: string;
   governance: string;
-  rewardPool: PotPool;
+  rewardPool: IPotPool;
   rewardPoolConfig: Record<string, any>;
   strategyArgs: any[];
   strategyArtifact: any;
@@ -88,7 +92,20 @@ export interface CoreProtocolSetupConfig {
   strategyConfig?: StrategyConfig;
 }
 
-export const DefaultCoreProtocolSetupConfig: CoreProtocolSetupConfig = {
+export const CoreProtocolSetupConfigV1: CoreProtocolSetupConfig = {
+  blockNumber: BlockNumberV1,
+  existingCoreAddresses: {
+    governanceAddress: GovernorAddress,
+    profitSharingReceiverAddress: ProfitSharingReceiverV1Address,
+    controllerAddress: ControllerV1Address,
+    rewardForwarderAddress: RewardForwarderV1Address,
+    storageAddress: StorageAddress,
+    universalLiquidatorAddress: UniversalLiquidatorAddress,
+    vaultImplementation: VaultV2ImplementationAddress,
+  },
+}
+
+export const CoreProtocolSetupConfigV2: CoreProtocolSetupConfig = {
   blockNumber: DefaultBlockNumber,
   existingCoreAddresses: {
     governanceAddress: GovernorAddress,
@@ -121,11 +138,11 @@ export interface CoreProtocol {
   rewardForwarder: IRewardForwarder;
   storage: Storage;
   universalLiquidatorProxy: UniversalLiquidatorProxy;
-  universalLiquidator: IUniversalLiquidator;
+  universalLiquidator: IUniversalLiquidatorV1;
 }
 
 export async function setupCoreProtocol(
-  config: CoreProtocolSetupConfig = DefaultCoreProtocolSetupConfig,
+  config: CoreProtocolSetupConfig = CoreProtocolSetupConfigV1,
 ): Promise<CoreProtocol> {
   if (network.name === 'hardhat') {
     await resetFork(config.blockNumber);
@@ -136,7 +153,7 @@ export async function setupCoreProtocol(
   const [hhUser1, hhUser2, hhUser3, hhUser4, hhUser5, strategist] = await ethers.getSigners();
   let governance: SignerWithAddress;
   let profitSharingReceiver: IProfitSharingReceiver;
-  let universalLiquidator: IUniversalLiquidator;
+  let universalLiquidator: IUniversalLiquidatorV1;
   let universalLiquidatorProxy: UniversalLiquidatorProxy;
   let rewardForwarder: IRewardForwarder;
   let controller: IController;
@@ -177,9 +194,9 @@ export async function setupCoreProtocol(
 
     universalLiquidator = new BaseContract(
       config.existingCoreAddresses.universalLiquidatorAddress,
-      IUniversalLiquidator__factory.createInterface(),
+      IUniversalLiquidatorV1__factory.createInterface(),
       governance,
-    ) as IUniversalLiquidator;
+    ) as IUniversalLiquidatorV1;
 
     universalLiquidatorProxy = new BaseContract(
       config.existingCoreAddresses.universalLiquidatorAddress,
@@ -207,9 +224,9 @@ export async function setupCoreProtocol(
 
     universalLiquidator = new BaseContract(
       universalLiquidatorProxy.address,
-      IUniversalLiquidator__factory.createInterface(),
+      IUniversalLiquidatorV1__factory.createInterface(),
       governance,
-    ) as IUniversalLiquidator;
+    ) as IUniversalLiquidatorV1;
     await universalLiquidator.connect(governance).initializeUniversalLiquidator(storage.address);
 
     const RewardForwarderV1Factory = await ethers.getContractFactory('RewardForwarderV1');
@@ -319,6 +336,43 @@ export async function createVault(
   return [vaultProxy, vaultImplV1, vaultImplV2]
 }
 
+type PotPoolType = IPotPool | PotPoolV1
+
+/**
+ * @return  The deployed strategy proxy and the implementation contract at the proxy's address
+ */
+export async function createPotPool<T extends PotPoolType>(
+  implementation: PotPoolType,
+  rewardTokens: string[],
+  lpToken: string,
+  duration: number,
+  rewardDistribution: string[],
+  storage: string,
+): Promise<[NonUpgradableProxy, T]> {
+  const NonUpgradableProxyFactory = await ethers.getContractFactory('NonUpgradableProxy');
+  const potPoolProxy = await NonUpgradableProxyFactory.deploy(implementation.address) as NonUpgradableProxy;
+  const potPoolImpl = new BaseContract(potPoolProxy.address, implementation.interface, potPoolProxy.signer) as T;
+
+  const lpTokenERC20 = new BaseContract(
+    lpToken,
+    ERC20Detailed__factory.createInterface(),
+    potPoolProxy.signer,
+  ) as ERC20Detailed;
+
+  await potPoolImpl.initializePotPool(
+    rewardTokens,
+    lpToken,
+    duration,
+    rewardDistribution,
+    storage,
+    `p${await lpTokenERC20.name()}`,
+    `p${await lpTokenERC20.symbol()}`,
+    await lpTokenERC20.decimals(),
+  );
+
+  return [potPoolProxy, potPoolImpl]
+}
+
 export async function setupWETHBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
   await WETH.connect(signer).deposit({ value: amount });
   await WETH.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
@@ -328,6 +382,12 @@ export async function setupUSDCBalance(signer: SignerWithAddress, amount: BigNum
   const whaleSigner = await impersonate('0xCe2CC46682E9C6D5f174aF598fb4931a9c0bE68e');
   await USDC.connect(whaleSigner).transfer(signer.address, amount);
   await USDC.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
+}
+
+export async function setupUSDTBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
+  const whaleSigner = await impersonate('0xf89d7b9c864f589bbF53a82105107622B35EaA40');
+  await USDT.connect(whaleSigner).transfer(signer.address, amount);
+  await USDT.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
 }
 
 export async function setupWBTCBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
@@ -372,7 +432,7 @@ export async function getReceivedAmountBeforeHardWork(
   tokenIn: RewardToken,
   rewardAmount: BigNumberish,
 ): Promise<BigNumber> {
-  await CRV.connect(user).approve(core.universalLiquidator.address, ethers.constants.MaxUint256);
+  await tokenIn.connect(user).approve(core.universalLiquidator.address, ethers.constants.MaxUint256);
   return core.universalLiquidator.connect(user).callStatic.swapTokens(
     tokenIn.address,
     core.controllerParams.targetToken.address,
@@ -387,13 +447,15 @@ export async function doHardWork(
   vault: IVault | VaultV1 | VaultV2,
   strategyProxy: StrategyProxy,
 ): Promise<ContractTransaction> {
+  const vaultERC20 = new BaseContract(vault.address, VaultV1__factory.createInterface(), vault.signer) as VaultV1;
+  const hint = ethers.BigNumber.from('10').pow(await vaultERC20.decimals());
   const result = await core.controller.connect(core.governance).doHardWork(
     vault.address,
-    ethers.constants.WeiPerEther,
+    hint,
     '101',
     '100',
   );
-  await checkSharePriceLogChange(vault, core, result, strategyProxy)
+  await checkSharePriceLogChange(vault, core, result, strategyProxy, hint)
 
   return result;
 }
@@ -442,11 +504,11 @@ export function logYieldData(
   const apr = calculateApr(lpBalance2, lpBalance1, waitDurationSeconds);
   const apy = calculateApy(lpBalance2, lpBalance1, waitDurationSeconds);
 
-  console.log(`\t${strategyName} LP-CRV Before`, lpBalance1.toString(), `(${formatNumber(lpBalance1)})`);
-  console.log(`\t${strategyName} LP-CRV After`, lpBalance2.toString(), `(${formatNumber(lpBalance2)})`);
-  console.log(`\t${strategyName} LP-CRV Earned`, balanceDelta.toString(), `(${formatNumber(balanceDelta)})`);
-  console.log(`\t${strategyName} LP-CRV APR`, `${formatNumber(apr.mul(100))}%`);
-  console.log(`\t${strategyName} LP-CRV APY`, `${formatNumber(apy.mul(100))}%`);
+  console.log(`\t${strategyName} Underlying Before`, lpBalance1.toString(), `(${formatNumber(lpBalance1)})`);
+  console.log(`\t${strategyName} Underlying After`, lpBalance2.toString(), `(${formatNumber(lpBalance2)})`);
+  console.log(`\t${strategyName} Underlying Earned`, balanceDelta.toString(), `(${formatNumber(balanceDelta)})`);
+  console.log(`\t${strategyName} Underlying APR`, `${formatNumber(apr.mul(100))}%`);
+  console.log(`\t${strategyName} Underlying APY`, `${formatNumber(apy.mul(100))}%`);
 }
 
 export async function checkSharePriceLogChange(
@@ -454,12 +516,13 @@ export async function checkSharePriceLogChange(
   core: CoreProtocol,
   result: ContractTransaction,
   strategyProxy: StrategyProxy,
+  hint: BigNumberish,
 ) {
   const priceFullShare = await vault.getPricePerFullShare();
   const latestTimestamp = await getLatestTimestamp();
 
   await expect(result).to.emit(core.controller, 'SharePriceChangeLog')
-    .withArgs(vault.address, strategyProxy.address, '1000000000000000000', priceFullShare, latestTimestamp);
-  expect(priceFullShare).to.be.gt('1000000000000000000');
+    .withArgs(vault.address, strategyProxy.address, hint, priceFullShare, latestTimestamp);
+  expect(priceFullShare).to.be.gt(hint);
 }
 

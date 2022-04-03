@@ -9,7 +9,7 @@ import "./inheritance/Governable.sol";
 import "./interfaces/IRewardForwarder.sol";
 import "./interfaces/IProfitSharingReceiver.sol";
 import "./interfaces/IStrategy.sol";
-import "./interfaces/IUniversalLiquidator.sol";
+import "./interfaces/IUniversalLiquidatorV1.sol";
 import "./interfaces/uniswap/IUniswapV2Router02.sol";
 import "./inheritance/Controllable.sol";
 import "./inheritance/Constants.sol";
@@ -92,7 +92,7 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
         uint amountOutMin = 1;
 
         if (_strategistFee > 0) {
-            IUniversalLiquidator(liquidator).swapTokens(
+            IUniversalLiquidatorV1(liquidator).swapTokens(
                 _token,
                 _targetToken,
                 _strategistFee,
@@ -101,7 +101,7 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
             );
         }
         if (_platformFee > 0) {
-            IUniversalLiquidator(liquidator).swapTokens(
+            IUniversalLiquidatorV1(liquidator).swapTokens(
                 _token,
                 _targetToken,
                 _platformFee,
@@ -110,7 +110,7 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
             );
         }
         if (_profitSharingFee > 0) {
-            IUniversalLiquidator(liquidator).swapTokens(
+            IUniversalLiquidatorV1(liquidator).swapTokens(
                 _token,
                 _targetToken,
                 _profitSharingFee,
@@ -122,7 +122,7 @@ contract RewardForwarderV1 is IRewardForwarder, Controllable, Constants {
         uint[] memory amounts = new uint[](_buybackTokens.length);
         for (uint i = 0; i < amounts.length; ++i) {
             if (_buybackAmounts[i] > 0) {
-                amounts[i] = IUniversalLiquidator(liquidator).swapTokens(
+                amounts[i] = IUniversalLiquidatorV1(liquidator).swapTokens(
                     _token,
                     _buybackTokens[i],
                     _buybackAmounts[i],
