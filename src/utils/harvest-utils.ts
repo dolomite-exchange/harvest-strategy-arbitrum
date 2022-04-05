@@ -331,7 +331,7 @@ export async function createVault(
     vaultProxy.signer,
   ) as VaultV2;
 
-  await vaultImplV1.initializeVault(core.storage.address, underlying.address, '995', '1000');
+  await vaultImplV1.initializeVault(core.storage.address, underlying.address, '990', '1000');
 
   return [vaultProxy, vaultImplV1, vaultImplV2]
 }
