@@ -88,7 +88,7 @@ describe(strategyName, () => {
       await vaultV1.connect(core.governance).rebalance(); // move funds to the strategy
       await strategyMainnet.connect(core.governance).enterRewardPool(); // deposit strategy funds into CRV
 
-      const lpBalanceAfterFees = lpBalance1.mul('995').div('1000');
+      const lpBalanceAfterFees = lpBalance1.mul('990').div('1000');
       expect(await gauge.balanceOf(strategyProxy.address)).to.eq(lpBalanceAfterFees);
 
       expect(await strategyMainnet.callStatic.getRewardPoolValues()).to.eql([ethers.constants.Zero]);
@@ -103,13 +103,13 @@ describe(strategyName, () => {
 
       const lpBalance2 = await vaultV1.underlyingBalanceWithInvestment();
 
-      const amountHeldInVault = lpBalance1.sub(lpBalance1.mul('995').div('1000'));
+      const amountHeldInVault = lpBalance1.sub(lpBalance1.mul('990').div('1000'));
       expect(await gauge.balanceOf(strategyProxy.address)).to.eq(lpBalance2.sub(amountHeldInVault));
 
       logYieldData(strategyName, lpBalance1, lpBalance2, waitDurationSeconds);
 
-      const expectedApr = ethers.BigNumber.from('72500000000000000'); // 7.25%
-      const expectedApy = ethers.BigNumber.from('75000000000000000'); // 7.50%
+      const expectedApr = ethers.BigNumber.from('72000000000000000'); // 7.20%
+      const expectedApy = ethers.BigNumber.from('74500000000000000'); // 7.45%
 
       expect(lpBalance2).to.be.gt(lpBalance1);
       expect(calculateApr(lpBalance2, lpBalance1, waitDurationSeconds)).to.be.gt(expectedApr);

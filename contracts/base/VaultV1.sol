@@ -378,18 +378,12 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         assets = _shares.mul(calculatedSharePrice).div(underlyingUnit());
 
         if (assets > underlyingBalanceInVault()) {
-            // withdraw everything from the strategy to accurately check the share value
-            if (_shares == totalShareSupply) {
-                IStrategy(strategy()).withdrawAllToVault();
-                assets = underlyingBalanceInVault();
-            } else {
-                uint256 missing = assets.sub(underlyingBalanceInVault());
-                IStrategy(strategy()).withdrawToVault(missing);
-            }
+            uint256 missing = assets.sub(underlyingBalanceInVault());
+            IStrategy(strategy()).withdrawToVault(missing);
 
-            // recalculate to improve accuracy
+            // recalculate to improve accuracy (in case of truncation or rounding issues upon withdrawing)
             assets = Math.min(
-                underlyingBalanceWithInvestment().mul(_shares).div(totalSupply()),
+                _shares.mul(underlyingBalanceWithInvestment()).div(totalShareSupply),
                 underlyingBalanceInVault()
             );
         }

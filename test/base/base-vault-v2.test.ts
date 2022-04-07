@@ -64,7 +64,7 @@ describe('VaultV2', () => {
       expect(await vaultV2.strategy()).to.eq(strategy.address);
       expect(await vaultV2.underlying()).to.eq(WETH.address);
       expect(await vaultV2.underlyingUnit()).to.eq(ethers.constants.WeiPerEther);
-      expect(await vaultV2.vaultFractionToInvestNumerator()).to.eq('995');
+      expect(await vaultV2.vaultFractionToInvestNumerator()).to.eq('990');
       expect(await vaultV2.vaultFractionToInvestDenominator()).to.eq('1000');
       expect(await vaultV2.nextImplementation()).to.eq(ethers.constants.AddressZero);
       expect(await vaultV2.nextImplementationTimestamp()).to.eq('0');
