@@ -199,7 +199,7 @@ export const ProfitSharingReceiverV1Address = '0x5F11EfDF4422B548007Cae9919b0b38
 export const RewardForwarderV1Address = '0x26B27e13E38FA8F8e43B8fc3Ff7C601A8aA0D032';
 export const StorageAddress = '0xc1234a98617385D1a4b87274465375409f7E248f';
 export const UniversalLiquidatorAddress = '0xe5dcf0eB836adb04FF58A472B6924fE941c4Fe76';
-export const VaultV2ImplementationAddress = '0x89D4bcF2d1Ba622dD26830995E8A4aAcCc939F7e';
+export const VaultV2ImplementationAddress = '0x3b0B4CeFd850827A6316987a245987B57E543D5f';
 export const WethVaultProxyAddress = '0x4e1B3DE0cEe69AaD99f79D7cE10Bf243A7BD3A07';
 
 // ************************* Harvest Contract Addresses *************************
