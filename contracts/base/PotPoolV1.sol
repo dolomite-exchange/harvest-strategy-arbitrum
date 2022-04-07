@@ -19,12 +19,11 @@
 pragma solidity ^0.5.16;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/Math.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/GSN/Context.sol";
 
 import "@openzeppelin/upgrades/contracts/Initializable.sol";
@@ -35,13 +34,14 @@ import "./interfaces/IPotPool.sol";
 
 import "./MultipleRewardDistributionRecipient.sol";
 
-contract PotPoolV1 is IPotPool, MultipleRewardDistributionRecipient, ControllableStorage, ERC20, ERC20Detailed {
+contract PotPoolV1 is IPotPool, MultipleRewardDistributionRecipient, ControllableStorage, ReentrancyGuard {
     using Address for address;
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     address public lpToken;
     uint256 public duration; // making it not a constant is less gas efficient, but portable
+    uint256 public totalSupply;
 
     mapping(address => uint256) public stakedBalanceOf;
 
@@ -74,7 +74,7 @@ contract PotPoolV1 is IPotPool, MultipleRewardDistributionRecipient, Controllabl
         _;
     }
 
-    modifier updateReward(address _user, address _rewardToken){
+    modifier updateReward(address _user, address _rewardToken) {
         rewardPerTokenStoredForToken[_rewardToken] = rewardPerToken(_rewardToken);
         lastUpdateTimeForToken[_rewardToken] = lastTimeRewardApplicable(_rewardToken);
         if (_user != address(0)) {
@@ -84,23 +84,22 @@ contract PotPoolV1 is IPotPool, MultipleRewardDistributionRecipient, Controllabl
         _;
     }
 
+    constructor() public {
+    }
+
     function initializePotPool(
         address[] memory _rewardTokens,
         address _lpToken,
         uint256 _duration,
         address[] memory _rewardDistribution,
-        address _storage,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals
+        address _storage
     )
     public
     initializer
     {
-        ERC20Detailed.initialize(_name, _symbol, _decimals);
+        ReentrancyGuard.initialize();
         MultipleRewardDistributionRecipient.initialize(_rewardDistribution);
         ControllableStorage.initializeControllable(_storage);
-        require(_decimals == ERC20Detailed(_lpToken).decimals(), "decimals has to be aligned with the lpToken");
         require(_rewardTokens.length != 0, "should initialize with at least 1 rewardToken");
         rewardTokens = _rewardTokens;
         lpToken = _lpToken;
@@ -119,25 +118,21 @@ contract PotPoolV1 is IPotPool, MultipleRewardDistributionRecipient, Controllabl
         return Math.min(block.timestamp, periodFinishForToken[_rewardToken]);
     }
 
-    function lastTimeRewardApplicable() public view returns (uint256) {
-        return lastTimeRewardApplicable(rewardTokens[0]);
-    }
-
     function rewardPerToken(uint256 _index) public view returns (uint256) {
         return rewardPerToken(rewardTokens[_index]);
     }
 
     function rewardPerToken(address _rewardToken) public view returns (uint256) {
-        if (totalSupply() == 0) {
+        if (totalSupply == 0) {
             return rewardPerTokenStoredForToken[_rewardToken];
         }
         return
         rewardPerTokenStoredForToken[_rewardToken].add(
             lastTimeRewardApplicable(_rewardToken)
-            .sub(lastUpdateTimeForToken[_rewardToken])
-            .mul(rewardRateForToken[_rewardToken])
-            .mul(1e18)
-            .div(totalSupply())
+                .sub(lastUpdateTimeForToken[_rewardToken])
+                .mul(rewardRateForToken[_rewardToken])
+                .mul(1e18)
+                .div(totalSupply)
         );
     }
 
@@ -145,38 +140,33 @@ contract PotPoolV1 is IPotPool, MultipleRewardDistributionRecipient, Controllabl
         return earned(rewardTokens[_index], _user);
     }
 
-    function earned(address _user) public view returns (uint256) {
-        return earned(rewardTokens[0], _user);
-    }
-
     function earned(address _rewardToken, address _user) public view returns (uint256) {
-        return
-        stakedBalanceOf[_user]
-        .mul(rewardPerToken(_rewardToken).sub(userRewardPerTokenPaidForToken[_rewardToken][_user]))
-        .div(1e18)
-        .add(rewardsForToken[_rewardToken][_user]);
+        return stakedBalanceOf[_user]
+            .mul(rewardPerToken(_rewardToken).sub(userRewardPerTokenPaidForToken[_rewardToken][_user]))
+            .div(1e18)
+            .add(rewardsForToken[_rewardToken][_user]);
     }
 
-    function stake(uint256 _amount) public updateRewards(msg.sender) {
+    function stake(uint256 _amount) public nonReentrant updateRewards(msg.sender) {
         require(_amount > 0, "Cannot stake 0");
         recordSmartContract();
-        super._mint(msg.sender, _amount);
         // ERC20 is used as a staking receipt
         stakedBalanceOf[msg.sender] = stakedBalanceOf[msg.sender].add(_amount);
+        totalSupply = totalSupply.add(_amount);
         IERC20(lpToken).safeTransferFrom(msg.sender, address(this), _amount);
         emit Staked(msg.sender, _amount);
     }
 
-    function withdraw(uint256 _amount) public updateRewards(msg.sender) {
+    function withdraw(uint256 _amount) public nonReentrant updateRewards(msg.sender) {
         require(_amount > 0, "Cannot withdraw 0");
-        super._burn(msg.sender, _amount);
         stakedBalanceOf[msg.sender] = stakedBalanceOf[msg.sender].sub(_amount);
+        totalSupply = totalSupply.sub(_amount);
         IERC20(lpToken).safeTransfer(msg.sender, _amount);
         emit Withdrawn(msg.sender, _amount);
     }
 
     function exit() external {
-        withdraw(Math.min(stakedBalanceOf[msg.sender], balanceOf(msg.sender)));
+        withdraw(stakedBalanceOf[msg.sender]);
         getAllRewards();
     }
 
@@ -206,22 +196,17 @@ contract PotPoolV1 is IPotPool, MultipleRewardDistributionRecipient, Controllabl
     function getAllRewards() public updateRewards(msg.sender) {
         recordSmartContract();
         bool rewardPayout = (!smartContractStakers[msg.sender] || !IController(controller()).greyList(msg.sender));
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
+        uint rewardTokensLength = rewardTokens.length;
+        for (uint256 i = 0; i < rewardTokensLength; i++) {
             _getRewardAction(rewardTokens[i], rewardPayout);
         }
     }
 
     function getReward(address _rewardToken) public updateReward(msg.sender, _rewardToken) {
         recordSmartContract();
-        _getRewardAction(
-            _rewardToken,
         // don't payout if it is a grey listed smart contract
-            (!smartContractStakers[msg.sender] || !IController(controller()).greyList(msg.sender))
-        );
-    }
-
-    function getReward() public {
-        getReward(rewardTokens[0]);
+        bool rewardPayout = !smartContractStakers[msg.sender] || !IController(controller()).greyList(msg.sender);
+        _getRewardAction(_rewardToken, rewardPayout);
     }
 
     function _getRewardAction(address _rewardToken, bool _shouldRewardPayout) internal {

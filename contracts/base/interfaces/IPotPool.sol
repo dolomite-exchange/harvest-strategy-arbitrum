@@ -26,10 +26,7 @@ interface IPotPool {
         address _lpToken,
         uint256 _duration,
         address[] calldata _rewardDistribution,
-        address _storage,
-        string calldata _name,
-        string calldata _symbol,
-        uint8 _decimals
+        address _storage
     ) external;
 
     function lpToken() external view returns (address);
@@ -88,6 +85,4 @@ interface IPotPool {
     function notifyTargetRewardAmount(address _rewardToken, uint256 _reward) external;
 
     function rewardTokensLength() external view returns (uint256);
-
-    function balanceOf(address _user) external view returns (uint256);
 }

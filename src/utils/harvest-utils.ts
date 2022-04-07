@@ -353,21 +353,12 @@ export async function createPotPool<T extends PotPoolType>(
   const potPoolProxy = await NonUpgradableProxyFactory.deploy(implementation.address) as NonUpgradableProxy;
   const potPoolImpl = new BaseContract(potPoolProxy.address, implementation.interface, potPoolProxy.signer) as T;
 
-  const lpTokenERC20 = new BaseContract(
-    lpToken,
-    ERC20Detailed__factory.createInterface(),
-    potPoolProxy.signer,
-  ) as ERC20Detailed;
-
   await potPoolImpl.initializePotPool(
     rewardTokens,
     lpToken,
     duration,
     rewardDistribution,
     storage,
-    `p${await lpTokenERC20.name()}`,
-    `p${await lpTokenERC20.symbol()}`,
-    await lpTokenERC20.decimals(),
   );
 
   return [potPoolProxy, potPoolImpl]

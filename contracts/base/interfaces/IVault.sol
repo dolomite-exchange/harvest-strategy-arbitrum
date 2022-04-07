@@ -47,7 +47,7 @@ interface IVault {
      * The total amount available to be deposited from this vault into the strategy, while adhering to the
      * `vaultFractionToInvestNumerator` and `vaultFractionToInvestDenominator` rules
      */
-    function availableToInvestOut() public view returns (uint256);
+    function availableToInvestOut() external view returns (uint256);
 
     /**
      * This should be callable only by the controller (by the hard worker) or by governance
