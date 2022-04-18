@@ -44,6 +44,12 @@ interface IVault {
     function underlyingBalanceWithInvestmentForHolder(address _holder) view external returns (uint256);
 
     /**
+     * The total amount available to be deposited from this vault into the strategy, while adhering to the
+     * `vaultFractionToInvestNumerator` and `vaultFractionToInvestDenominator` rules
+     */
+    function availableToInvestOut() external view returns (uint256);
+
+    /**
      * This should be callable only by the controller (by the hard worker) or by governance
      */
     function doHardWork() external;

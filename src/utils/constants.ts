@@ -1,5 +1,6 @@
 import { BaseContract, ethers } from 'ethers';
 import {
+  IBVault, IBVault__factory,
   ICrvRewardNotifier,
   ICrvRewardNotifier__factory,
   IERC20,
@@ -9,7 +10,7 @@ import {
   IGauge,
   IGauge__factory,
   IRenWbtcPool,
-  IRenWbtcPool__factory,
+  IRenWbtcPool__factory, IStargateFarmingPool, IStargateFarmingPool__factory, IStargateRouter, IStargateRouter__factory,
   ITriCryptoPool,
   ITriCryptoPool__factory,
   ITwoPool,
@@ -19,7 +20,7 @@ import {
   IUniswapV3Router,
   IUniswapV3Router__factory,
   IWETH,
-  IWETH__factory,
+  IWETH__factory, PotPoolV1, PotPoolV1__factory,
   VaultV2,
   VaultV2__factory,
   VaultV2Payable,
@@ -27,6 +28,11 @@ import {
 } from '../types';
 
 // ************************* External Contract Addresses *************************
+
+export const BALANCER_VAULT = new BaseContract(
+  '0xBA12222222228d8Ba445958a75a0704d566BF2C8',
+  IBVault__factory.createInterface(),
+) as IBVault;
 
 export const CRV = new BaseContract(
   '0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978',
@@ -105,8 +111,38 @@ export const DAI = new BaseContract(
   IERC20__factory.createInterface(),
 ) as IERC20;
 
+export const aiFARM = new BaseContract(
+  '0x9dCA587dc65AC0a043828B0acd946d71eb8D46c1',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
 export const LINK = new BaseContract(
   '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const STARGATE_REWARD_POOL = new BaseContract(
+  '0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176',
+  IStargateFarmingPool__factory.createInterface(),
+) as IStargateFarmingPool;
+
+export const STARGATE_ROUTER = new BaseContract(
+  '0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614',
+  IStargateRouter__factory.createInterface(),
+) as IStargateRouter;
+
+export const STARGATE_S_USDC = new BaseContract(
+  '0x892785f33CdeE22A30AEF750F285E18c18040c3e',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const STARGATE_S_USDT = new BaseContract(
+  '0xB6CfcF89a7B22988bfC96632aC2A9D6daB60d641',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const STG = new BaseContract(
+  '0x6694340fc020c5E6B96567843da2df01b2CE1eb6',
   IERC20__factory.createInterface(),
 ) as IERC20;
 
@@ -156,8 +192,8 @@ export const OneEth = ethers.BigNumber.from('1000000000000000000');
 
 // ************************* Network Addresses *************************
 
-export const CrvDistributorAddress = '0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a';
 export const CrvWhaleAddress = '0x4A65e76bE1b4e8dd6eF618277Fa55200e3F8F20a';
+export const StgWhaleAddress = '0x67fc8c432448f9a8d541c17579ef7a142378d5ad';
 
 // ************************* Harvest Contract Addresses *************************
 
@@ -165,11 +201,12 @@ export const ControllerV1Address = '0xD5C5017659Af1E53b48aE9d55b02756342A7d4fF';
 export const DolomiteMarginAddress = '0xb7576f7A382B8f446846EF72FEdB6C3E6D699E7e';
 export const EthPayableVaultProxyAddress = '0xb695801B9D55A7818debF063e1E49D31C2761945';
 export const GovernorAddress = '0xb39710a1309847363b9cBE5085E427cc2cAeE563';
+export const PotPoolV1ImplementationAddress = '0x247de9A108639278Eb0348baf15178593921d73f';
 export const ProfitSharingReceiverV1Address = '0x5F11EfDF4422B548007Cae9919b0b38c35fa6BE7';
 export const RewardForwarderV1Address = '0x26B27e13E38FA8F8e43B8fc3Ff7C601A8aA0D032';
 export const StorageAddress = '0xc1234a98617385D1a4b87274465375409f7E248f';
 export const UniversalLiquidatorAddress = '0xe5dcf0eB836adb04FF58A472B6924fE941c4Fe76';
-export const VaultV2ImplementationAddress = '0x89D4bcF2d1Ba622dD26830995E8A4aAcCc939F7e';
+export const VaultV2ImplementationAddress = '0x3b0B4CeFd850827A6316987a245987B57E543D5f';
 export const WethVaultProxyAddress = '0x4e1B3DE0cEe69AaD99f79D7cE10Bf243A7BD3A07';
 
 // ************************* Harvest Contracts *************************
@@ -178,6 +215,11 @@ export const EthVaultProxy = new BaseContract(
   EthPayableVaultProxyAddress,
   VaultV2Payable__factory.createInterface(),
 ) as VaultV2Payable;
+
+export const PotPoolV1Implementation = new BaseContract(
+  PotPoolV1ImplementationAddress,
+  PotPoolV1__factory.createInterface(),
+) as PotPoolV1;
 
 export const VaultV2Implementation = new BaseContract(
   VaultV2ImplementationAddress,

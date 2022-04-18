@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "./DolomiteMarginTypes.sol";
 
+
 library DolomiteMarginAccount {
 
     // ============ Enums ============

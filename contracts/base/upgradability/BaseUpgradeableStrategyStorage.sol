@@ -277,6 +277,7 @@ contract BaseUpgradeableStrategyStorage is IUpgradeSource, ControllableInit {
         }
     }
 
+
     function getUint256Array(bytes32 slot) internal view returns (uint[] memory values) {
         // solhint-disable-next-line no-inline-assembly
         values = new uint[](getUint256(slot));

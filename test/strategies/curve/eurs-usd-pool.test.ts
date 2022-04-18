@@ -16,7 +16,7 @@ import {
   CoreProtocol,
   createStrategy,
   createVault,
-  DefaultCoreProtocolSetupConfig,
+  CoreProtocolSetupConfigV1,
   depositIntoVault,
   doHardWork,
   getReceivedAmountBeforeHardWork,
@@ -41,7 +41,7 @@ describe(strategyName, () => {
   let snapshotId: string;
 
   before(async () => {
-    core = await setupCoreProtocol(DefaultCoreProtocolSetupConfig);
+    core = await setupCoreProtocol(CoreProtocolSetupConfigV1);
     [strategyProxy, strategyMainnet] = await createStrategy<EursUsdPoolStrategyMainnet>('EursUsdPoolStrategyMainnet');
 
     const VaultV1Factory = await ethers.getContractFactory('VaultV1');
@@ -95,7 +95,7 @@ describe(strategyName, () => {
       await vaultV1.connect(core.governance).rebalance(); // move funds to the strategy
       await strategyMainnet.connect(core.governance).enterRewardPool(); // deposit strategy funds into CRV
 
-      const lpBalanceAfterFees = lpBalance1.mul('995').div('1000');
+      const lpBalanceAfterFees = lpBalance1.mul('990').div('1000');
       expect(await gauge.balanceOf(strategyProxy.address)).to.eq(lpBalanceAfterFees);
 
       expect(await strategyMainnet.callStatic.getRewardPoolValues()).to.eql([ethers.constants.Zero]);
@@ -110,7 +110,7 @@ describe(strategyName, () => {
 
       const lpBalance2 = await vaultV1.underlyingBalanceWithInvestment();
 
-      const amountHeldInVault = lpBalance1.sub(lpBalance1.mul('995').div('1000'));
+      const amountHeldInVault = lpBalance1.sub(lpBalance1.mul('990').div('1000'));
       expect(await gauge.balanceOf(strategyProxy.address)).to.eq(lpBalance2.sub(amountHeldInVault));
 
       logYieldData(strategyName, lpBalance1, lpBalance2, waitDurationSeconds);

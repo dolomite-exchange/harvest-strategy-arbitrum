@@ -106,9 +106,9 @@ describe('VaultV2Payable', () => {
       expect(await vaultV2.underlyingBalanceWithInvestment()).to.eq(total1.add(reward1));
       expect(await vaultV2.getPricePerFullShare()).to.eq('1250000000000000000');
 
-      // re-balancing keeps 0.5% in the vault and 99.5% in the strategy
+      // re-balancing keeps 1% in the vault and 99.5% in the strategy
       const result3 = await vaultV2.connect(core.governance).rebalance();
-      const toInvestAmount = ethers.BigNumber.from('3233750000000000000').sub(reward1);
+      const toInvestAmount = ethers.BigNumber.from('3217500000000000000').sub(reward1);
       await expect(result3).to.emit(vaultV2, 'Invest').withArgs(toInvestAmount);
       expect(await vaultV2.underlyingBalanceWithInvestment()).to.eq(total1.add(reward1));
       const balanceInVault = total1.sub(toInvestAmount);

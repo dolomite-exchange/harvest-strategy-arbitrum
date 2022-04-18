@@ -1,21 +1,39 @@
-// SPDX-License-Identifier: Apache
+/*
+
+    Copyright 2022 Dolomite.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+*/
+
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/Math.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 
 import "../MultipleRewardDistributionRecipient.sol";
-import "../inheritance/Controllable.sol";
+import "../inheritance/ControllableStorage.sol";
 import "../interfaces/IController.sol";
 
 import "./lib/DolomiteMarginActionsHelper.sol";
 
 import "./interfaces/IDolomiteLiquidationCallback.sol";
 import "./interfaces/IDolomiteMargin.sol";
+import "./interfaces/ILeveragedPotPool.sol";
 
 import "./lib/DolomiteMarginAccount.sol";
 import "./lib/DolomiteMarginActions.sol";
@@ -24,10 +42,11 @@ import "./lib/DolomiteMarginTypes.sol";
 import "./lib/Require.sol";
 
 
-contract LeveragedNoMintPotPool is
+contract LeveragedPotPoolV1 is
     MultipleRewardDistributionRecipient,
-    Controllable,
+    ControllableStorage,
     IDolomiteLiquidationCallback,
+    ILeveragedPotPool,
     ReentrancyGuard
 {
     using Address for address;
@@ -35,7 +54,7 @@ contract LeveragedNoMintPotPool is
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    bytes32 public constant FILE = "LeveragedNoMintPotPool";
+    bytes32 public constant FILE = "LeveragedPotPoolV1";
 
     IDolomiteMargin public dolomiteMargin;
     address public lpToken;
@@ -127,8 +146,7 @@ contract LeveragedNoMintPotPool is
         _;
     }
 
-    // [Hardwork] setting the reward, lpToken, duration, and rewardDistribution for each pool
-    constructor(
+    function initializeLeveragedPotPool(
         address _dolomiteMargin,
         address[] memory _rewardTokens,
         address _lpToken,
@@ -137,13 +155,14 @@ contract LeveragedNoMintPotPool is
         address _storage
     )
     public
-    MultipleRewardDistributionRecipient(_rewardDistribution)
-    Controllable(_storage) // only used for referencing the grey list
+    initializer
     {
-        Require.that(
+        MultipleRewardDistributionRecipient.initialize(_rewardDistribution);
+        ControllableStorage.initializeControllable(_storage);
+
+        require(
             _rewardTokens.length != 0,
-            FILE,
-            "invalid reward tokens length"
+            "should initialize with at least 1 rewardToken"
         );
         dolomiteMargin = IDolomiteMargin(_dolomiteMargin);
         rewardTokens = _rewardTokens;
@@ -270,7 +289,8 @@ contract LeveragedNoMintPotPool is
             rewardPerTokenStoredForToken[rewardToken] = rewardPerToken(rewardToken);
             lastUpdateTimeForToken[rewardToken] = lastTimeRewardApplicable(rewardToken);
             rewardsForToken[rewardToken][user.owner][user.number] = earned(rewardToken, user.owner, user.number);
-            userRewardPerTokenPaidForToken[rewardToken][user.owner][user.number] = rewardPerTokenStoredForToken[rewardToken];
+            userRewardPerTokenPaidForToken[rewardToken][user.owner][user.number] =
+                rewardPerTokenStoredForToken[rewardToken];
         }
 
 

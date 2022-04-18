@@ -59,7 +59,7 @@ describe('VaultV1', () => {
       expect(await vaultV1.strategy()).to.eq(strategy.address);
       expect(await vaultV1.underlying()).to.eq(WETH.address);
       expect(await vaultV1.underlyingUnit()).to.eq(ethers.constants.WeiPerEther);
-      expect(await vaultV1.vaultFractionToInvestNumerator()).to.eq('995');
+      expect(await vaultV1.vaultFractionToInvestNumerator()).to.eq('990');
       expect(await vaultV1.vaultFractionToInvestDenominator()).to.eq('1000');
       expect(await vaultV1.nextImplementation()).to.eq(ethers.constants.AddressZero);
       expect(await vaultV1.nextImplementationTimestamp()).to.eq('0');
@@ -123,7 +123,7 @@ describe('VaultV1', () => {
       await nextStrategy.initializeBaseStrategy(
         core.storage.address,
         WETH.address,
-        '0x0000000000000000000000000000000000000001',
+        vaultV1.address,
         rewardPool.address,
         [USDC.address],
         strategist.address,
@@ -144,10 +144,11 @@ describe('VaultV1', () => {
     it('should not work when vault strategy does not match', async () => {
       const TestStrategyFactory = await ethers.getContractFactory('TestStrategy');
       const nextStrategy = await TestStrategyFactory.deploy() as TestStrategy;
+
       await nextStrategy.initializeBaseStrategy(
         core.storage.address,
         WETH.address,
-        '0x0000000000000000000000000000000000000001',
+        vaultV1.address,
         rewardPool.address,
         [USDC.address],
         strategist.address,
@@ -157,20 +158,55 @@ describe('VaultV1', () => {
 
       await waitTime(core.controllerParams.implementationDelaySeconds + 1);
 
-      await expect(vaultV1.connect(core.governance).setStrategy(nextStrategy.address))
+      const VaultV2Factory = await ethers.getContractFactory('VaultV2');
+      const testVaultImplementation = await VaultV2Factory.deploy() as IVault;
+
+      const [,newVaultV1] = await createVault(testVaultImplementation, core, WETH);
+
+      await expect(newVaultV1.connect(core.governance).setStrategy(nextStrategy.address))
         .to.revertedWith('The strategy does not belong to this vault');
     });
 
-    it('should not work when vault underlying does not match', async () => {
+    it('should not work when vault underlying does not match initializer underlying', async () => {
       const TestRewardPoolFactory = await ethers.getContractFactory('TestRewardPool');
       const newRewardPool = await TestRewardPoolFactory.deploy(USDC.address, WETH.address) as TestRewardPool;
+
+      const TestStrategyFactory = await ethers.getContractFactory('TestStrategy');
+      const nextStrategy = await TestStrategyFactory.deploy() as TestStrategy;
+      await expect(
+        nextStrategy.initializeBaseStrategy(
+          core.storage.address,
+          USDC.address,
+          vaultV1.address,
+          newRewardPool.address,
+          [WETH.address],
+          strategist.address,
+        )
+      ).to.be.revertedWith('underlying does not match vault underlying');
+
+      await vaultV1.connect(core.governance).announceStrategyUpdate(nextStrategy.address);
+
+      await waitTime(core.controllerParams.implementationDelaySeconds + 1);
+
+      await expect(vaultV1.connect(core.governance).setStrategy(nextStrategy.address))
+        .to.revertedWith('Vault underlying must match Strategy underlying');
+    })
+
+    it('should not work when vault underlying does not match strategy underlying', async () => {
+      const TestRewardPoolFactory = await ethers.getContractFactory('TestRewardPool');
+      const newRewardPool = await TestRewardPoolFactory.deploy(USDC.address, WETH.address) as TestRewardPool;
+
+      const VaultV2Factory = await ethers.getContractFactory('VaultV2');
+      const testVaultImplementation = await VaultV2Factory.deploy() as IVault;
+
+      const [,newVaultV1] = await createVault(testVaultImplementation, core, USDC);
 
       const TestStrategyFactory = await ethers.getContractFactory('TestStrategy');
       const nextStrategy = await TestStrategyFactory.deploy() as TestStrategy;
       await nextStrategy.initializeBaseStrategy(
         core.storage.address,
         USDC.address,
-        WETH.address,
+        newVaultV1.address,
         newRewardPool.address,
         [WETH.address],
         strategist.address,
@@ -284,9 +320,9 @@ describe('VaultV1', () => {
       expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq(total1.add(reward1));
       expect(await vaultV1.getPricePerFullShare()).to.eq('1250000000000000000');
 
-      // re-balancing keeps 0.5% in the vault and 99.5% in the strategy
+      // re-balancing keeps 1% in the vault and 99% in the strategy
       const result3 = await vaultV1.connect(core.governance).rebalance();
-      const toInvestAmount = ethers.BigNumber.from('3233750000000000000').sub(reward1);
+      const toInvestAmount = ethers.BigNumber.from('3217500000000000000').sub(reward1);
       await expect(result3).to.emit(vaultV1, 'Invest').withArgs(toInvestAmount);
       expect(await vaultV1.underlyingBalanceWithInvestment()).to.eq(total1.add(reward1));
       const balanceInVault = total1.sub(toInvestAmount);

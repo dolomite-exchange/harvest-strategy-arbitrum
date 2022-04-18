@@ -101,8 +101,7 @@ export async function setEtherBalance(address: string, balance: BigNumberish = '
   ]);
 }
 
-export async function advanceNBlock(n: number) {
-  const secondsPerBlock = 1;
+export async function advanceNBlock(n: number, secondsPerBlock: number = 1) {
   await ethers.provider.send('hardhat_mine', [`0x${n.toString(16)}`, `0x${secondsPerBlock.toString(16)}`]);
 }
 

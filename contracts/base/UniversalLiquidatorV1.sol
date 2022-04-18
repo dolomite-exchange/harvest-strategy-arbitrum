@@ -9,7 +9,7 @@ import "./inheritance/Constants.sol";
 import "./inheritance/ControllableInit.sol";
 import "./interfaces/IController.sol";
 import "./interfaces/IUpgradeSource.sol";
-import "./interfaces/IUniversalLiquidator.sol";
+import "./interfaces/IUniversalLiquidatorV1.sol";
 import "./interfaces/uniswap/IUniswapV2Router02.sol";
 import "./interfaces/uniswap/IUniswapV3Router.sol";
 import "./upgradability/BaseUpgradeableStrategyStorage.sol";
@@ -20,7 +20,7 @@ import "./upgradability/BaseUpgradeableStrategyStorage.sol";
  *      via slots. This contract is responsible for liquidating tokens and is intended to be called by the
  *      `RewardForwarder` when `doHardWork` is initiated
  */
-contract UniversalLiquidatorV1 is IUniversalLiquidator, ControllableInit, BaseUpgradeableStrategyStorage, Constants {
+contract UniversalLiquidatorV1 is IUniversalLiquidatorV1, ControllableInit, BaseUpgradeableStrategyStorage, Constants {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -114,7 +114,7 @@ contract UniversalLiquidatorV1 is IUniversalLiquidator, ControllableInit, BaseUp
         uint256 _amountIn,
         uint256 _amountOutMin,
         address _recipient
-    ) external returns (uint) {
+    ) public returns (uint) {
         IERC20(_tokenIn).safeTransferFrom(msg.sender, address(this), _amountIn);
 
         if (_tokenIn == _tokenOut) {
@@ -124,13 +124,7 @@ contract UniversalLiquidatorV1 is IUniversalLiquidator, ControllableInit, BaseUp
             return amountOut;
         }
 
-        address[] memory path = new address[](_tokenOut != WETH ? 3 : 2);
-        path[0] = _tokenIn;
-        if (_tokenOut != WETH) {
-            path[1] = WETH;
-        }
-        path[path.length - 1] = _tokenOut;
-
+        address[] memory path = getPath(_tokenIn, _tokenOut);
         for (uint i = 0; i < path.length - 1; i++) {
             address router = getAddress(_getSlotForRouter(path[i], path[i + 1]));
             require(
@@ -160,6 +154,39 @@ contract UniversalLiquidatorV1 is IUniversalLiquidator, ControllableInit, BaseUp
 
         return _amountIn;
     }
+
+    function getPath(address _tokenIn, address _tokenOut) public view returns (address[] memory) {
+        address[4] memory bases = [USDC, USDT, WBTC, WETH];
+        address[] memory maxPath = new address[](8);
+        uint count = 0;
+        maxPath[count++] = _tokenIn;
+
+        while (maxPath[count - 1] != _tokenOut) {
+            address router = getAddress(_getSlotForRouter(maxPath[count - 1], _tokenOut));
+            if (router != address(0)) {
+                maxPath[count++] = _tokenOut;
+                break;
+            }
+
+            bool breakForLoop = false;
+            for (uint i = 0; i < bases.length && !breakForLoop; ++i) {
+                router = getAddress(_getSlotForRouter(maxPath[count - 1], bases[i]));
+                if (router != address(0)) {
+                    maxPath[count++] = bases[i];
+                    breakForLoop = true;
+                }
+            }
+            require(breakForLoop, "could not find router for path");
+        }
+
+        address[] memory path = new address[](count);
+        for (uint i = 0; i < count; ++i) {
+            path[i] = maxPath[i];
+        }
+        return path;
+    }
+
+    // ========================= Internal Functions =========================
 
     function _address2ToMemory(
         address[2] memory _tokens

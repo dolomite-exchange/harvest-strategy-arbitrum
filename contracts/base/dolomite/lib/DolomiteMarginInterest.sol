@@ -19,8 +19,6 @@
 pragma solidity ^0.5.7;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-
 import "./DolomiteMarginDecimal.sol";
 import "./DolomiteMarginMath.sol";
 import "./DolomiteMarginTime.sol";
@@ -35,7 +33,6 @@ import "./DolomiteMarginTypes.sol";
  */
 library DolomiteMarginInterest {
     using DolomiteMarginMath for uint256;
-    using SafeMath for uint256;
 
     // ============ Constants ============
 

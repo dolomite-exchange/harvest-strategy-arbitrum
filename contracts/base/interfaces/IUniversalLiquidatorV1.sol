@@ -10,7 +10,7 @@ pragma experimental ABIEncoderV2;
  *      create a new instance of this contract or modify the liquidation path via `configureSwap`, and all callers of
  *      the contract benefit from the change and uniformity.
  */
-interface IUniversalLiquidator {
+contract IUniversalLiquidatorV1 {
 
     // ==================== Events ====================
 
