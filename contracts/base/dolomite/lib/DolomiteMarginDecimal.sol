@@ -28,7 +28,7 @@ import "./DolomiteMarginMath.sol";
  *
  * Library that defines a fixed-point number with 18 decimal places.
  */
-library Decimal {
+library DolomiteMarginDecimal {
     using DolomiteMarginMath for uint256;
 
     // ============ Constants ============

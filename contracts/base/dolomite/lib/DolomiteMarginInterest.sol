@@ -70,7 +70,7 @@ library DolomiteMarginInterest {
         Index memory index,
         Rate memory rate,
         DolomiteMarginTypes.TotalPar memory totalPar,
-        Decimal.D256 memory earningsRate
+        DolomiteMarginDecimal.D256 memory earningsRate
     )
     internal
     view
@@ -90,7 +90,7 @@ library DolomiteMarginInterest {
         if (DolomiteMarginTypes.isZero(supplyWei)) {
             supplyInterest = 0;
         } else {
-            supplyInterest = Decimal.mul(borrowInterest, earningsRate);
+            supplyInterest = DolomiteMarginDecimal.mul(borrowInterest, earningsRate);
             if (borrowWei.value < supplyWei.value) {
                 supplyInterest = DolomiteMarginMath.getPartial(supplyInterest, borrowWei.value, supplyWei.value);
             }

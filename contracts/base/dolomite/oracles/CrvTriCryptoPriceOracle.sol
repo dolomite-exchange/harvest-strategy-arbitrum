@@ -31,6 +31,7 @@ import "../lib/DolomiteMarginMonetary.sol";
 
 import "../../inheritance/Constants.sol";
 import "../../interfaces/IVault.sol";
+import "../../interfaces/IVaultV3.sol";
 
 import "./FTokenPriceOracle.sol";
 
@@ -69,7 +70,7 @@ contract CrvTriCryptoPriceOracle is FTokenPriceOracle, Constants {
         );
 
         ITriCryptoPool triCryptoPool = ITriCryptoPool(crvToken.minter());
-        uint fExchangeRate = IVault(_fToken).getPricePerFullShare();
+        uint fExchangeRate = IVaultV3(_fToken).oraclePrice();
         uint fBase = IVault(_fToken).underlyingUnit();
 
         IDolomiteMargin _dolomiteMargin = dolomiteMargin;

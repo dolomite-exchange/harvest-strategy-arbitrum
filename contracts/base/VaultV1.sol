@@ -131,10 +131,6 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         return IController(controller()).nextImplementationDelay();
     }
 
-    /**
-     * Chooses the best strategy and re-invests. If the strategy did not change, it just calls doHardWork on the current
-     * strategy. Call this through controller to claim hard rewards.
-     */
     function doHardWork() whenStrategyDefined onlyControllerOrGovernance external {
         // ensure that new funds are invested too
         _invest();

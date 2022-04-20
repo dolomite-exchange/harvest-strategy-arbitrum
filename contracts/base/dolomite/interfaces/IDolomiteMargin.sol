@@ -147,6 +147,21 @@ interface IDolomiteMargin {
         DolomiteMarginAccount.Info calldata account
     ) external view returns (uint256);
 
+    /**
+     * Get the total supplied and total borrowed value of an account.
+     *
+     * @param  account  The account to query
+     * @return          The following values:
+     *                   - The supplied value of the account
+     *                   - The borrowed value of the account
+     */
+    function getAccountValues(
+        DolomiteMarginAccount.Info calldata account
+    ) external view returns (
+        DolomiteMarginMonetary.Value memory supplyValue,
+        DolomiteMarginMonetary.Value memory borrowValue
+    );
+
     // ============ Getters for Account Permissions ============
 
     /**
@@ -181,7 +196,7 @@ interface IDolomiteMargin {
      *
      * @return  The global margin-ratio
      */
-    function getMarginRatio() external view returns (Decimal.D256 memory);
+    function getMarginRatio() external view returns (DolomiteMarginDecimal.D256 memory);
 
     /**
      * Get the adjusted liquidation spread for some market pair. This is equal to the global
@@ -194,7 +209,7 @@ interface IDolomiteMargin {
     function getLiquidationSpreadForPair(
         uint256 heldMarketId,
         uint256 owedMarketId
-    ) external view returns (Decimal.D256 memory);
+    ) external view returns (DolomiteMarginDecimal.D256 memory);
 
     // ============ Write Functions ============
 

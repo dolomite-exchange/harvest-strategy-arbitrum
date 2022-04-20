@@ -26,7 +26,7 @@ contract VaultV2 is IERC4626, VaultV1 {
     }
 
     function maxDeposit(address /*caller*/) public view returns (uint256) {
-        return uint(-1);
+        return _paused() ? 0 : uint(-1);
     }
 
     function previewDeposit(uint256 _assets) public view returns (uint256) {
@@ -42,7 +42,7 @@ contract VaultV2 is IERC4626, VaultV1 {
     }
 
     function maxMint(address /*caller*/) public view returns (uint256) {
-        return uint(-1);
+        return _paused() ? 0 : uint(-1);
     }
 
     function previewMint(uint256 _shares) public view returns (uint256) {

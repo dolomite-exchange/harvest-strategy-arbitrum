@@ -19,37 +19,49 @@ contract ControllerV1 is IController, Governable {
     using Address for address;
     using SafeMath for uint256;
 
-    // ========================= Fields =========================
-
-    // external parties
-    address public targetToken;
-    address public profitSharingReceiver;
-    address public rewardForwarder;
-    address public universalLiquidator;
-    address public dolomiteYieldFarmingRouter;
-
-    uint256 public nextImplementationDelay;
-
-    /// 15% of fees captured go to iFARM stakers
-    uint256 public profitSharingNumerator = 1500;
-    uint256 public nextProfitSharingNumerator = 0;
-    uint256 public nextProfitSharingNumeratorTimestamp = 0;
-
-    /// 5% of fees captured go to strategists
-    uint256 public strategistFeeNumerator = 500;
-    uint256 public nextStrategistFeeNumerator = 0;
-    uint256 public nextStrategistFeeNumeratorTimestamp = 0;
-
-    /// 5% of fees captured go to the devs of the platform
-    uint256 public platformFeeNumerator = 500;
-    uint256 public nextPlatformFeeNumerator = 0;
-    uint256 public nextPlatformFeeNumeratorTimestamp = 0;
-
-    /// used for queuing a new delay
-    uint256 public tempNextImplementationDelay = 0;
-    uint256 public tempNextImplementationDelayTimestamp = 0;
+    // ========================= Constants =========================
 
     uint256 public constant FEE_DENOMINATOR = 10000;
+
+    // ========================= Fields =========================
+
+    /// @dev The token that will be purchased for the `doHardWork`s
+    address public targetToken;
+
+    /// @dev The entity that will receive `targetToken` from the `doHardWork`s
+    address public profitSharingReceiver;
+
+    /// @dev The contract that implements IRewardForwarder logic
+    address public rewardForwarder;
+
+    /// @dev The contract that contains the IUniversalLiquidator logic for performing standardized selling of tokens.
+    address public universalLiquidator;
+
+    /// @dev The contract that performs routing for yield farming using DolomiteMargin to amplify yields.
+    address public dolomiteYieldFarmingRouter;
+
+    /// @dev The minimum duration that must be waited before core changes may be made to the contracts. Used as a safety
+    ///      mechanism to prevent malicious changes from occurring abruptly or changes that users don't like.
+    uint256 public nextImplementationDelay;
+
+    /// @dev 15% of fees captured go to iFARM stakers
+    uint256 public profitSharingNumerator;
+    uint256 public nextProfitSharingNumerator;
+    uint256 public nextProfitSharingNumeratorTimestamp;
+
+    /// @dev 5% of fees captured go to strategists
+    uint256 public strategistFeeNumerator;
+    uint256 public nextStrategistFeeNumerator;
+    uint256 public nextStrategistFeeNumeratorTimestamp;
+
+    /// @dev 5% of fees captured go to the devs of the platform
+    uint256 public platformFeeNumerator;
+    uint256 public nextPlatformFeeNumerator;
+    uint256 public nextPlatformFeeNumeratorTimestamp;
+
+    /// @dev Used for queuing a new delay
+    uint256 public tempNextImplementationDelay;
+    uint256 public tempNextImplementationDelayTimestamp;
 
     // [Grey list]
     // An EOA can safely interact with the system no matter what.
@@ -62,16 +74,16 @@ contract ControllerV1 is IController, Governable {
     // Only smart contracts will be affected by being added to the greyList.
     mapping (address => bool) public greyList;
 
-    /// @notice This mapping allows certain contracts to stake on a user's behalf
+    /// @dev This mapping allows certain contracts to stake on a user's behalf
     mapping (address => bool) public stakingWhiteList;
 
-    // All vaults that we have
+    /// @dev All vaults that we have
     mapping (address => bool) public vaults;
 
-    // All strategies that we have
+    /// @dev All strategies that we have
     mapping (address => bool) public strategies;
 
-    // All eligible hardWorkers that we have
+    /// @dev All eligible hardWorkers that we have
     mapping (address => bool) public hardWorkers;
 
     // ========================= Modifiers =========================
@@ -130,6 +142,21 @@ contract ControllerV1 is IController, Governable {
         rewardForwarder = _rewardForwarder;
         universalLiquidator = _universalLiquidator;
         nextImplementationDelay = _nextImplementationDelay;
+
+        profitSharingNumerator = 1500;
+        nextProfitSharingNumerator = 0;
+        nextProfitSharingNumeratorTimestamp = 0;
+
+        strategistFeeNumerator = 500;
+        nextStrategistFeeNumerator = 0;
+        nextStrategistFeeNumeratorTimestamp = 0;
+
+        platformFeeNumerator = 500;
+        nextPlatformFeeNumerator = 0;
+        nextPlatformFeeNumeratorTimestamp = 0;
+
+        tempNextImplementationDelay = 0;
+        tempNextImplementationDelayTimestamp = 0;
     }
 
     function hasVault(address _vault) external view returns (bool) {
