@@ -172,7 +172,7 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
             actionType: DolomiteMarginActions.ActionType.Buy,
             accountId: 0,
             amount: DolomiteMarginTypes.AssetAmount({
-                sign: false,
+                sign: true,
                 denomination: DolomiteMarginTypes.AssetDenomination.Wei,
                 ref: DolomiteMarginTypes.AssetReference.Delta,
                 value: _amountWei

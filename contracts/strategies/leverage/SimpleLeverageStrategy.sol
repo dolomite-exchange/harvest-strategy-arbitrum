@@ -77,6 +77,10 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
             _collateralization >= _targetCollateralization.value.div(_flexPercentage.onePlus());
     }
 
+    /**
+     * @dev Rebalances the asserts held by this vault to move within the target collateralization range. If there is no
+     *      debt or if the collateralization is within the target range, no rebalance occurs.
+     */
     function rebalanceAssets() external onlyNotPausedInvesting restricted nonReentrant {
         IDolomiteMargin _dolomiteMargin = IDolomiteMargin(rewardPool());
         (
@@ -107,7 +111,7 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
 
         uint targetSupplyValue = borrowValue.value.mul(_targetCollateralization);
         if (supplyValue.value < targetSupplyValue) {
-            // rebalance upward, increase leverage
+            // rebalance upward, increase leverage; Delta is the amount of supplied value we need
             uint deltaSupplyValue = targetSupplyValue.sub(supplyValue.value);
             for (uint i = 0; i < weights.length; i++) {
                 uint weightedSupplyValue = deltaSupplyValue.mul(weights[i]).div(TOTAL_WEIGHT);
@@ -122,7 +126,7 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
                 );
             }
         } else {
-            // rebalance downward, decrease leverage
+            // rebalance downward, decrease leverage; Delta is the amount of supplied value we need to
             assert(supplyValue.value > targetSupplyValue);
             uint deltaSupplyValue = supplyValue.value.sub(targetSupplyValue);
             for (uint i = 0; i < weights.length; i++) {
@@ -142,7 +146,66 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
         _dolomiteMargin.operate(accounts, actions);
     }
 
-    function doHardWork() external onlyNotPausedInvesting restricted nonReentrant {}
+    function doHardWork() external onlyNotPausedInvesting restricted nonReentrant {
+        // TODO - check borrow value change; supply value change; cache it; get the delta and sell it
+    }
+
+    function changeLoanStatus(
+        bool _shouldCloseLoan
+    ) external onlyNotPausedInvesting restricted nonReentrant {
+        IDolomiteMargin _dolomiteMargin = IDolomiteMargin(rewardPool());
+        {
+            (
+                ,
+                DolomiteMarginMonetary.Value memory borrowValue
+            ) = _dolomiteMargin.getAccountValues(_defaultMarginAccount());
+            if (_shouldCloseLoan) {
+                Require.that(
+                    borrowValue.value > 0,
+                    FILE,
+                    "loan already closed"
+                );
+            } else {
+                Require.that(
+                    borrowValue.value == 0,
+                    FILE,
+                    "loan already opened"
+                );
+            }
+        }
+
+        address[] memory allFTokens = fTokens();
+        address[] memory allBorrowTokens = borrowTokens();
+
+        if (_shouldCloseLoan) {
+            _repayLoanAndWithdrawCollateral(allFTokens, allBorrowTokens);
+        } else {
+            DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
+            accounts[0] = _defaultMarginAccount();
+
+            DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](1);
+            actions[0] = _encodeDeposit(IERC20(underlying()).balanceOf(address(this)));
+            _dolomiteMargin.operate(accounts, actions);
+
+            actions = new DolomiteMarginActions.ActionArgs[](allFTokens.length);
+            (
+                DolomiteMarginMonetary.Value memory supplyValue,
+            ) = _dolomiteMargin.getAccountValues(_defaultMarginAccount());
+            // _targetCollateralization is always >= 100% (1e18).
+            supplyValue.value = supplyValue.value.times(_targetCollateralization - 1e18).div(1e18);
+            uint256 _targetCollateralization = targetCollateralization().value;
+            uint256[] memory weights = fTokenInitialWeights();
+            for (uint i = 0; i < actions.length; i++) {
+                uint weightedSupplyValue = supplyValue.value.times(weights[i]).div(1e18);
+                actions[i] = _encodeSell(
+                    weightedSupplyValue.div(_dolomiteMargin.getMarketPrice(borrowMarketId).value),
+                    borrowMarketId,
+                    _dolomiteMargin.getMarketIdByTokenAddress(allFTokens[i]),
+                    i
+                );
+            }
+        }
+    }
 
     function exchange(
         address tradeOriginator,
