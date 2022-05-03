@@ -191,9 +191,10 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
             (
                 DolomiteMarginMonetary.Value memory supplyValue,
             ) = _dolomiteMargin.getAccountValues(_defaultMarginAccount());
-            // _targetCollateralization is always >= 100% (1e18).
-            supplyValue.value = supplyValue.value.times(_targetCollateralization - 1e18).div(1e18);
-            uint256 _targetCollateralization = targetCollateralization().value;
+
+            // Doesn't quite work. Need to re-think to get leverage fly-wheel going.
+            DolomiteMarginDecimal.D256 memory _targetCollateralization = targetCollateralization();
+            supplyValue.value = supplyValue.value.div(_targetCollateralization);
             uint256[] memory weights = fTokenInitialWeights();
             for (uint i = 0; i < actions.length; i++) {
                 uint weightedSupplyValue = supplyValue.value.times(weights[i]).div(1e18);
@@ -424,15 +425,16 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
         DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
         accounts[0] = _defaultMarginAccount();
         {
-            if (_dolomiteMargin.getAccountMarketsWithNonZeroBalances(_defaultMarginAccount()).length == 0) {
+            if (_dolomiteMargin.getAccountMarketsWithNonZeroBalances(accounts[0]).length == 0) {
                 // loan and collateral already repaid.
+                emit RebalanceDenied(DolomiteMarginDecimal.D256({
+                    value: 0
+                }));
                 return;
             }
         }
 
-        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](
-            _fTokens.length + _fTokens.length
-        );
+        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](_fTokens.length * 2);
 
         for (uint i = 0; i < _fTokens.length; i++) {
             uint fMarketId = _dolomiteMargin.getMarketIdByTokenAddress(_fTokens[i]);
@@ -446,6 +448,9 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
             );
             actions[(i * 2) + 1] = _encodeWithdraw(uint(-1), fMarketId);
         }
+
+        _dolomiteMargin.operate(accounts, actions);
+        _cacheLoanState();
     }
 
     function _setAllowanceForAll(

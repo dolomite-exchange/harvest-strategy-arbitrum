@@ -154,7 +154,7 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
     }
 
     /**
-     * @param _amountWei        The amount being traded from `_takerToken` to `_makerToken` by DolomiteMargin.
+     * @param _amountWei        The amount being traded from `_makerToken` to `_takerToken` by DolomiteMargin.
      * @param _takerMarketId    The token being withdrawn from DolomiteMargin to be converted. When increasing leverage,
      *                          this will be the `borrowToken`. When decreasing leverage, this will be the `fToken`.
      * @param _makerMarketId    The token being deposited into DolomiteMargin, after the conversion is done. When
@@ -282,11 +282,51 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
         setUint256(keccak256(abi.encodePacked("cachedSharePrice", _fToken)), _cachedSharePrice);
     }
 
+    function _setCachedSupplyWei(
+        address _borrowToken,
+        uint256 _cachedSupplyWei
+    ) internal {
+        setUint256(keccak256(abi.encodePacked("cachedSupplyWei", _borrowToken)), _cachedSupplyWei);
+    }
+
     function _setCachedBorrowWei(
         address _borrowToken,
         uint256 _cachedBorrowWei
     ) internal {
         setUint256(keccak256(abi.encodePacked("cachedBorrowWei", _borrowToken)), _cachedBorrowWei);
+    }
+
+    function _setCachedLoanState() internal {
+        IDolomiteMargin _dolomiteMargin = IDolomiteMargin(rewardPool());
+        DolomiteMarginAccount.Info memory account = _defaultMarginAccount();
+
+        address[] memory _fTokens = fTokens();
+        address[] memory _borrowTokens = borrowTokens();
+        for (uint i = 0; i < _fTokens.length; i++) {
+            uint supplyMarketId = _dolomiteMargin.getMarketIdByTokenAddress(_fTokens[i]);
+            DolomiteMarginTypes.Wei memory supplyWei = _dolomiteMargin.getAccountWei(account, supplyMarketId);
+            Require.that(
+                supplyWei.sign || supplyWei.value == 0,
+                FILE,
+                "invalid supply state"
+            );
+            _setCachedSupplyWei(
+                _fTokens[i],
+                supplyWei.value
+            );
+
+            uint borrowMarketId = _dolomiteMargin.getMarketIdByTokenAddress(_borrowTokens[i]);
+            DolomiteMarginTypes.Wei memory borrowWei = _dolomiteMargin.getAccountWei(account, borrowMarketId);
+            Require.that(
+                !borrowWei.sign || borrowWei.value == 0,
+                FILE,
+                "invalid borrow state"
+            );
+            _setCachedBorrowWei(
+                _borrowTokens[i],
+                borrowWei.value
+            );
+        }
     }
 
     // ========================= Abstract Functions =========================
