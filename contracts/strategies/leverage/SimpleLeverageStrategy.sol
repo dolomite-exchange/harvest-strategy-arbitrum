@@ -192,9 +192,8 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
                 DolomiteMarginMonetary.Value memory supplyValue,
             ) = _dolomiteMargin.getAccountValues(_defaultMarginAccount());
 
-            // Doesn't quite work. Need to re-think to get leverage fly-wheel going.
             DolomiteMarginDecimal.D256 memory _targetCollateralization = targetCollateralization();
-            supplyValue.value = supplyValue.value.div(_targetCollateralization);
+            supplyValue.value = supplyValue.value.mul(_targetCollateralization).div(_targetCollateralization.oneMinus());
             uint256[] memory weights = fTokenInitialWeights();
             for (uint i = 0; i < actions.length; i++) {
                 uint weightedSupplyValue = supplyValue.value.times(weights[i]).div(1e18);
@@ -240,6 +239,7 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
             );
         }
 
+        // Allowance is already set when the tokens are set, so no need to do so here
         uint amount;
         if (isDeposit) {
             amount = IERC4626(makerToken).deposit(requestedFillAmount, address(this));

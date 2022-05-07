@@ -61,6 +61,16 @@ library DolomiteMarginDecimal {
         return D256({ value: d.value.add(BASE) });
     }
 
+    function oneMinus(
+        D256 memory d
+    )
+    internal
+    pure
+    returns (D256 memory)
+    {
+        return D256({ value: d.value.sub(BASE) });
+    }
+
     function mul(
         uint256 target,
         D256 memory d
