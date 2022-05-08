@@ -147,7 +147,14 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
     }
 
     function doHardWork() external onlyNotPausedInvesting restricted nonReentrant {
-        // TODO - check borrow value change; supply value change; cache it; get the delta and sell it
+        // TODO - check borrow value change; supply value change; cache it; get the delta and sell it; deposit any new funds
+        IDolomiteMargin _dolomiteMargin = IDolomiteMargin(rewardPool());
+        (
+            DolomiteMarginMonetary.Value memory supplyValue,
+            DolomiteMarginMonetary.Value memory borrowValue
+        ) = _dolomiteMargin.getAccountValues(_defaultMarginAccount());
+
+
     }
 
     function changeLoanStatus(
