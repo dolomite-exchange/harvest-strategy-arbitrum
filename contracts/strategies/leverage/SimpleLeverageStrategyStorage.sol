@@ -83,17 +83,33 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
         });
     }
 
+    /**
+     * @dev Used for tracking the exchange rate of the fToken between hard works, which allows for accurate profit-
+     *      taking.
+     */
     function cachedPricePerShare(address _fToken) public view returns (uint256) {
         return getUint256(keccak256(abi.encodePacked("cachedSharePrice", _fToken)));
     }
 
+    /**
+     * @dev Used for tracking the amount of supply token held by the protocol (IE ETH, DAI, etc.) which is typically
+     *      used for tracking the growth of underlyingToken over time
+     */
+    function cachedSupplyWei(address _supplyToken) public view returns (uint256) {
+        return getUint256(keccak256(abi.encodePacked("cachedSupplyWei", _supplyToken)));
+    }
+
+    /**
+     * @dev Used for tracking the amount of borrow token held by the protocol for any debt accrued on the leveraged
+     *      position.
+     */
     function cachedBorrowWei(address _borrowToken) public view returns (uint256) {
         return getUint256(keccak256(abi.encodePacked("cachedBorrowWei", _borrowToken)));
     }
 
     /**
      * @return  The user's collateralization, using 18 decimals of precision. This is calculated by dividing the supply
-     *          value by the account's borrow value
+     *          value by the account's borrow value. Returns `max(uint)` if borrow value is 0.
      */
     function getCollateralization() public view returns (DolomiteMarginDecimal.D256 memory) {
         (
