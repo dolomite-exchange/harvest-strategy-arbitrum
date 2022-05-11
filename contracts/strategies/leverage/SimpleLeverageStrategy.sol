@@ -34,9 +34,21 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
     event RebalanceDenied(
         DolomiteMarginDecimal.D256 currentCollateralization
     );
-
-    // _collateralizationFlexPercentage the % that actual collateralization can flex around `_targetCollateralization`
-    //                                  For example. target == 200%, flex == 5%; can range between 190% and 210%
+    event SupplyValueAccrued(
+        address supplyToken,
+        uint256 oldSupplyValue,
+        uint256 newSupplyValue
+    );
+    event PricePerShareAccrued(
+        address fToken,
+        uint256 oldPricePerShareValue,
+        uint256 newPricePerShareValue
+    );
+    event BorrowValueAccrued(
+        address borrowToken,
+        uint256 oldBorrowValue,
+        uint256 newBorrowValue
+    );
 
     // ========================= Public Functions =========================
 
@@ -101,55 +113,11 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
             }
         }
 
-        DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
-        accounts[0] = _defaultMarginAccount();
-
-        uint256[] memory weights = fTokenInitialWeights();
-        address[] memory allFTokens = fTokens();
-        address[] memory allBorrowTokens = borrowTokens();
-        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](weights.length);
-
-        uint targetSupplyValue = borrowValue.value.mul(_targetCollateralization);
-        if (supplyValue.value < targetSupplyValue) {
-            // rebalance upward, increase leverage; Delta is the amount of supplied value we need
-            uint deltaSupplyValue = targetSupplyValue.sub(supplyValue.value);
-            for (uint i = 0; i < weights.length; i++) {
-                uint weightedSupplyValue = deltaSupplyValue.mul(weights[i]).div(TOTAL_WEIGHT);
-                uint borrowMarketId = _dolomiteMargin.getMarketIdByTokenAddress(allBorrowTokens[i]);
-                // The supplyValue has 36 decimals, price has (36 - tokenDecimals) decimals, so it's safe to simply
-                // divide them and that gives us the proper number of units in the result.
-                actions[i] = _encodeSell(
-                    weightedSupplyValue.div(_dolomiteMargin.getMarketPrice(borrowMarketId).value),
-                    borrowMarketId,
-                    _dolomiteMargin.getMarketIdByTokenAddress(allFTokens[i]),
-                    i
-                );
-            }
-        } else {
-            // rebalance downward, decrease leverage; Delta is the amount of supplied value we need to
-            assert(supplyValue.value > targetSupplyValue);
-            uint deltaSupplyValue = supplyValue.value.sub(targetSupplyValue);
-            for (uint i = 0; i < weights.length; i++) {
-                uint weightedSupplyValue = deltaSupplyValue.mul(weights[i]).div(TOTAL_WEIGHT);
-                uint fMarketId = _dolomiteMargin.getMarketIdByTokenAddress(allFTokens[i]);
-                // The supplyValue has 36 decimals, price has (36 - tokenDecimals) decimals, so it's safe to simply
-                // divide them and that gives us the proper number of units in the result.
-                actions[i] = _encodeSell(
-                    weightedSupplyValue.div(_dolomiteMargin.getMarketPrice(fMarketId).value),
-                    fMarketId,
-                    _dolomiteMargin.getMarketIdByTokenAddress(allBorrowTokens[i]),
-                    i
-                );
-            }
-        }
-
-        _dolomiteMargin.operate(accounts, actions);
-    }
-
-    function doHardWork() external onlyNotPausedInvesting restricted nonReentrant {
-        // TODO - check borrow value change; supply value change; cache it; get the delta and sell it; deposit any new funds
-        IDolomiteMargin _dolomiteMargin = IDolomiteMargin(rewardPool());
-        cachedPricePerShare();
+        _rebalanceAssets(
+            _targetCollateralization,
+            supplyValue,
+            borrowValue
+        );
     }
 
     function changeLoanStatus(
@@ -182,30 +150,7 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
         if (_shouldCloseLoan) {
             _repayLoanAndWithdrawCollateral(allFTokens, allBorrowTokens);
         } else {
-            DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
-            accounts[0] = _defaultMarginAccount();
-
-            DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](1);
-            actions[0] = _encodeDeposit(IERC20(underlying()).balanceOf(address(this)));
-            _dolomiteMargin.operate(accounts, actions);
-
-            actions = new DolomiteMarginActions.ActionArgs[](allFTokens.length);
-            (
-                DolomiteMarginMonetary.Value memory supplyValue,
-            ) = _dolomiteMargin.getAccountValues(_defaultMarginAccount());
-
-            DolomiteMarginDecimal.D256 memory _targetCollateralization = targetCollateralization();
-            supplyValue.value = supplyValue.value.mul(_targetCollateralization).div(_targetCollateralization.oneMinus());
-            uint256[] memory weights = fTokenInitialWeights();
-            for (uint i = 0; i < actions.length; i++) {
-                uint weightedSupplyValue = supplyValue.value.times(weights[i]).div(1e18);
-                actions[i] = _encodeSell(
-                    weightedSupplyValue.div(_dolomiteMargin.getMarketPrice(borrowMarketId).value),
-                    borrowMarketId,
-                    _dolomiteMargin.getMarketIdByTokenAddress(allFTokens[i]),
-                    i
-                );
-            }
+            _depositCollateralAndOpenLoan(allFTokens, allBorrowTokens);
         }
     }
 
@@ -323,6 +268,9 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
             if (newPriceFullShare > oldPriceFullShare) {
                 uint256 amountInVault = _dolomiteMargin.getAccountWei(accounts[0], fTokenMarketId).value;
                 supplyValueGained = (newPriceFullShare - oldPriceFullShare).mul(amountInVault).div(unit);
+                _setCachedSupplyWei(_fTokens[i], amountInVault);
+                _setCachedSharePrice(_fTokens[i], newPriceFullShare);
+                emit PricePerShareAccrued(_fTokens[i], oldPriceFullShare, newPriceFullShare);
             }
 
             uint256 newBorrowValue = _dolomiteMargin.getAccountWei(accounts[0], borrowTokenMarketId).value;
@@ -330,6 +278,8 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
             uint256 borrowValueGained = 0;
             if (newBorrowValue > oldBorrowValue) {
                 borrowValueGained = newBorrowValue - oldBorrowValue;
+                _setCachedBorrowWei(_borrowTokens[i], newBorrowValue);
+                emit BorrowValueAccrued(_borrowTokens[i], oldBorrowValue, newBorrowValue);
             }
 
             uint256 amountWei = supplyValueGained > borrowValueGained ? supplyValueGained - borrowValueGained : 0;
@@ -339,6 +289,8 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
 
             actions[i] = _encodeWithdraw(amountWei, fTokenMarketId);
         }
+
+        _dolomiteMargin.operate(accounts, actions);
     }
 
     function _rewardPoolBalance() internal view returns (uint256) {
@@ -376,31 +328,35 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
             DolomiteMarginMonetary.Value memory borrowValue
         ) = _dolomiteMargin.getAccountValues(_defaultMarginAccount());
 
-        supplyValue.value = supplyValue.value.sub(_dolomiteMargin.getMarketPrice(marketId).value.mul(_amount));
+        {
+            uint amountValue = _dolomiteMargin.getMarketPrice(marketId).value.mul(_amount);
+            require(
+                supplyValue.value >= amountValue,
+                "withdrawal is too large"
+            );
+            supplyValue.value = supplyValue.value.sub(amountValue);
+        }
+
         if (borrowValue.value > 0) {
             uint256 collateralization = supplyValue.value.mul(1e18).div(borrowValue.value);
             DolomiteMarginDecimal.D256 memory _targetCollateralization = targetCollateralization();
             DolomiteMarginDecimal.D256 memory _flexPercentage = collateralizationFlexPercentage();
-            if (isWithinRange(collateralization, _targetCollateralization, _flexPercentage)) {
-                DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
-                accounts[0] = _defaultMarginAccount();
-
-                DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](1);
-                actions[0] = _encodeWithdraw(_amount, marketId);
-
-                _dolomiteMargin.operate(accounts, actions);
-            } else {
-                // Crap this move would put us out of our target collateralization range. We have more work to do!
+            if (!isWithinRange(collateralization, _targetCollateralization, _flexPercentage)) {
+                _rebalanceAssets(
+                    _targetCollateralization,
+                    supplyValue,
+                    borrowValue
+                );
             }
-        } else {
-            DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
-            accounts[0] = _defaultMarginAccount();
-
-            DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](1);
-            actions[0] = _encodeWithdraw(_amount, marketId);
-
-            _dolomiteMargin.operate(accounts, actions);
         }
+
+        DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
+        accounts[0] = _defaultMarginAccount();
+
+        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](1);
+        actions[0] = _encodeWithdraw(_amount, marketId);
+
+        _dolomiteMargin.operate(accounts, actions);
     }
 
     function _enterRewardPool() internal {
@@ -410,9 +366,10 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
         accounts[0] = _defaultMarginAccount();
 
         DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](1);
+        address _underlying = underlying();
         actions[0] = _encodeDeposit(
-            IERC20(underlying()).balanceOf(address(this)),
-            _dolomiteMargin.getMarketIdByTokenAddress(underlying())
+            IERC20(_underlying).balanceOf(address(this)),
+            _dolomiteMargin.getMarketIdByTokenAddress(_underlying)
         );
 
         _dolomiteMargin.operate(accounts, actions);
@@ -452,7 +409,45 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
         }
 
         _dolomiteMargin.operate(accounts, actions);
-        _cacheLoanState();
+        _setCachedLoanState();
+    }
+
+    function _depositCollateralAndOpenLoan(
+        address[] memory _fTokens,
+        address[] memory _borrowTokens
+    ) internal {
+        IDolomiteMargin _dolomiteMargin = IDolomiteMargin(rewardPool());
+        DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
+        accounts[0] = _defaultMarginAccount();
+
+        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](1);
+        address _underlying = underlying();
+        actions[0] = _encodeDeposit(
+            IERC20(_underlying).balanceOf(address(this)),
+            _dolomiteMargin.getMarketIdByTokenAddress(_underlying)
+        );
+        _dolomiteMargin.operate(accounts, actions);
+
+        actions = new DolomiteMarginActions.ActionArgs[](_fTokens.length);
+        (
+            DolomiteMarginMonetary.Value memory supplyValue,
+        ) = _dolomiteMargin.getAccountValues(_defaultMarginAccount());
+
+        DolomiteMarginDecimal.D256 memory _targetCollateralization = targetCollateralization();
+        supplyValue.value = supplyValue.value
+            .mul(_targetCollateralization)
+            .div(_targetCollateralization.oneMinus());
+        uint256[] memory weights = fTokenInitialWeights();
+        for (uint i = 0; i < actions.length; i++) {
+            uint fTokenId = _dolomiteMargin.getMarketIdByTokenAddress(_fTokens[i]);
+            uint weightedSupplyValue = supplyValue.value.mul(weights[i]).div(1e18);
+            actions[i] = _encodeSell(
+                weightedSupplyValue.div(_dolomiteMargin.getMarketPrice(fTokenId).value),
+                _dolomiteMargin.getMarketIdByTokenAddress(_borrowTokens[i]),
+                fTokenId,
+                i
+            );
+        }
     }
 
     function _setAllowanceForAll(
@@ -467,5 +462,56 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
             }
             IERC20(_tokens[i]).safeApprove(_dolomiteMargin, _allowance);
         }
+    }
+
+    function _rebalanceAssets(
+        DolomiteMarginDecimal.D256 memory _targetCollateralization,
+        DolomiteMarginMonetary.Value memory _supplyValue,
+        DolomiteMarginMonetary.Value memory _borrowValue
+    ) internal {
+        IDolomiteMargin _dolomiteMargin = IDolomiteMargin(rewardPool());
+        DolomiteMarginAccount.Info[] memory accounts = new DolomiteMarginAccount.Info[](1);
+        accounts[0] = _defaultMarginAccount();
+
+        uint256[] memory weights = fTokenInitialWeights();
+        address[] memory allFTokens = fTokens();
+        address[] memory allBorrowTokens = borrowTokens();
+        DolomiteMarginActions.ActionArgs[] memory actions = new DolomiteMarginActions.ActionArgs[](weights.length);
+
+        uint targetSupplyValue = _borrowValue.value.mul(_targetCollateralization);
+        if (_supplyValue.value < targetSupplyValue) {
+            // rebalance upward, increase leverage; Delta is the amount of supplied value we need
+            uint deltaSupplyValue = targetSupplyValue.sub(_supplyValue.value);
+            for (uint i = 0; i < weights.length; i++) {
+                uint weightedSupplyValue = deltaSupplyValue.mul(weights[i]).div(TOTAL_WEIGHT);
+                uint borrowMarketId = _dolomiteMargin.getMarketIdByTokenAddress(allBorrowTokens[i]);
+                // The _supplyValue has 36 decimals, price has (36 - tokenDecimals) decimals, so it's safe to simply
+                // divide them and that gives us the proper number of units in the result.
+                actions[i] = _encodeSell(
+                    weightedSupplyValue.div(_dolomiteMargin.getMarketPrice(borrowMarketId).value),
+                    borrowMarketId,
+                    _dolomiteMargin.getMarketIdByTokenAddress(allFTokens[i]),
+                    i
+                );
+            }
+        } else {
+            // rebalance downward, decrease leverage; Delta is the amount of supplied value we need to
+            assert(_supplyValue.value > targetSupplyValue);
+            uint deltaSupplyValue = _supplyValue.value.sub(targetSupplyValue);
+            for (uint i = 0; i < weights.length; i++) {
+                uint weightedSupplyValue = deltaSupplyValue.mul(weights[i]).div(TOTAL_WEIGHT);
+                uint fMarketId = _dolomiteMargin.getMarketIdByTokenAddress(allFTokens[i]);
+                // The _supplyValue has 36 decimals, price has (36 - tokenDecimals) decimals, so it's safe to simply
+                // divide them and that gives us the proper number of units in the result.
+                actions[i] = _encodeSell(
+                    weightedSupplyValue.div(_dolomiteMargin.getMarketPrice(fMarketId).value),
+                    fMarketId,
+                    _dolomiteMargin.getMarketIdByTokenAddress(allBorrowTokens[i]),
+                    i
+                );
+            }
+        }
+
+        _dolomiteMargin.operate(accounts, actions);
     }
 }

@@ -10,7 +10,6 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
     using DolomiteMarginDecimal for *;
     using SafeMath for uint256;
 
-
     // ========================= Events =========================
 
     event FTokensSet(address[] _fTokens);
@@ -18,6 +17,8 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
     event FTokenWeightsSet(uint256[] _fTokenInitialWeights);
 
     // ========================= Constants =========================
+
+    bytes32 internal constant FILE = "SimpleLeverageStrategyStorage";
 
     bytes32 internal constant _F_TOKENS_SLOT = 0xf188e1de350c9cd45070f03b52e0f555e5287f7263268512a04a270b40adc94e;
     bytes32 internal constant _BORROW_TOKENS_SLOT = 0x953adea603236911acee8484929f7f653eda9d977d12e523b651f8908408a95c;
@@ -35,6 +36,23 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
         assert(_F_TOKEN_INITIAL_WEIGHTS_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.fTokenInitialWeights")) - 1));
         assert(_TARGET_COLLATERALIZATION_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.targetCollateralization")) - 1));
         assert(_COLLATERALIZATION_FLEX_PERCENTAGE_SLOT == bytes32(uint256(keccak256("eip1967.vaultStorage.collateralizationFlexPercentage")) - 1));
+    }
+
+    function isUnsalvageableToken(address _token) public view returns (bool) {
+        bool isFound = isRewardToken(_token) || _token == underlying();
+        if (isFound) {
+            return true;
+        }
+
+        address[] memory _fTokens = fTokens();
+        address[] memory _borrowTokens = borrowTokens();
+        for (uint i = 0; i < _fTokens.length; i++) {
+            if (_fTokens[i] == _token || _borrowTokens[i] == _token) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     function fTokens() public view returns (address[] memory) {
@@ -256,11 +274,16 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
         );
         uint totalWeight = 0;
         for (uint i = 0; i < _fTokenInitialWeights.length; i++) {
+            require(
+                IVault(_fTokens[i]).underlying() == _borrowTokens[i],
+                "_fTokens[i].underlying must equal _borrowTokens[i]"
+            );
+
             totalWeight = totalWeight.add(_fTokenInitialWeights[i]);
         }
         require(
             totalWeight == TOTAL_WEIGHT,
-            "_fTokenInitialWeights must sum to 1e18"
+            "_fTokenInitialWeights must sum to TOTAL_WEIGHT"
         );
 
         address[] memory oldFTokens = fTokens();
@@ -330,6 +353,10 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
                 _fTokens[i],
                 supplyWei.value
             );
+            _setCachedSharePrice(
+                _fTokens[i],
+                IVault(_fTokens[i]).getPricePerFullShare()
+            );
 
             uint borrowMarketId = _dolomiteMargin.getMarketIdByTokenAddress(_borrowTokens[i]);
             DolomiteMarginTypes.Wei memory borrowWei = _dolomiteMargin.getAccountWei(account, borrowMarketId);
@@ -348,6 +375,11 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
     // ========================= Abstract Functions =========================
 
     function _repayLoanAndWithdrawCollateral(
+        address[] memory _fTokens,
+        address[] memory _borrowTokens
+    ) internal;
+
+    function _depositCollateralAndOpenLoan(
         address[] memory _fTokens,
         address[] memory _borrowTokens
     ) internal;

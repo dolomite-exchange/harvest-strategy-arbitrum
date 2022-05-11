@@ -124,8 +124,8 @@ contract BaseUpgradeableStrategy is
     }
 
     /**
-     *  In case there are some issues discovered about the pool or underlying asset, Governance can exit the pool
-     * quickly.
+     * @notice In case there are some issues discovered about the pool or underlying asset, Governance can exit the pool
+     *      quickly.
      */
     function emergencyExit() external onlyGovernance nonReentrant {
         _partialExitRewardPool(_rewardPoolBalance());
@@ -134,7 +134,7 @@ contract BaseUpgradeableStrategy is
     }
 
     /**
-     *   Resumes the ability to invest into the underlying reward pools
+     * @notice Resumes the ability to invest into the underlying reward pools
      */
     function continueInvesting() external onlyGovernance {
         _setPausedInvesting(false);
