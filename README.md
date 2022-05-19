@@ -3,8 +3,8 @@
 This [Hardhat](https://hardhat.org/) environment is configured to use an Arbitrum One fork by default and provides
 templates and utilities for strategy development and testing.
 
-Aside from forking Harvest Finance core contracts on Arbitrum One, this repository integrates the Dolomite Margin
-Protocol to enable leveraged yield farming.
+Aside from forking Harvest Finance core contracts on Arbitrum One, this repository integrates
+the [DolomiteMargin](https://github.com/dolomite-exchange/dolomite-margin) Protocol to enable leveraged yield farming.
 
 ## Installation
 
@@ -23,117 +23,149 @@ Protocol to enable leveraged yield farming.
 
 All tests are located under the `test` folder.
 
-1. In a desired test file (e.g., `./test/1inch/eth-dai.js`), look for any indication of an Ethereum block, for example:
+1. In a desired test file (e.g., `./test/strategies/usdt-stargate.js`), look for the protocol setup:
     ```
-     // external setup
-     // use block 11807770
-    ```
-1. In `hardhat.config.ts`, under `networks/hardhat/forking`, edit `blockNumber` accordingly:
-    ```
-    networks: {
-      hardhat: {
-        allowUnlimitedContractSize: true,
-        forking: {
-          url: "https://eth-mainnet.alchemyapi.io/v2/" + keys.alchemyKey,
-          blockNumber: 11807770, // <-- edit here
-        }
-      }
-    },
+   let core: CoreProtocol;
+   ...
+    core = await setupCoreProtocol({
+      ...CoreProtocolSetupConfigV2,
+      blockNumber: 8958800, // use the block number applicable to your testing
+    });
     ```
    The block number is often necessary because many tests depend on the blockchain state at a given time. For example,
    for using whale accounts that are no longer such at the most recent block, or for time-sensitive activities like
    migrations. In addition, specifying block number speeds up tests due to caching.
 
-1. Run `npx hardhat test [test file location]`: `npx hardhat test ./test/1inch/eth-dai.js` (if for some reason the
-   NodeJS heap runs out of memory, make sure to explicitly increase its size
-   via `export NODE_OPTIONS=--max_old_space_size=4096`). This will produce the following output:
-    ```
-    Mainnet ETH/DAI
-    Impersonating...
-    0xf00dD244228F51547f0563e60bCa65a30FBF5f7f
-    0x9681319f4e60dD165CA2432f30D91Bb4DcFdFaa2
-    Fetching Underlying at:  0x7566126f2fD0f2Dddae01Bb8A6EA49b760383D5A
-    New Vault Deployed:  0x351AcA1389e546DDf78110495bc444634Ad41faE
-    Strategy Deployed:  0x75565dB9a8657E21A89652F20646B03E3aDedD7b
-    Strategy and vault added to Controller.
-      Happy path
-    loop  0
-    old shareprice:  1000000000000000000
-    new shareprice:  1000000000000000000
-    growth:  1
-    loop  1
-    old shareprice:  1000000000000000000
-    new shareprice:  1000487030374603469
-    growth:  1.0004870303746036
-    loop  2
-    old shareprice:  1000487030374603469
-    new shareprice:  1000974645351633413
-    growth:  1.0004873776093302
-    loop  3
-    old shareprice:  1000974645351633413
-    new shareprice:  1001462491460834661
-    growth:  1.000487371095229
-    loop  4
-    old shareprice:  1001462491460834661
-    new shareprice:  1001950555856045672
-    growth:  1.000487351647588
-    loop  5
-    old shareprice:  1001950555856045672
-    new shareprice:  1002438864026715060
-    growth:  1.0004873575525413
-    loop  6
-    old shareprice:  1002438864026715060
-    new shareprice:  1002927403398734292
-    growth:  1.0004873507897099
-    loop  7
-    old shareprice:  1002927403398734292
-    new shareprice:  1003416174066046115
-    growth:  1.0004873440147866
-    loop  8
-    old shareprice:  1003416174066046115
-    new shareprice:  1003905176131576086
-    growth:  1.0004873372367005
-    loop  9
-    old shareprice:  1003905176131576086
-    new shareprice:  1004394396967401885
-    growth:  1.0004873177740858
-    earned!
-        ✓ Farmer should earn money (31804ms)
-
-    1 passing (38s)
-    ```
+2. Run `npx hardhat test [test file location]`: `npx hardhat test ./test/strategies/stargate/usdt-stargate.test.ts` (if
+   for some reason the NodeJS heap runs out of memory, make sure to explicitly increase its size
+   via `export NODE_OPTIONS=--max_old_space_size=4096`). This will produce output:
 
 ## Develop
 
 Under `contracts/strategies`, there are plenty of examples to choose from in the repository already, therefore, creating
 a strategy is no longer a complicated task. Copy-pasting existing strategies with minor modifications is acceptable.
 
-Under `contracts/base`, there are existing base interfaces and contracts that can speed up development. Base contracts
-currently exist for developing SNX and MasterChef-based strategies.
+Under `contracts/base`, there are existing base interfaces and contracts that can speed up development. To start with
+creating a strategy, extend your new strategy from `BaseUpgradeableStrategy.sol`
 
-We recommend favouring `StrategyBaseUL` over `StrategyBase` as the former's liquidation goes through the Universal
-Liquidator that was originally developed by our community.
+There are a few abstract functions you need to implement in order to complete your strategy:
+
+```solidity
+   /**
+     * @dev Called after the upgrade is finalized and `nextImplementation` is set back to null. This function is called
+     *      for the sake of clean up, so any new state that needs to be set can be done.
+     */
+    function _finalizeUpgrade() internal;
+```
+
+```solidity
+    /**
+     * @dev Withdraws all earned rewards from the reward pool(s)
+     */
+    function _claimRewards() internal;
+```
+
+```solidity
+    /**
+     * @return The balance of `underlying()` in `rewardPool()`
+     */
+    function _rewardPoolBalance() internal view returns (uint);
+```
+
+```solidity
+    /**
+     * @dev Liquidates reward tokens for `underlying`
+     */
+    function _liquidateReward() internal;
+```
+
+```solidity
+    /**
+     * @dev Withdraws `_amount` of `underlying()` from the `rewardPool()` to this contract. Does not attempt to claim
+     *      any rewards
+     */
+    function _partialExitRewardPool(uint256 _amount) internal;
+```
+
+```solidity
+    /**
+     * @dev Deposits underlying token into the yield-earning contract.
+     */
+    function _enterRewardPool() internal;
+```
+
+There also are some utility functions you can take advantage of to speed up development. For example:
+
+```solidity
+    /**
+     * @dev Same as `_notifyProfitAndBuybackInRewardToken` but does not perform a compounding buyback. Just takes fees
+     *      instead.
+     */
+    function _notifyProfitInRewardToken(
+        address _rewardToken,
+        uint256 _rewardBalance
+    ) internal;
+```
+
+```solidity
+    /**
+     * @param _rewardToken      The token that will be sold into `_buybackTokens`
+     * @param _rewardBalance    The amount of `_rewardToken` to be sold into `_buybackTokens`
+     * @param _buybackTokens    The tokens to be bought back by the protocol and sent back to this strategy contract.
+     *                          Calling this function automatically sends the appropriate amounts to the strategist,
+     *                          profit share and platform
+     * @return The amounts bought back of each buyback token. Each index in the array corresponds with `_buybackTokens`.
+     */
+    function _notifyProfitAndBuybackInRewardToken(
+        address _rewardToken,
+        uint256 _rewardBalance,
+        address[] memory _buybackTokens
+    ) internal returns (uint[] memory);
+```
+
+```solidity
+    /**
+     * @param _rewardToken      The token that will be sold into `_buybackTokens`
+     * @param _rewardBalance    The amount of `_rewardToken` to be sold into `_buybackTokens`
+     * @param _buybackTokens    The tokens to be bought back by the protocol and sent back to this strategy contract.
+     *                          Calling this function automatically sends the appropriate amounts to the strategist,
+     *                          profit share and platform
+     * @param _weights          The weights to be applied for each buybackToken. For example [100, 300] applies 25% to
+     *                          buybackTokens[0] and 75% to buybackTokens[1]
+     * @return The amounts bought back of each buyback token. Each index in the array corresponds with `_buybackTokens`.
+     */
+    function _notifyProfitAndBuybackInRewardTokenWithWeights(
+        address _rewardToken,
+        uint256 _rewardBalance,
+        address[] memory _buybackTokens,
+        uint[] memory _weights
+    ) internal returns (uint[] memory);
+```
+
+Once the abstract functions are implemented and tested, you're ready to move on to contributing to this GitHub
+repository!
 
 ## Contribute
 
 When ready, open a pull request with the following information:
 
-1. Instructions on how to run the test and at which block number
-2. A **mainnet fork test output** (like the one above in the README) clearly showing the increases of share price
-3. Info about the protocol, including:
+- Info about the protocol, including:
     - Live farm page(s)
     - GitHub link(s)
     - Etherscan link(s)
     - Start/end dates for rewards
     - Any limitations (e.g., maximum pool size)
     - Current Uniswap/Sushiswap/etc. pool sizes used for liquidation (to make sure they are not too shallow)
-
-   The first few items can be omitted for well-known protocols (such as `curve.fi`).
-
-5. A description of **potential value** for Harvest: why should your strategy be live? High APYs, decent pool sizes,
-   longevity of rewards, well-secured protocols, high-potential collaborations, etc.
+    - The first few items can be omitted for well-known protocols (such as `curve.fi`).
+- A description of **potential value** for Harvest: why should your strategy be live? High APYs, decent pool sizes,
+  longevity of rewards, well-secured protocols, high-potential collaborations, etc.
+- A strategist address that will be used to redirect strategist fees to (currently 5% of compounded yield at the time of
+  writing).
 
 ## Deployment
 
 If your pull request is merged and given a green light for deployment, the Harvest team will take care of on-chain
-deployment.
+deployment. Alternatively, you can deploy the strategy yourself with the strategist address already set. Note, deploying
+it yourself is more trustless but may slow down our integration, since we need to check over the on-chain deployment for
+any code diffs. If you deploy the strategy yourself, you must also verify the contracts so the source code can be
+checked.  

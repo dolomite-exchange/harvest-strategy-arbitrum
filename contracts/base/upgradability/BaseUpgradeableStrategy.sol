@@ -199,8 +199,8 @@ contract BaseUpgradeableStrategy is
     // ==================== Functionality ====================
 
     /**
-     * Same as `_notifyProfitAndBuybackInRewardToken` but does not perform a compounding buyback. Just takes fees
-     * instead.
+     * @dev Same as `_notifyProfitAndBuybackInRewardToken` but does not perform a compounding buyback. Just takes fees
+     *      instead.
      */
     function _notifyProfitInRewardToken(
         address _rewardToken,
@@ -265,7 +265,12 @@ contract BaseUpgradeableStrategy is
     }
 
     /**
-     * @return the amounts bought back of each buybackToken
+     * @param _rewardToken      The token that will be sold into `_buybackTokens`
+     * @param _rewardBalance    The amount of `_rewardToken` to be sold into `_buybackTokens`
+     * @param _buybackTokens    The tokens to be bought back by the protocol and sent back to this strategy contract.
+     *                          Calling this function automatically sends the appropriate amounts to the strategist,
+     *                          profit share and platform
+     * @return The amounts bought back of each buyback token. Each index in the array corresponds with `_buybackTokens`.
      */
     function _notifyProfitAndBuybackInRewardToken(
         address _rewardToken,
@@ -281,11 +286,14 @@ contract BaseUpgradeableStrategy is
     }
 
     /**
-     * @param _rewardToken      The reward token to be sold for FARM and _buybackTokens
-     * @param _rewardBalance    The amount of `_rewardToken` to be sold for FARM and _buybackTokens
-     * @param _buybackTokens    The tokens to be bought for reinvestment
-     * @param _weights          the weights to be applied for each buybackToken. For example [100, 300] applies 25% to
+     * @param _rewardToken      The token that will be sold into `_buybackTokens`
+     * @param _rewardBalance    The amount of `_rewardToken` to be sold into `_buybackTokens`
+     * @param _buybackTokens    The tokens to be bought back by the protocol and sent back to this strategy contract.
+     *                          Calling this function automatically sends the appropriate amounts to the strategist,
+     *                          profit share and platform
+     * @param _weights          The weights to be applied for each buybackToken. For example [100, 300] applies 25% to
      *                          buybackTokens[0] and 75% to buybackTokens[1]
+     * @return The amounts bought back of each buyback token. Each index in the array corresponds with `_buybackTokens`.
      */
     function _notifyProfitAndBuybackInRewardTokenWithWeights(
         address _rewardToken,

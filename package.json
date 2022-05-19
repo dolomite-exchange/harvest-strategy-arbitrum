@@ -17,19 +17,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dolomite-exchange/dolomite-v2-farming-protocol.git"
+    "url": "git+https://github.com/dolomite-exchange/harvest-strategy-arbitrum.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/dolomite-exchange/dolomite-v2-farming-protocol/issues"
+    "url": "https://github.com/dolomite-exchange/harvest-strategy-arbitrum/issues"
   },
   "eslintConfig": {
     "extends": [
       "react-app"
     ]
   },
-  "homepage": "https://github.com/dolomite-exchange/dolomite-v2-farming-protocol#readme",
+  "homepage": "https://github.com/dolomite-exchange/harvest-strategy-arbitrum#readme",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-etherscan": "^3.0.3",
