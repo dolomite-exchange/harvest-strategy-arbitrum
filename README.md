@@ -8,7 +8,7 @@ the [DolomiteMargin](https://github.com/dolomite-exchange/dolomite-margin) Proto
 
 ## Installation
 
-1. Run `npm install` to install all the dependencies.
+1. Run `yarn install` to install all the dependencies.
 2. Sign up on [Infura](https://infura.io/register). We recommend using Infura to allow for a reproducible Arbitrum One
    testing environment as well as efficiency due to caching.
 3. Create a file `.env`:
@@ -36,7 +36,7 @@ All tests are located under the `test` folder.
    for using whale accounts that are no longer such at the most recent block, or for time-sensitive activities like
    migrations. In addition, specifying block number speeds up tests due to caching.
 
-2. Run `npx hardhat test [test file location]`: `npx hardhat test ./test/strategies/stargate/usdt-stargate.test.ts` (if
+2. Run `hardhat test [test file location]`: `hardhat test ./test/strategies/stargate/usdt-stargate.test.ts` (if
    for some reason the NodeJS heap runs out of memory, make sure to explicitly increase its size
    via `export NODE_OPTIONS=--max_old_space_size=4096`). This will produce output:
 
