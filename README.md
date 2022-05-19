@@ -94,7 +94,13 @@ There are a few abstract functions you need to implement in order to complete yo
     function _enterRewardPool() internal;
 ```
 
-There also are some utility functions you can take advantage of to speed up development. For example:
+Once the abstract functions are implemented and tested, you're ready to move on to contributing to this GitHub
+repository!
+
+**Don't be a hero if you don't need to be!**
+
+There also are some utility functions you should use to speed up development. These functions are well-tested and reduce
+the surface area for you tests too. For example:
 
 ```solidity
     /**
@@ -141,9 +147,6 @@ There also are some utility functions you can take advantage of to speed up deve
         uint[] memory _weights
     ) internal returns (uint[] memory);
 ```
-
-Once the abstract functions are implemented and tested, you're ready to move on to contributing to this GitHub
-repository!
 
 ## Contribute
 
