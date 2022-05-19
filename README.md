@@ -172,3 +172,39 @@ deployment. Alternatively, you can deploy the strategy yourself with the strateg
 it yourself is more trustless but may slow down our integration, since we need to check over the on-chain deployment for
 any code diffs. If you deploy the strategy yourself, you must also verify the contracts so the source code can be
 checked.  
+
+
+## Core Arbitrum Deployment
+| Name                    | Address                                    | Explorer                                                               |
+|-------------------------|--------------------------------------------|------------------------------------------------------------------------|
+| ControllerV1            | 0xD5C5017659Af1E53b48aE9d55b02756342A7d4fF | https://arbiscan.io/address/0xD5C5017659Af1E53b48aE9d55b02756342A7d4fF |
+| Governor (owner)        | 0xb39710a1309847363b9cBE5085E427cc2cAeE563 | https://arbiscan.io/address/0xb39710a1309847363b9cBE5085E427cc2cAeE563 |
+| ProfitSharingReceiverV1 | 0x5F11EfDF4422B548007Cae9919b0b38c35fa6BE7 | https://arbiscan.io/address/0x5F11EfDF4422B548007Cae9919b0b38c35fa6BE7 |
+| RewardForwarderV1       | 0x26B27e13E38FA8F8e43B8fc3Ff7C601A8aA0D032 | https://arbiscan.io/address/0x26B27e13E38FA8F8e43B8fc3Ff7C601A8aA0D032 |
+| Storage                 | 0xc1234a98617385D1a4b87274465375409f7E248f | https://arbiscan.io/address/0xc1234a98617385D1a4b87274465375409f7E248f |
+| UniversalLiquidator     | 0xe5dcf0eB836adb04FF58A472B6924fE941c4Fe76 | https://arbiscan.io/address/0xe5dcf0eB836adb04FF58A472B6924fE941c4Fe76 |
+
+## Strategies Arbitrum Deployment
+
+These contract addresses are taken from the [deployments.json](./scripts/deployments.json) file.
+
+| Name                                   | Address                                    | Explorer                                                               |
+|----------------------------------------|--------------------------------------------|------------------------------------------------------------------------|
+| EursUsdPoolStrategyMainnet:RewardPool  | 0xF20F44cFDa60A85f110e46019E411510b1D25b96 | https://arbiscan.io/address/0xF20F44cFDa60A85f110e46019E411510b1D25b96 |
+| EursUsdPoolStrategyMainnet:Strategy    | 0x85b589ed03bFf4969fB821ECd8a61d3e5DfFc0f2 | https://arbiscan.io/address/0x85b589ed03bFf4969fB821ECd8a61d3e5DfFc0f2 |
+| EursUsdPoolStrategyMainnet:Vault       | 0x09C29F5e64636487dD1DD851B994fa0AdE73A1bd | https://arbiscan.io/address/0x09C29F5e64636487dD1DD851B994fa0AdE73A1bd |
+| RenWbtcPoolStrategyMainnet:RewardPool  | 0x6770A1c55487595D17383719dcE1Cd80f19D83bB | https://arbiscan.io/address/0x6770A1c55487595D17383719dcE1Cd80f19D83bB |
+| RenWbtcPoolStrategyMainnet:Strategy    | 0xECC3CeDA34e3B61Dc6d1d00F69DB1b50d0C62332 | https://arbiscan.io/address/0xECC3CeDA34e3B61Dc6d1d00F69DB1b50d0C62332 |
+| RenWbtcPoolStrategyMainnet:Vault       | 0xBB9864A9bb3341818F061Cce305aa82b0cF5B3A3 | https://arbiscan.io/address/0xBB9864A9bb3341818F061Cce305aa82b0cF5B3A3 |
+| TriCryptoStrategyMainnet:RewardPool    | 0x35d528f9255AdD4B02F5443910bbFAE649AE967b | https://arbiscan.io/address/0x35d528f9255AdD4B02F5443910bbFAE649AE967b |
+| TriCryptoStrategyMainnet:Strategy      | 0xa603Ee4c897d5C241f22A2541f07415F0d5d0618 | https://arbiscan.io/address/0xa603Ee4c897d5C241f22A2541f07415F0d5d0618 |
+| TriCryptoStrategyMainnet:Vault         | 0xcF1F62c17fcd5027d6810D76697F228FE44074FD | https://arbiscan.io/address/0xcF1F62c17fcd5027d6810D76697F228FE44074FD |
+| TwoPoolStrategyMainnet:RewardPool      | 0x5b18B7c36f6B77731e1875159111A5646C1e33Db | https://arbiscan.io/address/0x5b18B7c36f6B77731e1875159111A5646C1e33Db |
+| TwoPoolStrategyMainnet:Strategy        | 0xEfcF4AB8298010E1E4059F46a054de5e0f89EE52 | https://arbiscan.io/address/0xEfcF4AB8298010E1E4059F46a054de5e0f89EE52 |
+| TwoPoolStrategyMainnet:Vault           | 0x7FEBd439C00339C377031001048B556C085f100E | https://arbiscan.io/address/0x7FEBd439C00339C377031001048B556C085f100E |
+| UsdcStargateStrategyMainnet:RewardPool | 0xE956110f4e937d59C2163778c4341D24254d90b0 | https://arbiscan.io/address/0xE956110f4e937d59C2163778c4341D24254d90b0 |
+| UsdcStargateStrategyMainnet:Strategy   | 0xd6d33AD0504C3767832a96D7e2De088270407E9D | https://arbiscan.io/address/0xd6d33AD0504C3767832a96D7e2De088270407E9D |
+| UsdcStargateStrategyMainnet:Vault      | 0xfC2640ca71B1724B89dc2714E661B0089f8c0EED | https://arbiscan.io/address/0xfC2640ca71B1724B89dc2714E661B0089f8c0EED |
+| UsdtStargateStrategyMainnet:RewardPool | 0xEcE1821b2c448D472B432C9e9Fd15ECF5FbBE223 | https://arbiscan.io/address/0xEcE1821b2c448D472B432C9e9Fd15ECF5FbBE223 |
+| UsdtStargateStrategyMainnet:Strategy   | 0x73FCe9666F2E162Aa7AA99B5F3B0929D2bE28558 | https://arbiscan.io/address/0x73FCe9666F2E162Aa7AA99B5F3B0929D2bE28558 |
+| UsdtStargateStrategyMainnet:Vault      | 0x6d8ed5dace7C74e2d83AE09bB29d548c964EEBc5 | https://arbiscan.io/address/0x6d8ed5dace7C74e2d83AE09bB29d548c964EEBc5 |
