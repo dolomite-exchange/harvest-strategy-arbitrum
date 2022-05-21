@@ -189,9 +189,9 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
         // Allowance is already set when the tokens are set, so no need to do so here
         uint amount;
         if (isDeposit) {
-            amount = IERC4626(makerToken).deposit(requestedFillAmount, address(this));
+            amount = _depositAssetsIntoVault(makerToken, takerToken, requestedFillAmount);
         } else {
-            amount = IERC4626(takerToken).redeem(requestedFillAmount, address(this), address(this));
+            amount = _withdrawAssetsFromVault(takerToken, makerToken, requestedFillAmount);
         }
 
         return amount;
@@ -450,7 +450,7 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
         }
     }
 
-    function _setAllowanceForAll(
+    function _setAllowanceForAllTokens(
         address[] memory _tokens,
         uint _allowance
     ) internal {
@@ -513,5 +513,46 @@ contract SimpleLeverageStrategy is IStrategy, SimpleLeverageStrategyStorage, IDo
         }
 
         _dolomiteMargin.operate(accounts, actions);
+    }
+
+    /**
+     * @param _fToken       The fToken whose vault will be deposited into
+     * @param _borrowToken  The token that will be converted into fToken
+     * @param _amount       The amount of `_borrowToken` that will be converted into `_fToken`
+     * @return The amount of `_fToken` received from the deposit
+     */
+    function _depositAssetsIntoVault(
+        address _fToken,
+        address _borrowToken,
+        uint _amount
+    ) internal returns (uint) {
+        Require.that(
+            _borrowToken == IVault(_fToken).underlying(),
+            FILE,
+            "invalid underlying"
+        );
+        return IERC4626(_fToken).deposit(_amount, address(this));
+    }
+
+    /**
+     * @param _fToken       The fToken whose vault will be withdrawn from
+     * @param _borrowToken  The token that will be converted into from fToken, to repay the loan
+     * @param _amount       The amount of `_fToken` that will be converted into `_borrowToken`
+     * @return The amount of `_borrowToken` received from the withdrawal
+     */
+    function _withdrawAssetsFromVault(
+        address _fToken,
+        address _borrowToken,
+        uint _amount
+    ) internal returns (uint) {
+        Require.that(
+            _borrowToken == IVault(_fToken).underlying(),
+            FILE,
+            "invalid underlying"
+        );
+        if (IERC20(_borrowToken).allowance(address(this), _fToken) < _amount) {
+            IERC20(_borrowToken).safeApprove(_fToken, uint(-1));
+        }
+        return IERC4626(_fToken).redeem(_amount, address(this), address(this));
     }
 }

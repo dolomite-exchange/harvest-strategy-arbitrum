@@ -274,11 +274,6 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
         );
         uint totalWeight = 0;
         for (uint i = 0; i < _fTokenInitialWeights.length; i++) {
-            require(
-                IVault(_fTokens[i]).underlying() == _borrowTokens[i],
-                "_fTokens[i].underlying must equal _borrowTokens[i]"
-            );
-
             totalWeight = totalWeight.add(_fTokenInitialWeights[i]);
         }
         require(
@@ -290,13 +285,17 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
         address[] memory oldBorrowTokens = borrowTokens();
         _repayLoanAndWithdrawCollateral(oldFTokens, oldBorrowTokens);
 
-        _setAllowanceForAll(oldFTokens, 0); // unset old allowances
-        _setAllowanceForAll(_fTokens, uint(-1)); // set new allowances
+        address[] memory spenders = new address[](2);
+        spenders[0] = rewardPool();
+        spenders[1] = rewardPool();
+
+        _setAllowanceForAllTokens(oldFTokens, 0); // unset old allowances
+        _setAllowanceForAllTokens(_fTokens, uint(-1)); // set new allowances
         setAddressArray(_F_TOKENS_SLOT, _fTokens);
         emit FTokensSet(_fTokens);
 
-        _setAllowanceForAll(oldBorrowTokens, 0); // unset old allowances
-        _setAllowanceForAll(_borrowTokens, uint(-1)); // set new allowances
+        _setAllowanceForAllTokens(oldBorrowTokens, 0); // unset old allowances
+        _setAllowanceForAllTokens(_borrowTokens, uint(-1)); // set new allowances
         setAddressArray(_BORROW_TOKENS_SLOT, _borrowTokens);
         emit BorrowTokensSet(_borrowTokens);
 
@@ -384,7 +383,7 @@ contract SimpleLeverageStrategyStorage is BaseUpgradeableStrategy {
         address[] memory _borrowTokens
     ) internal;
 
-    function _setAllowanceForAll(
+    function _setAllowanceForAllTokens(
         address[] memory _tokens,
         uint _allowance
     ) internal;
