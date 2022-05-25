@@ -81,7 +81,9 @@ export async function deployVaultAndStrategyAndRewardPool(
     },
   }
 
-  fs.writeFileSync('./scripts/deployments.json', JSON.stringify(file, null, 2), { encoding: 'utf8', flag: 'w' });
+  if (network.name !== 'hardhat') {
+    fs.writeFileSync('./scripts/deployments.json', JSON.stringify(file, null, 2), { encoding: 'utf8', flag: 'w' });
+  }
 
   console.log(`========================= ${strategyName} =========================`)
   console.log('Pot Pool:', potPoolProxy.address);

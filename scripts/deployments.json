@@ -40,5 +40,17 @@
       "strategy": "0x73FCe9666F2E162Aa7AA99B5F3B0929D2bE28558",
       "vault": "0x6d8ed5dace7C74e2d83AE09bB29d548c964EEBc5"
     }
+  },
+  "EthDaiSushiStrategyMainnet": {
+  },
+  "EthGOhmSushiStrategyMainnet": {
+  },
+  "EthMagicSushiStrategyMainnet": {
+  },
+  "EthMimSushiStrategyMainnet": {
+  },
+  "EthSpellSushiStrategyMainnet": {
+  },
+  "EthSushiSushiStrategyMainnet": {
   }
 }

@@ -171,7 +171,7 @@ contract UniversalLiquidatorV1 is IUniversalLiquidatorV1, ControllableInit, Base
             bool breakForLoop = false;
             for (uint i = 0; i < bases.length && !breakForLoop; ++i) {
                 router = getAddress(_getSlotForRouter(maxPath[count - 1], bases[i]));
-                if (router != address(0)) {
+                if (router != address(0) && !_isAlreadyInPath(maxPath, bases[i], count)) {
                     maxPath[count++] = bases[i];
                     breakForLoop = true;
                 }
@@ -257,5 +257,18 @@ contract UniversalLiquidatorV1 is IUniversalLiquidatorV1, ControllableInit, Base
     function _getSlotForRouter(address _inputToken, address _outputToken) internal pure returns (bytes32) {
         bytes32 valueSlot = keccak256(abi.encodePacked(_inputToken, _outputToken));
         return keccak256(abi.encodePacked(_PATH_TO_ROUTER_MAP_SLOT, valueSlot));
+    }
+
+    function _isAlreadyInPath(
+        address[] memory path,
+        address token,
+        uint256 count
+    ) internal pure returns (bool) {
+        for (uint i = 0; i < count; i++) {
+            if (path[i] == token) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -336,7 +336,7 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         require(_receiver != address(0), "receiver must be defined");
 
         if (address(strategy()) != address(0)) {
-            require(IStrategy(strategy()).depositArbCheck(), "Too much arb");
+            require(IStrategy(strategy()).depositArbCheck(), "Too much arbitrage");
         }
 
         uint256 shares = totalSupply() == 0
@@ -361,7 +361,7 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         require(totalSupply() > 0, "Vault has no shares");
         require(_shares > 0, "numberOfShares must be greater than 0");
         uint256 totalShareSupply = totalSupply();
-        uint256 calculatedSharePrice = getPricePerFullShare();
+        uint256 underlyingBalance = underlyingBalanceWithInvestment();
 
         address sender = msg.sender;
         if (sender != _owner) {
@@ -375,7 +375,7 @@ contract VaultV1 is IVault, ERC20, ERC20Detailed, IUpgradeSource, ControllableIn
         // !!! IMPORTANT: burning shares needs to happen after the last use of getPricePerFullShare()
         _burn(_owner, _shares);
 
-        assets = _shares.mul(calculatedSharePrice).div(underlyingUnit());
+        assets = _shares.mul(underlyingBalance).div(totalShareSupply);
 
         if (assets > underlyingBalanceInVault()) {
             uint256 missing = assets.sub(underlyingBalanceInVault());

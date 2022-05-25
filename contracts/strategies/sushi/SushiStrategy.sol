@@ -87,8 +87,10 @@ contract SushiStrategy is IStrategy, BaseUpgradeableStrategy {
     function _enterRewardPool() internal {
         address user = address(this);
         uint256 entireBalance = IERC20(underlying()).balanceOf(user);
-        // allowance is already set in initializer
-        IMiniChefV2(rewardPool()).deposit(pid(), entireBalance, user); // deposit and stake
+        if (entireBalance > 0) {
+            // allowance is already set in initializer
+            IMiniChefV2(rewardPool()).deposit(pid(), entireBalance, user); // deposit and stake
+        }
     }
 
     function _claimRewards() internal {
@@ -98,20 +100,19 @@ contract SushiStrategy is IStrategy, BaseUpgradeableStrategy {
     function _liquidateReward() internal {
         IUniswapV2Pair pair = IUniswapV2Pair(underlying());
         address[] memory _rewardTokens = rewardTokens();
+        address[] memory buybackTokens = new address[](2);
+        buybackTokens[0] = pair.token0();
+        buybackTokens[1] = pair.token1();
+
         for (uint i = 0; i < _rewardTokens.length; i++) {
             uint256 rewardBalance = IERC20(_rewardTokens[i]).balanceOf(address(this));
-            address[] memory buybackTokens = new address[](2);
-            buybackTokens[0] = pair.token0();
-            buybackTokens[1] = pair.token1();
-
             _notifyProfitAndBuybackInRewardToken(_rewardTokens[i], rewardBalance, buybackTokens);
+        }
 
-            uint256 tokenBalance0 = IERC20(buybackTokens[0]).balanceOf(address(this));
-            uint256 tokenBalance1 = IERC20(buybackTokens[1]).balanceOf(address(this));
-            if (tokenBalance0 > 0 && tokenBalance1 > 0) {
-                _mintLiquidityTokens();
-                _enterRewardPool();
-            }
+        uint256 tokenBalance0 = IERC20(buybackTokens[0]).balanceOf(address(this));
+        uint256 tokenBalance1 = IERC20(buybackTokens[1]).balanceOf(address(this));
+        if (tokenBalance0 > 0 && tokenBalance1 > 0) {
+            _mintLiquidityTokens();
         }
     }
 
@@ -136,8 +137,6 @@ contract SushiStrategy is IStrategy, BaseUpgradeableStrategy {
             uint(-1)
         );
 
-        uint unweightedNumerator = 3;
-        uint unweightedDenominator = 4;
         uint256 newTokenBalance0 = IERC20(token0).balanceOf(user);
         uint256 newTokenBalance1 = IERC20(token1).balanceOf(user);
         if (newTokenBalance0 > tokenBalance0 * 2 / 10) {
@@ -148,7 +147,7 @@ contract SushiStrategy is IStrategy, BaseUpgradeableStrategy {
             buybackTokens[0] = token1;
             _notifyProfitAndBuybackInRewardToken(
                 token0,
-                newTokenBalance0 * unweightedNumerator / unweightedDenominator,
+                newTokenBalance0 * 3 / 4,
                 buybackTokens
             );
         } else if (newTokenBalance1 > tokenBalance1 * 2 / 10) {
@@ -159,7 +158,7 @@ contract SushiStrategy is IStrategy, BaseUpgradeableStrategy {
             buybackTokens[0] = token0;
             _notifyProfitAndBuybackInRewardToken(
                 token1,
-                newTokenBalance1 * unweightedNumerator / unweightedDenominator,
+                newTokenBalance1 * 3 / 4,
                 buybackTokens
             );
         }

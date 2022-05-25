@@ -35,9 +35,7 @@ contract VaultV2 is IERC4626, VaultV1 {
 
     function deposit(uint256 _assets, address _receiver) public nonReentrant defense returns (uint256) {
         uint shares = previewDeposit(_assets);
-        (uint256 retAssets, uint256 retShares) = _deposit(_assets, msg.sender, _receiver);
-        assert(_assets == retAssets);
-        assert(shares == retShares);
+        _deposit(_assets, msg.sender, _receiver);
         return shares;
     }
 
@@ -51,9 +49,7 @@ contract VaultV2 is IERC4626, VaultV1 {
 
     function mint(uint256 _shares, address _receiver) public nonReentrant defense returns (uint256) {
         uint assets = previewMint(_shares);
-        (uint retAssets, uint retShares) = _deposit(assets, msg.sender, _receiver);
-        assert(assets == retAssets);
-        assert(_shares == retShares);
+        _deposit(assets, msg.sender, _receiver);
         return assets;
     }
 
@@ -75,8 +71,7 @@ contract VaultV2 is IERC4626, VaultV1 {
     defense
     returns (uint256) {
         uint256 shares = previewWithdraw(_assets);
-        uint256 retAssets = _withdraw(shares, _receiver, _owner);
-        assert(retAssets == _assets);
+        _withdraw(shares, _receiver, _owner);
         return shares;
     }
 
@@ -97,9 +92,7 @@ contract VaultV2 is IERC4626, VaultV1 {
     nonReentrant
     defense
     returns (uint256) {
-        uint256 assets = previewRedeem(_shares);
-        uint256 retAssets = _withdraw(_shares, _receiver, _owner);
-        assert(assets == retAssets);
+        uint256 assets = _withdraw(_shares, _receiver, _owner);
         return assets;
     }
 

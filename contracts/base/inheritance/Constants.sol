@@ -58,7 +58,7 @@ contract Constants {
 
     address constant public LINK = 0xf97f4df75117a78c1A5a0DBb814Af92458539FB4;
 
-    address constant public MAGIC = 0x1a9c20e2b0aC11EBECbDCA626BBA566c4ce8e606;
+    address constant public MAGIC = 0x539bdE0d7Dbd336b79148AA742883198BBF60342;
 
     address constant public MIM = 0xFEa7a6a0B346362BF88A9e4A88416B77a57D6c2A;
 
