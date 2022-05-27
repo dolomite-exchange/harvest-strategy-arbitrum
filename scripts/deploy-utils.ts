@@ -27,7 +27,7 @@ async function verifyContract(address: string, constructorArguments: any[]) {
 export function getStrategist(): string {
   const strategist = process.env.STRATEGIST;
   if (!strategist) {
-    throw new Error('No strategist defined');
+    throw new Error('No STRATEGIST defined');
   }
   return strategist;
 }
@@ -54,7 +54,6 @@ export async function deployVaultAndStrategyAndRewardPool(
   }
 
   console.log(`Deploying strategy ${strategyName} to chainId ${chainId}...`);
-
   const [strategyProxy, strategy, rawStrategy] = await createStrategy<IMainnetStrategy>(strategyName);
   const [vaultProxy] = await createVault(VaultV2Implementation, core, underlying);
   await strategy.initializeMainnetStrategy(

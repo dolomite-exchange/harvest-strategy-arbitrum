@@ -42,15 +42,45 @@
     }
   },
   "EthDaiSushiStrategyMainnet": {
+    "42161": {
+      "potPool": "0xa84ACc69Ee857a5d90ccF8bc82ba5d21b013719f",
+      "strategy": "0xe77171dcA61bF6b4377ed38ca56Cb70c03a5DAF7",
+      "vault": "0xc6f4A360732a53Cec7b7f2eF82F9DB34dF3593A7"
+    }
   },
   "EthGOhmSushiStrategyMainnet": {
+    "42161": {
+      "potPool": "0x19C48D421dD08A90E51Ef0a267472Cdc549636f7",
+      "strategy": "0x676275b94490B7a5E3C7B50d99BEc7D00Df8D450",
+      "vault": "0x49C0658d101b637E23f96b4334aECB193eD3E3d2"
+    }
   },
   "EthMagicSushiStrategyMainnet": {
+    "42161": {
+      "potPool": "0x02E886C2FC510C958b468d85544485DdD9133fC5",
+      "strategy": "0x357fCEed8335d4842777796092F76a489b34cbB5",
+      "vault": "0x358cDb55B3bc792d51190Cf4D3B6C8ABa450f863"
+    }
   },
   "EthMimSushiStrategyMainnet": {
+    "42161": {
+      "potPool": "0xbE780F8e75a545861AEcE86C18e6653fb3A62E89",
+      "strategy": "0x495FCc9227Cec435Bfa46714882a7bd0C91239e3",
+      "vault": "0x53130D60c57D392afAf724239D53Cab9e313c9b7"
+    }
   },
   "EthSpellSushiStrategyMainnet": {
+    "42161": {
+      "potPool": "0x7F6d1e689f960Aea3F1F8599d1EEd9B1e9D09128",
+      "strategy": "0x16A8B908ACc7b57756dDF1d2bf4036C74c0e70c3",
+      "vault": "0x2A941522475978B40CD09916D860193aD2bE9e88"
+    }
   },
   "EthSushiSushiStrategyMainnet": {
+    "42161": {
+      "potPool": "0x7386Fe6cd870df4ac57877e39796293E9098aef3",
+      "strategy": "0x4e4D7899Facd7C2c0486cB31332A48c2fA26c876",
+      "vault": "0xd4607317290d2d6F7392bF8c3B353875E127ABd9"
+    }
   }
 }

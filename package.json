@@ -11,7 +11,7 @@
     "clean": "hardhat clean",
     "deploy:1": "hardhat --network arbitrum run ./scripts/deploy-1-curve.ts",
     "deploy:2": "hardhat --network arbitrum run ./scripts/deploy-2-stargate.ts",
-    "deploy:3": "hardhat --network hardhat run ./scripts/deploy-3-sushi.ts",
+    "deploy:3": "hardhat --network arbitrum run ./scripts/deploy-3-sushi.ts",
     "lint": "solhint 'contracts/**/*.sol'",
     "test": "hardhat test",
     "typechain": "hardhat typechain"
