@@ -74,18 +74,6 @@ describe(strategyName, () => {
     const newUniversalLiquidator = await UniversalLiquidatorV2Factory.deploy();
     await core.universalLiquidator.connect(core.governance).scheduleUpgrade(newUniversalLiquidator.address);
     await core.universalLiquidatorProxy.connect(core.governance).upgrade();
-    await (core.universalLiquidator as IUniversalLiquidatorV2)
-      .connect(core.governance)
-      ['configureSwap(address[],address)'](
-      [WETH.address, SUSHI.address],
-      SUSHI_ROUTER.address,
-    );
-    await (core.universalLiquidator as IUniversalLiquidatorV2)
-      .connect(core.governance)
-      ['configureSwap(address[],address)'](
-      [SUSHI.address, WETH.address],
-      SUSHI_ROUTER.address,
-    );
 
     [strategyProxy, strategyMainnet] =
       await createStrategy<EthSushiSushiStrategyMainnet>('EthSushiSushiStrategyMainnet');

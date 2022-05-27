@@ -87,12 +87,6 @@ describe(strategyName, () => {
       [SPELL.address, WETH.address],
       SUSHI_ROUTER.address,
     );
-    await (core.universalLiquidator as IUniversalLiquidatorV2)
-      .connect(core.governance)
-      ['configureSwap(address[],address)'](
-      [SPELL.address, WETH.address],
-      SUSHI_ROUTER.address,
-    );
 
     [strategyProxy, strategyMainnet] =
       await createStrategy<EthSpellSushiStrategyMainnet>('EthSpellSushiStrategyMainnet');
