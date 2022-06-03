@@ -134,17 +134,5 @@ contract CurveStrategy is IStrategy, BaseUpgradeableStrategy {
         }
     }
 
-    function _mintLiquidityTokens() internal {
-        address _depositToken = depositToken();
-        uint256 tokenBalance = IERC20(_depositToken).balanceOf(address(this));
-        IERC20(_depositToken).safeApprove(curveDepositPool(), 0);
-        IERC20(_depositToken).safeApprove(curveDepositPool(), tokenBalance);
-
-        uint256[3] memory depositArray;
-        depositArray[depositArrayPosition()] = tokenBalance;
-
-        // we can accept 0 as minimum, this will be called only by trusted roles
-        uint256 minimum = 0;
-        ITriCryptoPool(curveDepositPool()).add_liquidity(depositArray, minimum);
-    }
+    function _mintLiquidityTokens() internal;
 }

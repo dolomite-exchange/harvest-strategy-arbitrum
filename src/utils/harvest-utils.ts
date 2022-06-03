@@ -33,19 +33,19 @@ import {
   VaultV1,
   VaultV1__factory,
   VaultV2,
-  VaultV2__factory,
+  VaultV2__factory, IUniversalLiquidatorV2, IUniversalLiquidatorV2__factory,
 } from '../types';
 import {
-  ControllerV1Address,
-  DefaultImplementationDelay,
-  GovernorAddress,
+  ControllerV1Address, DAI, DaiWhaleAddress,
+  DefaultImplementationDelay, G_OHM, GOhmWhaleAddress,
+  GovernorAddress, MAGIC, MagicWhaleAddress, MIM, MimWhaleAddress,
   ProfitSharingReceiverV1Address,
-  RewardForwarderV1Address,
-  StorageAddress,
+  RewardForwarderV1Address, SPELL, SpellWhaleAddress,
+  StorageAddress, SUSHI, SushiWhaleAddress,
   UniversalLiquidatorAddress,
-  USDC, USDT,
+  USDC, UsdcWhaleAddress, USDT, UsdtWhaleAddress,
   VaultV2ImplementationAddress,
-  WBTC,
+  WBTC, WbtcWhaleAddress1, WbtcWhaleAddress2,
   WETH,
 } from './constants';
 import { BlockNumberV1, DefaultBlockNumber } from './no-deps-constants';
@@ -138,7 +138,7 @@ export interface CoreProtocol {
   rewardForwarder: IRewardForwarder;
   storage: Storage;
   universalLiquidatorProxy: UniversalLiquidatorProxy;
-  universalLiquidator: IUniversalLiquidatorV1;
+  universalLiquidator: IUniversalLiquidatorV1 | IUniversalLiquidatorV2;
 }
 
 export async function setupCoreProtocol(
@@ -153,7 +153,7 @@ export async function setupCoreProtocol(
   const [hhUser1, hhUser2, hhUser3, hhUser4, hhUser5, strategist] = await ethers.getSigners();
   let governance: SignerWithAddress;
   let profitSharingReceiver: IProfitSharingReceiver;
-  let universalLiquidator: IUniversalLiquidatorV1;
+  let universalLiquidator: IUniversalLiquidatorV1 | IUniversalLiquidatorV2;
   let universalLiquidatorProxy: UniversalLiquidatorProxy;
   let rewardForwarder: IRewardForwarder;
   let controller: IController;
@@ -192,11 +192,19 @@ export async function setupCoreProtocol(
       governance,
     ) as IRewardForwarder;
 
-    universalLiquidator = new BaseContract(
-      config.existingCoreAddresses.universalLiquidatorAddress,
-      IUniversalLiquidatorV1__factory.createInterface(),
-      governance,
-    ) as IUniversalLiquidatorV1;
+    if (config.blockNumber >= 12882300) {
+      universalLiquidator = new BaseContract(
+        config.existingCoreAddresses.universalLiquidatorAddress,
+        IUniversalLiquidatorV2__factory.createInterface(),
+        governance,
+      ) as IUniversalLiquidatorV2;
+    } else {
+      universalLiquidator = new BaseContract(
+        config.existingCoreAddresses.universalLiquidatorAddress,
+        IUniversalLiquidatorV1__factory.createInterface(),
+        governance,
+      ) as IUniversalLiquidatorV1;
+    }
 
     universalLiquidatorProxy = new BaseContract(
       config.existingCoreAddresses.universalLiquidatorAddress,
@@ -364,27 +372,66 @@ export async function createPotPool<T extends PotPoolType>(
   return [potPoolProxy, potPoolImpl]
 }
 
-export async function setupWETHBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
-  await WETH.connect(signer).deposit({ value: amount });
-  await WETH.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
+export async function setupDAIBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
+  const whaleSigner = await impersonate(DaiWhaleAddress);
+  await DAI.connect(whaleSigner).transfer(signer.address, amount);
+  await DAI.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
+}
+
+export async function setupGOHMBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
+  const whaleSigner = await impersonate(GOhmWhaleAddress);
+  await G_OHM.connect(whaleSigner).transfer(signer.address, amount);
+  await G_OHM.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
+}
+
+export async function setupMAGICBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
+  const whaleSigner = await impersonate(MagicWhaleAddress);
+  await MAGIC.connect(whaleSigner).transfer(signer.address, amount);
+  await MAGIC.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
+}
+
+export async function setupMIMBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
+  const whaleSigner = await impersonate(MimWhaleAddress);
+  await MIM.connect(whaleSigner).transfer(signer.address, amount);
+  await MIM.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
+}
+
+export async function setupSPELLBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
+  const whaleSigner = await impersonate(SpellWhaleAddress);
+  await SPELL.connect(whaleSigner).transfer(signer.address, amount);
+  await SPELL.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
+}
+
+export async function setupSUSHIBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
+  const whaleSigner = await impersonate(SushiWhaleAddress);
+  await SUSHI.connect(whaleSigner).transfer(signer.address, amount);
+  await SUSHI.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
 }
 
 export async function setupUSDCBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
-  const whaleSigner = await impersonate('0xCe2CC46682E9C6D5f174aF598fb4931a9c0bE68e');
+  const whaleSigner = await impersonate(UsdcWhaleAddress);
   await USDC.connect(whaleSigner).transfer(signer.address, amount);
   await USDC.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
 }
 
 export async function setupUSDTBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
-  const whaleSigner = await impersonate('0xf89d7b9c864f589bbF53a82105107622B35EaA40');
+  const whaleSigner = await impersonate(UsdtWhaleAddress);
   await USDT.connect(whaleSigner).transfer(signer.address, amount);
   await USDT.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
 }
 
 export async function setupWBTCBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
-  const whaleSigner = await impersonate('0xc5ed2333f8a2C351fCA35E5EBAdb2A82F5d254C3');
+  let whaleSigner = await impersonate(WbtcWhaleAddress1);
+  if ((await WBTC.connect(whaleSigner).balanceOf(whaleSigner.address)).eq('0')) {
+    whaleSigner = await impersonate(WbtcWhaleAddress2);
+  }
   await WBTC.connect(whaleSigner).transfer(signer.address, amount);
   await WBTC.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
+}
+
+export async function setupWETHBalance(signer: SignerWithAddress, amount: BigNumberish, spender: { address: string }) {
+  await WETH.connect(signer).deposit({ value: amount });
+  await WETH.connect(signer).approve(spender.address, ethers.constants.MaxUint256);
 }
 
 type VaultType = IVault | VaultV1 | VaultV2;
@@ -445,6 +492,7 @@ export async function doHardWork(
     hint,
     '101',
     '100',
+    { gasLimit: '5000000' }
   );
   await checkSharePriceLogChange(vault, core, result, strategyProxy, hint)
 

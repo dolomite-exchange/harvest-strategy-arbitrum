@@ -8,7 +8,7 @@ import {
   IEursUsdPool,
   IEursUsdPool__factory,
   IGauge,
-  IGauge__factory,
+  IGauge__factory, IMiniChefV2, IMiniChefV2__factory,
   IRenWbtcPool,
   IRenWbtcPool__factory, IStargateFarmingPool, IStargateFarmingPool__factory, IStargateRouter, IStargateRouter__factory,
   ITriCryptoPool,
@@ -114,8 +114,73 @@ export const aiFARM = new BaseContract(
   IERC20__factory.createInterface(),
 ) as IERC20;
 
+export const ETH_DAI_SLP = new BaseContract(
+  '0x692a0B300366D1042679397e40f3d2cb4b8F7D30',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const ETH_G_OHM_SLP = new BaseContract(
+  '0xaa5bD49f2162ffdC15634c87A77AC67bD51C6a6D',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const ETH_MAGIC_SLP = new BaseContract(
+  '0xB7E50106A5bd3Cf21AF210A755F9C8740890A8c9',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const ETH_MIM_SLP = new BaseContract(
+  '0xb6DD51D5425861C808Fd60827Ab6CFBfFE604959',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const ETH_SPELL_SLP = new BaseContract(
+  '0x8f93Eaae544e8f5EB077A1e09C1554067d9e2CA8',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const ETH_SUSHI_SLP = new BaseContract(
+  '0x3221022e37029923aCe4235D812273C5A42C322d',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const ETH_USDC_SLP = new BaseContract(
+  '0x905dfCD5649217c42684f23958568e533C711Aa3',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const ETH_USDT_SLP = new BaseContract(
+  '0xCB0E5bFa72bBb4d16AB5aA0c60601c438F04b4ad',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const ETH_WBTC_SLP = new BaseContract(
+  '0x515e252b2b5c22b4b2b6Df66c2eBeeA871AA4d69',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const G_OHM = new BaseContract(
+  '0x8D9bA570D6cb60C7e3e0F31343Efe75AB8E65FB1',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
 export const LINK = new BaseContract(
   '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const MAGIC = new BaseContract(
+  '0x539bdE0d7Dbd336b79148AA742883198BBF60342',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const MIM = new BaseContract(
+  '0xFEa7a6a0B346362BF88A9e4A88416B77a57D6c2A',
+  IERC20__factory.createInterface(),
+) as IERC20;
+
+export const SPELL = new BaseContract(
+  '0x3E6648C5a70A150A88bCE65F4aD4d506Fe15d2AF',
   IERC20__factory.createInterface(),
 ) as IERC20;
 
@@ -148,6 +213,11 @@ export const SUSHI = new BaseContract(
   '0xd4d42F0b6DEF4CE0383636770eF773390d85c61A',
   IERC20__factory.createInterface(),
 ) as IERC20;
+
+export const SUSHI_MINI_CHEF = new BaseContract(
+  '0xF4d73326C13a4Fc5FD7A064217e12780e9Bd62c3',
+  IMiniChefV2__factory.createInterface(),
+) as IMiniChefV2;
 
 export const SUSHI_ROUTER = new BaseContract(
   '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506',
@@ -187,7 +257,17 @@ export const WETH = new BaseContract(
 // ************************* Network Addresses *************************
 
 export const CrvWhaleAddress = '0x4A65e76bE1b4e8dd6eF618277Fa55200e3F8F20a';
+export const DaiWhaleAddress = '0xc5ed2333f8a2C351fCA35E5EBAdb2A82F5d254C3';
+export const GOhmWhaleAddress = '0x33eBB62DC9ddBf6B8F3C0efdF5BccC2e7AC60211';
+export const MagicWhaleAddress = '0x482729215AAF99B3199E41125865821ed5A4978a';
+export const MimWhaleAddress = '0x287239c1C1BD4F9D3691366A4B45F0da4b527E9a';
+export const SpellWhaleAddress = '0x6c469df3b69ddf8be1de915f8d74e2191fbd6304';
 export const StgWhaleAddress = '0x67fc8c432448f9a8d541c17579ef7a142378d5ad';
+export const SushiWhaleAddress = '0x871ea9aF361ec1104489Ed96438319b46E5FB4c6';
+export const UsdcWhaleAddress = '0xCe2CC46682E9C6D5f174aF598fb4931a9c0bE68e';
+export const UsdtWhaleAddress = '0xf89d7b9c864f589bbF53a82105107622B35EaA40';
+export const WbtcWhaleAddress1 = '0xc5ed2333f8a2C351fCA35E5EBAdb2A82F5d254C3';
+export const WbtcWhaleAddress2 = '0xEDad4B1F3eDc83EeD2BeCCA6a9EFFBAB766fCC96';
 
 // ************************* Harvest Contract Addresses *************************
 
@@ -199,7 +279,7 @@ export const ProfitSharingReceiverV1Address = '0x5F11EfDF4422B548007Cae9919b0b38
 export const RewardForwarderV1Address = '0x26B27e13E38FA8F8e43B8fc3Ff7C601A8aA0D032';
 export const StorageAddress = '0xc1234a98617385D1a4b87274465375409f7E248f';
 export const UniversalLiquidatorAddress = '0xe5dcf0eB836adb04FF58A472B6924fE941c4Fe76';
-export const VaultV2ImplementationAddress = '0x3b0B4CeFd850827A6316987a245987B57E543D5f';
+export const VaultV2ImplementationAddress = '0x2C328Fc08b4F64eA1B603875F3e0BEEd90fC83B9';
 export const WethVaultProxyAddress = '0x4e1B3DE0cEe69AaD99f79D7cE10Bf243A7BD3A07';
 
 // ************************* Harvest Contract Addresses *************************

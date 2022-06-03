@@ -40,19 +40,29 @@ contract Constants {
 
     address constant internal STARGATE_S_USDT = 0xB6CfcF89a7B22988bfC96632aC2A9D6daB60d641;
 
+    address constant internal SUSHI_MINI_CHEF_V2 = 0xF4d73326C13a4Fc5FD7A064217e12780e9Bd62c3;
+
     address constant internal SUSHI_ROUTER = 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506;
 
     address constant internal UNISWAP_V3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
     // ========================= Tokens =========================
 
+    address constant public aiFARM = 0x9dCA587dc65AC0a043828B0acd946d71eb8D46c1;
+
     address constant public CRV = 0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978;
 
     address constant public DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
-    address constant public aiFARM = 0x9dCA587dc65AC0a043828B0acd946d71eb8D46c1;
+    address constant public G_OHM = 0x8D9bA570D6cb60C7e3e0F31343Efe75AB8E65FB1;
 
     address constant public LINK = 0xf97f4df75117a78c1A5a0DBb814Af92458539FB4;
+
+    address constant public MAGIC = 0x539bdE0d7Dbd336b79148AA742883198BBF60342;
+
+    address constant public MIM = 0xFEa7a6a0B346362BF88A9e4A88416B77a57D6c2A;
+
+    address constant public SPELL = 0x3E6648C5a70A150A88bCE65F4aD4d506Fe15d2AF;
 
     address constant public SUSHI = 0xd4d42F0b6DEF4CE0383636770eF773390d85c61A;
 

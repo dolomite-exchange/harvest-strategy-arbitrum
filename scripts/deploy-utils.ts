@@ -27,7 +27,7 @@ async function verifyContract(address: string, constructorArguments: any[]) {
 export function getStrategist(): string {
   const strategist = process.env.STRATEGIST;
   if (!strategist) {
-    throw new Error('No strategist defined');
+    throw new Error('No STRATEGIST defined');
   }
   return strategist;
 }
@@ -54,7 +54,6 @@ export async function deployVaultAndStrategyAndRewardPool(
   }
 
   console.log(`Deploying strategy ${strategyName} to chainId ${chainId}...`);
-
   const [strategyProxy, strategy, rawStrategy] = await createStrategy<IMainnetStrategy>(strategyName);
   const [vaultProxy] = await createVault(VaultV2Implementation, core, underlying);
   await strategy.initializeMainnetStrategy(
@@ -81,7 +80,9 @@ export async function deployVaultAndStrategyAndRewardPool(
     },
   }
 
-  fs.writeFileSync('./scripts/deployments.json', JSON.stringify(file, null, 2), { encoding: 'utf8', flag: 'w' });
+  if (network.name !== 'hardhat') {
+    fs.writeFileSync('./scripts/deployments.json', JSON.stringify(file, null, 2), { encoding: 'utf8', flag: 'w' });
+  }
 
   console.log(`========================= ${strategyName} =========================`)
   console.log('Pot Pool:', potPoolProxy.address);

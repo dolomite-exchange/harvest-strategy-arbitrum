@@ -102,8 +102,8 @@ describe(strategyName, () => {
       await vaultV1.connect(core.governance).rebalance(); // move funds to the strategy
       await strategyMainnet.connect(core.governance).enterRewardPool(); // deposit strategy funds into the reward pool
 
-      const lpBalanceAfterFees = lpBalance1.mul('990').div('1000');
-      expect(await rewardPoolBalanceOf(rewardPool, rewardPid, strategyProxy)).to.eq(lpBalanceAfterFees);
+      const lpBalanceAfterReservesTakenOut = lpBalance1.mul('990').div('1000');
+      expect(await rewardPoolBalanceOf(rewardPool, rewardPid, strategyProxy)).to.eq(lpBalanceAfterReservesTakenOut);
 
       expect(await strategyMainnet.callStatic.getRewardPoolValues()).to.eql([ethers.constants.Zero]);
 
