@@ -1,7 +1,7 @@
 pragma solidity ^0.5.16;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20Detailed.sol";
 
 
 contract TestToken is ERC20, ERC20Detailed {
@@ -10,7 +10,9 @@ contract TestToken is ERC20, ERC20Detailed {
         string memory _name,
         string memory _symbol,
         uint8 _decimals
-    ) public ERC20Detailed(_name, _symbol, _decimals) {}
+    ) public {
+        ERC20Detailed.initialize(_name, _symbol, _decimals);
+    }
 
     function mint(address _account, uint _amount) public {
         super._mint(_account, _amount);
@@ -19,5 +21,4 @@ contract TestToken is ERC20, ERC20Detailed {
     function burn(address _account, uint _amount) public {
         super._burn(_account, _amount);
     }
-
 }

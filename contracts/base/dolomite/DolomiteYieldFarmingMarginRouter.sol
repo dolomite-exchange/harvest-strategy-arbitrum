@@ -19,9 +19,9 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IDolomiteMargin.sol";
 import "./interfaces/ILeveragedPotPool.sol";
@@ -117,24 +117,30 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
             _borrowTokens.length + 2
         );
         for (uint i = 0; i < _borrowAmounts.length; i++) {
+            address borrowToken = _borrowTokens[i];
+            uint256 borrowAmount = _borrowAmounts[i];
             actions[i] = DolomiteMarginActionsHelper.createWithdrawal(
                 /* accountIndex = */ 0,
-                _dolomiteMargin.getMarketIdByTokenAddress(_borrowTokens[i]),
+                _dolomiteMargin.getMarketIdByTokenAddress(borrowToken),
                 address(transformerInternal),
-                _borrowAmounts[i]
+                borrowAmount
             );
         }
         // Call the transformer, notifying it of the tokens and amounts it will receive in exchange for fToken
         // The call to transformer should send the fTokens to address(this) for the subsequent deposit
-        actions[_borrowAmounts.length] = DolomiteMarginActionsHelper.createCall(
+        {
+            // used to prevent "stack too deep"
+            bytes memory extraData = _extraData;
+            actions[_borrowAmounts.length] = DolomiteMarginActionsHelper.createCall(
             /* accountIndex = */ 0,
-            address(transformerInternal),
-            abi.encode(
-                TransformationType.TRANSFORM,
+                address(transformerInternal),
+                abi.encode(
+                    TransformationType.TRANSFORM,
                 // msg.sender serves as a dust recipient here
-                abi.encode(_transformer, fToken, allTokens, allAmounts, msg.sender, _extraData)
-            )
-        );
+                    abi.encode(_transformer, fToken, allTokens, allAmounts, msg.sender, extraData)
+                )
+            );
+        }
 
         // Deposit the converted fToken into DolomiteMargin from this contract
         uint fAmountWei = IDolomiteAssetTransformer(_transformer).getTransformationResult(allTokens, allAmounts);
@@ -221,14 +227,19 @@ contract DolomiteYieldFarmingMarginRouter is ReentrancyGuard, IAssetTransformerI
 
         // Create the CALL to transformerInternal; the outputted tokens and their amounts should be sent to
         // address(this) for the deposit to work
-        actions[1] = DolomiteMarginActionsHelper.createCall(
-            /* accountIndex = */ 0,
-            address(transformerInternal),
-            abi.encode(
-                TransformationType.REVERT,
-                abi.encode(_transformer, fToken, _fAmountWei, _outputTokens, _extraData)
-            )
-        );
+        {
+            // used to prevent "stack too deep"
+            uint256 fAmountWei = _fAmountWei;
+            address[] memory outputTokens = _outputTokens;
+            actions[1] = DolomiteMarginActionsHelper.createCall(
+                /* accountIndex = */ 0,
+                address(transformerInternal),
+                abi.encode(
+                    TransformationType.REVERT,
+                    abi.encode(_transformer, fToken, fAmountWei, outputTokens, _extraData)
+                )
+            );
+        }
 
         uint[] memory outputMarketIds = _mapTokensToMarketIds(_outputTokens, _dolomiteMargin);
         uint[] memory outputAmounts = IDolomiteAssetTransformer(_transformer).getTransformBackResult(

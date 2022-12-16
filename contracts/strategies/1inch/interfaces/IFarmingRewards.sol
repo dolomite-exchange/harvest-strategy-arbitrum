@@ -1,6 +1,6 @@
 pragma solidity ^0.5.16;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/ERC20.sol";
 
 interface IFarmingRewards {
     function balanceOf(address account) external view returns (uint256);

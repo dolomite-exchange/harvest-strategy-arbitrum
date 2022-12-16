@@ -1,6 +1,6 @@
 pragma solidity ^0.5.16;
 
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 
 import "../base/upgradability/BaseUpgradeableStrategy.sol";
 import "./TestRewardPool.sol";

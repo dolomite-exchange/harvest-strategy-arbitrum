@@ -1,6 +1,6 @@
 pragma solidity ^0.5.16;
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 
 import "./inheritance/Constants.sol";
 import "./interfaces/IController.sol";
